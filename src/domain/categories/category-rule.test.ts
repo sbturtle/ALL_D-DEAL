@@ -50,4 +50,16 @@ describe('category rules', () => {
       code: 'unexpected_field',
     });
   });
+
+  it('does not create a rule from a description containing a long numeric identifier', () => {
+    expect(
+      createCategoryRule(
+        {
+          descriptionOriginal: 'Fabricated account 123456789',
+          categoryId: 'OTHER',
+        },
+        createdAt,
+      ),
+    ).toBeNull();
+  });
 });

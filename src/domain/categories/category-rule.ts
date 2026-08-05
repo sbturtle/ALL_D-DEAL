@@ -34,6 +34,7 @@ const CATEGORY_RULE_FIELDS = [
   'updatedAt',
 ] as const;
 const categoryRuleFieldSet: ReadonlySet<string> = new Set(CATEGORY_RULE_FIELDS);
+const SENSITIVE_IDENTIFIER_PATTERN = /\d{5,}/;
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
@@ -62,8 +63,10 @@ export function createCategoryRule(
   );
 
   if (
+    !isCategoryId(request.categoryId) ||
     matchDescriptionNormalized.length === 0 ||
-    matchDescriptionNormalized.length > MAX_CATEGORY_RULE_DESCRIPTION_LENGTH
+    matchDescriptionNormalized.length > MAX_CATEGORY_RULE_DESCRIPTION_LENGTH ||
+    SENSITIVE_IDENTIFIER_PATTERN.test(matchDescriptionNormalized)
   ) {
     return null;
   }
@@ -92,6 +95,7 @@ export function validateCategoryRule(
     typeof matchDescriptionNormalized !== 'string' ||
     matchDescriptionNormalized.length === 0 ||
     matchDescriptionNormalized.length > MAX_CATEGORY_RULE_DESCRIPTION_LENGTH ||
+    SENSITIVE_IDENTIFIER_PATTERN.test(matchDescriptionNormalized) ||
     matchDescriptionNormalized !==
       normalizeCategoryRuleDescription(matchDescriptionNormalized)
   ) {
