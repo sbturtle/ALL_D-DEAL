@@ -9,6 +9,7 @@ import { validateTransaction } from '../../domain/transactions/transaction-valid
 
 export const LOCAL_LEDGER_DATABASE_NAME = 'household-ledger';
 const LOCAL_LEDGER_DATABASE_VERSION = 2;
+export const INDEXED_DB_OPEN_TIMEOUT_MS = 5_000;
 const TRANSACTIONS_STORE = 'transactions';
 const IMPORT_BATCHES_STORE = 'importBatches';
 const BUDGET_SETTLEMENTS_STORE = 'budgetSettlements';
@@ -244,6 +245,17 @@ export class BrowserLedgerRepository {
     }
 
     return new Promise((resolve, reject) => {
+      let isSettled = false;
+      const settle = (callback: () => void): boolean => {
+        if (isSettled) {
+          return false;
+        }
+
+        isSettled = true;
+        clearTimeout(timeoutId);
+        callback();
+        return true;
+      };
       const request = databaseFactory.open(
         this.databaseName,
         LOCAL_LEDGER_DATABASE_VERSION,
@@ -288,14 +300,34 @@ export class BrowserLedgerRepository {
         },
         { once: true },
       );
-      request.addEventListener('success', () => resolve(request.result), { once: true });
-      request.addEventListener('error', () => reject(request.error ?? new Error('IndexedDB open failed.')), {
-        once: true,
-      });
+      request.addEventListener(
+        'success',
+        () => {
+          if (!settle(() => resolve(request.result))) {
+            request.result.close();
+          }
+        },
+        { once: true },
+      );
+      request.addEventListener(
+        'error',
+        () =>
+          settle(() =>
+            reject(request.error ?? new Error('IndexedDB open failed.')),
+          ),
+        { once: true },
+      );
       request.addEventListener(
         'blocked',
-        () => reject(new Error('IndexedDB upgrade is blocked by another open tab.')),
+        () =>
+          settle(() =>
+            reject(new Error('IndexedDB upgrade is blocked by another open tab.')),
+          ),
         { once: true },
+      );
+      const timeoutId = setTimeout(
+        () => settle(() => reject(new Error('IndexedDB open timed out.'))),
+        INDEXED_DB_OPEN_TIMEOUT_MS,
       );
     });
   }

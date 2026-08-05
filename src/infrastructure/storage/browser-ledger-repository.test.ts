@@ -1,10 +1,13 @@
 import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { ImportBatch } from '../../domain/imports/import-batch';
 import type { CategoryRule } from '../../domain/categories/category-rule';
 import type { Transaction } from '../../domain/transactions/transaction';
-import { BrowserLedgerRepository } from './browser-ledger-repository';
+import {
+  BrowserLedgerRepository,
+  INDEXED_DB_OPEN_TIMEOUT_MS,
+} from './browser-ledger-repository';
 
 const batch: ImportBatch = {
   id: '550e8400-e29b-41d4-a716-446655440000',
@@ -204,5 +207,26 @@ describe('BrowserLedgerRepository', () => {
       'IndexedDB upgrade is blocked',
     );
     v1Database.close();
+  });
+
+  it('fails safely when a database open never emits a terminal event', async () => {
+    vi.useFakeTimers();
+    const stalledRequest = new EventTarget() as IDBOpenDBRequest;
+    const repository = new BrowserLedgerRepository(
+      'stalled-ledger',
+      {
+        open: () => stalledRequest,
+      } as unknown as IDBFactory,
+      IDBKeyRange,
+    );
+
+    const pendingRead = repository.listAllTransactions();
+    const rejection = expect(pendingRead).rejects.toThrow(
+      'IndexedDB open timed out',
+    );
+    await vi.advanceTimersByTimeAsync(INDEXED_DB_OPEN_TIMEOUT_MS);
+
+    await rejection;
+    vi.useRealTimers();
   });
 });
