@@ -1559,7 +1559,7 @@ fieldset {
   white-space: nowrap;
 }
 
-.import-category-select {
+.import-category-picker {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-column: 2;
@@ -1570,23 +1570,85 @@ fieldset {
   font-weight: 750;
 }
 
-.import-category-select select {
+.import-card .import-category-trigger {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
   min-width: 0;
   min-height: 29px;
+  margin-top: 0;
   padding: 4px 6px;
   color: #e7eee8;
   font-size: 0.62rem;
+  font-weight: 750;
+  text-align: left;
   background: rgb(255 255 255 / 8%);
   border: 1px solid rgb(255 255 255 / 22%);
   border-radius: 6px;
 }
 
-.import-category-select small {
+.import-card .import-category-trigger:hover:not(:disabled) {
+  background: rgb(216 239 120 / 14%);
+  border-color: rgb(216 239 120 / 68%);
+}
+
+.import-card .import-category-trigger.is-unclassified {
+  color: #c6d0ca;
+  border-style: dashed;
+}
+
+.import-category-trigger strong {
+  overflow: hidden;
+  color: inherit;
+  font-size: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-category-trigger > span {
+  flex: 0 0 auto;
+  color: var(--lime);
+  font-size: 0.57rem;
+}
+
+.import-category-picker small {
   grid-column: 1 / -1;
   color: #aebbb4;
   font-size: 0.56rem;
   font-weight: 600;
   line-height: 1.4;
+}
+
+.import-category-options {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 3px;
+  padding: 7px;
+  background: rgb(0 0 0 / 14%);
+  border: 1px solid rgb(255 255 255 / 13%);
+  border-radius: 8px;
+}
+
+.import-card .category-quick-option {
+  min-height: 31px;
+  margin-top: 0;
+  padding: 5px;
+  color: #cbd6d0;
+  font-size: 0.58rem;
+  font-weight: 760;
+  background: rgb(255 255 255 / 6%);
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 6px;
+}
+
+.import-card .category-quick-option:hover,
+.import-card .category-quick-option.is-active {
+  color: var(--green-dark);
+  background: var(--lime);
+  border-color: var(--lime);
 }
 
 .import-category-rule {
@@ -1597,6 +1659,14 @@ fieldset {
   color: #d3df86;
   font-size: 0.61rem;
   font-weight: 750;
+  line-height: 1.4;
+}
+
+.import-category-rule-help {
+  grid-column: 2;
+  margin-top: -2px;
+  color: #aebbb4;
+  font-size: 0.56rem;
   line-height: 1.4;
 }
 

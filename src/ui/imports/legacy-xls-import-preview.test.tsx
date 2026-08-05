@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -27,6 +27,25 @@ const accountPreview: ImportPreview = {
       rowNumber: 7,
       code: 'invalid_amount',
       message: '입금 또는 출금 금액을 하나만 확인할 수 있어야 합니다.',
+    },
+  ],
+};
+
+const multipleCandidatePreview: ImportPreview = {
+  ...accountPreview,
+  candidates: [
+    ...accountPreview.candidates,
+    {
+      source: 'ACCOUNT_LEDGER_XLS',
+      rowNumber: 8,
+      draft: {
+        occurredOn: '2026-08-02',
+        amountMinor: 22_000,
+        currency: 'KRW',
+        direction: 'OUTFLOW',
+        type: 'UNKNOWN',
+        descriptionOriginal: '가짜 대중교통',
+      },
     },
   ],
 };
@@ -221,9 +240,11 @@ describe('LegacyXlsImportPreview', () => {
       screen.getByLabelText('XLS 파일 선택'),
       new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
     );
-    await user.selectOptions(
-      await screen.findByLabelText('후보 1 카테고리'),
-      'FOOD_DINING',
+    await user.click(await screen.findByLabelText('후보 1 카테고리 열기'));
+    await user.click(
+      within(
+        screen.getByRole('group', { name: '후보 1 카테고리 선택' }),
+      ).getByRole('button', { name: '식비·외식' }),
     );
     await user.click(screen.getByLabelText('후보 1 카테고리 규칙 저장'));
     await user.click(screen.getByTestId('import-confirm-action'));
@@ -257,11 +278,47 @@ describe('LegacyXlsImportPreview', () => {
       screen.getByLabelText('XLS 파일 선택'),
       new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
     );
-    await user.selectOptions(
-      await screen.findByLabelText('후보 1 카테고리'),
-      'FOOD_DINING',
+    await user.click(await screen.findByLabelText('후보 1 카테고리 열기'));
+    await user.click(
+      within(
+        screen.getByRole('group', { name: '후보 1 카테고리 선택' }),
+      ).getByRole('button', { name: '식비·외식' }),
     );
 
     expect(screen.getByLabelText('후보 1 카테고리 규칙 저장')).toBeDisabled();
+  });
+
+  it('opens one compact picker at a time and clears a category separately from rule consent', async () => {
+    const user = userEvent.setup();
+    render(
+      <LegacyXlsImportPreview previewFile={async () => multipleCandidatePreview} />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+    await user.click(await screen.findByLabelText('후보 1 카테고리 열기'));
+    expect(
+      screen.getByRole('group', { name: '후보 1 카테고리 선택' }),
+    ).toBeVisible();
+
+    await user.click(screen.getByLabelText('후보 2 카테고리 열기'));
+    expect(
+      screen.queryByRole('group', { name: '후보 1 카테고리 선택' }),
+    ).not.toBeInTheDocument();
+    const secondPicker = screen.getByRole('group', {
+      name: '후보 2 카테고리 선택',
+    });
+    await user.click(within(secondPicker).getByRole('button', { name: '교통' }));
+
+    expect(screen.getByLabelText('후보 2 카테고리 규칙 저장')).toBeEnabled();
+    await user.click(screen.getByLabelText('후보 2 카테고리 열기'));
+    await user.click(
+      within(
+        screen.getByRole('group', { name: '후보 2 카테고리 선택' }),
+      ).getByRole('button', { name: '미분류' }),
+    );
+    expect(screen.getByLabelText('후보 2 카테고리 규칙 저장')).toBeDisabled();
   });
 });

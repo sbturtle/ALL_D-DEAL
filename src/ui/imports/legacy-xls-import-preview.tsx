@@ -14,7 +14,6 @@ import type {
 import type { DuplicateCandidateMatch } from '../../domain/imports/duplicate-candidates';
 import {
   CATEGORY_IDS,
-  isCategoryId,
   type CategoryId,
 } from '../../domain/categories/category';
 import type { TransactionType } from '../../domain/transactions/transaction';
@@ -107,6 +106,9 @@ export function LegacyXlsImportPreview({
   const [categoryRuleCandidateIndexes, setCategoryRuleCandidateIndexes] = useState<
     ReadonlySet<number>
   >(new Set());
+  const [openCategoryPickerIndex, setOpenCategoryPickerIndex] = useState<number | null>(
+    null,
+  );
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const requestIdRef = useRef(0);
 
@@ -119,6 +121,7 @@ export function LegacyXlsImportPreview({
     setDuplicateCheckFailed(false);
     setCategoryIdByCandidateIndex(new Map());
     setCategoryRuleCandidateIndexes(new Set());
+    setOpenCategoryPickerIndex(null);
     setSaveMessage(null);
   };
 
@@ -141,6 +144,7 @@ export function LegacyXlsImportPreview({
     setDuplicateCheckFailed(false);
     setCategoryIdByCandidateIndex(new Map());
     setCategoryRuleCandidateIndexes(new Set());
+    setOpenCategoryPickerIndex(null);
     setSaveMessage(null);
 
     try {
@@ -308,9 +312,8 @@ export function LegacyXlsImportPreview({
 
   const updateCandidateCategory = (
     candidateIndex: number,
-    value: string,
+    categoryId: CategoryId | undefined,
   ) => {
-    const categoryId = isCategoryId(value) ? value : undefined;
     setCategoryIdByCandidateIndex((currentCategories) => {
       const nextCategories = new Map(currentCategories);
       nextCategories.set(candidateIndex, categoryId);
@@ -324,6 +327,13 @@ export function LegacyXlsImportPreview({
         return nextIndexes;
       });
     }
+    setOpenCategoryPickerIndex(null);
+  };
+
+  const toggleCategoryPicker = (candidateIndex: number) => {
+    setOpenCategoryPickerIndex((currentIndex) =>
+      currentIndex === candidateIndex ? null : candidateIndex,
+    );
   };
 
   const toggleCategoryRule = (candidateIndex: number) => {
@@ -464,7 +474,12 @@ export function LegacyXlsImportPreview({
 
           {preview.candidates.length > 0 ? (
             <ul className="import-candidate-list" aria-label="가져오기 후보">
-              {preview.candidates.map((candidate, candidateIndex) => (
+              {preview.candidates.map((candidate, candidateIndex) => {
+                const selectedCategoryId = categoryIdByCandidateIndex.get(candidateIndex);
+                const isCategoryPickerOpen = openCategoryPickerIndex === candidateIndex;
+                const isCandidateSelected = selectedCandidateIndexes.has(candidateIndex);
+
+                return (
                 <li key={`${candidate.source}-${candidate.rowNumber}`}>
                   <span className="import-candidate-date">{candidate.draft.occurredOn}</span>
                   <strong>{candidate.draft.descriptionOriginal}</strong>
@@ -479,32 +494,76 @@ export function LegacyXlsImportPreview({
                     {candidate.draft.direction === 'INFLOW' ? '+' : '−'}
                     {formatWon(candidate.draft.amountMinor)}
                   </span>
-                  <label className="import-category-select">
+                  <div className="import-category-picker">
                     <span>카테고리</span>
-                    <select
-                      aria-label={`후보 ${candidateIndex + 1} 카테고리`}
-                      value={categoryIdByCandidateIndex.get(candidateIndex) ?? ''}
-                      disabled={status === 'SAVING' || status === 'SAVED'}
-                      onChange={(event) =>
-                        updateCandidateCategory(
-                          candidateIndex,
-                          event.currentTarget.value,
-                        )
+                    <button
+                      type="button"
+                      className={
+                        selectedCategoryId === undefined
+                          ? 'import-category-trigger is-unclassified'
+                          : 'import-category-trigger'
                       }
+                      aria-controls={`candidate-category-picker-${candidateIndex}`}
+                      aria-expanded={isCategoryPickerOpen}
+                      aria-label={`후보 ${candidateIndex + 1} 카테고리 ${
+                        isCategoryPickerOpen ? '닫기' : '열기'
+                      }`}
+                      disabled={status === 'SAVING' || status === 'SAVED'}
+                      onClick={() => toggleCategoryPicker(candidateIndex)}
                     >
-                      <option value="">미분류</option>
-                      {CATEGORY_IDS.map((categoryId) => (
-                        <option key={categoryId} value={categoryId}>
-                          {CATEGORY_LABELS[categoryId]}
-                        </option>
-                      ))}
-                    </select>
-                    <small>
-                      {candidate.draft.categoryId === undefined
-                        ? '카테고리는 저장 전에 직접 선택할 수 있습니다.'
-                        : '저장된 규칙으로 채워졌으며 저장 전에 바꿀 수 있습니다.'}
-                    </small>
-                  </label>
+                      <strong>
+                        {selectedCategoryId === undefined
+                          ? '미분류'
+                          : CATEGORY_LABELS[selectedCategoryId]}
+                      </strong>
+                      <span>{isCategoryPickerOpen ? '닫기' : '변경'}</span>
+                    </button>
+                    {candidate.draft.categoryId === undefined ? (
+                      <small>이번 저장에만 카테고리를 붙일 수 있어요.</small>
+                    ) : (
+                      <small>저장된 규칙으로 채워졌으며 바꿀 수 있어요.</small>
+                    )}
+                    {isCategoryPickerOpen ? (
+                      <div
+                        className="import-category-options"
+                        id={`candidate-category-picker-${candidateIndex}`}
+                        role="group"
+                        aria-label={`후보 ${candidateIndex + 1} 카테고리 선택`}
+                      >
+                        <button
+                          type="button"
+                          className={
+                            selectedCategoryId === undefined
+                              ? 'is-active category-quick-option'
+                              : 'category-quick-option'
+                          }
+                          aria-pressed={selectedCategoryId === undefined}
+                          onClick={() =>
+                            updateCandidateCategory(candidateIndex, undefined)
+                          }
+                        >
+                          미분류
+                        </button>
+                        {CATEGORY_IDS.map((categoryId) => (
+                          <button
+                            type="button"
+                            className={
+                              selectedCategoryId === categoryId
+                                ? 'is-active category-quick-option'
+                                : 'category-quick-option'
+                            }
+                            aria-pressed={selectedCategoryId === categoryId}
+                            key={categoryId}
+                            onClick={() =>
+                              updateCandidateCategory(candidateIndex, categoryId)
+                            }
+                          >
+                            {CATEGORY_LABELS[categoryId]}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
                   <label className="import-category-rule">
                     <input
                       type="checkbox"
@@ -513,15 +572,21 @@ export function LegacyXlsImportPreview({
                       disabled={
                         status === 'SAVING' ||
                         status === 'SAVED' ||
-                        !selectedCandidateIndexes.has(candidateIndex) ||
-                        categoryIdByCandidateIndex.get(candidateIndex) === undefined
+                        !isCandidateSelected ||
+                        selectedCategoryId === undefined
                       }
                       onChange={() => toggleCategoryRule(candidateIndex)}
                     />
-                    <span>이 거래 설명에 앞으로 적용</span>
+                    <span>이 설명을 다음에도 기억</span>
                   </label>
+                  {!isCandidateSelected ? (
+                    <small className="import-category-rule-help">
+                      중복 가능 후보는 저장 대상으로 다시 선택해야 규칙을 기억할 수 있어요.
+                    </small>
+                  ) : null}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           ) : null}
 
@@ -573,9 +638,7 @@ export function LegacyXlsImportPreview({
             </p>
           ) : null}
 
-          <small>
-            원본 파일과 파일명은 저장하지 않으며, 저장 기능은 다음 단계에서 추가합니다.
-          </small>
+          <small>원본 파일과 파일명은 저장하지 않습니다.</small>
         </section>
       ) : null}
     </div>
