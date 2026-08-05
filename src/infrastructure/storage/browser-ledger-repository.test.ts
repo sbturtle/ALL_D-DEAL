@@ -227,13 +227,22 @@ describe('BrowserLedgerRepository', () => {
     await expect(repository.getLocalUserSettings()).resolves.toBeUndefined();
   });
 
-  it('upgrades a v2 local database without changing existing transactions or rules', async () => {
+  it('upgrades a v2 local database without changing existing stores', async () => {
     const databaseName = `v2-ledger-${crypto.randomUUID()}`;
     const databaseFactory = new IDBFactory();
     const storedTransaction = transaction(
       '550e8400-e29b-41d4-a716-446655440060',
       '2026-08-05',
     );
+    const storedSettlement = {
+      id: '550e8400-e29b-41d4-a716-446655440061',
+      payerOutflowTransactionId: storedTransaction.id,
+      reimbursementInflowTransactionIds: [
+        '550e8400-e29b-41d4-a716-446655440062',
+      ],
+      createdAt: '2026-08-05T00:00:00.000Z',
+      updatedAt: '2026-08-05T00:00:00.000Z',
+    } as const;
     const request = databaseFactory.open(databaseName, 2);
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       request.addEventListener(
@@ -271,11 +280,12 @@ describe('BrowserLedgerRepository', () => {
       request.addEventListener('error', () => reject(request.error), { once: true });
     });
     const writeTransaction = database.transaction(
-      ['transactions', 'importBatches', 'categoryRules'],
+      ['transactions', 'importBatches', 'budgetSettlements', 'categoryRules'],
       'readwrite',
     );
     writeTransaction.objectStore('transactions').add(storedTransaction);
     writeTransaction.objectStore('importBatches').add(batch);
+    writeTransaction.objectStore('budgetSettlements').add(storedSettlement);
     writeTransaction.objectStore('categoryRules').put(categoryRule);
     await new Promise<void>((resolve, reject) => {
       writeTransaction.addEventListener('complete', () => resolve(), { once: true });
@@ -296,6 +306,10 @@ describe('BrowserLedgerRepository', () => {
 
     await expect(repository.listAllTransactions()).resolves.toEqual([
       storedTransaction,
+    ]);
+    await expect(repository.listImportBatches()).resolves.toEqual([batch]);
+    await expect(repository.listBudgetSettlements()).resolves.toEqual([
+      storedSettlement,
     ]);
     await expect(repository.listCategoryRules()).resolves.toEqual([categoryRule]);
     await expect(repository.getLocalUserSettings()).resolves.toBeUndefined();
