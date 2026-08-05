@@ -6,7 +6,7 @@
 
 ## 현재 개발 범위
 
-Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기, Phase 2 Transaction Domain Foundation은 완료되었다. 공통 Transaction 타입·금액·날짜·거래 유형 불변식은 구현되었으며, 현재 다음 범위는 Phase 3 Legacy XLS Import Preview다. Git에서 제외한 private 카드 이용내역·계좌 거래내역 구조를 참고해 브라우저 Parser·Preview를 먼저 구현하고, 확정 저장은 다음 vertical slice로 분리한다. 중복 탐지는 Phase 4, 실제 거래 집계와 급여 추정 비교는 Phase 6 전까지 구현하지 않는다.
+Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기, Phase 2 Transaction Domain Foundation은 완료되었다. Phase 3A Legacy XLS Import Preview의 Parser·UI·자동 검증은 구현됐으며, Git에서 제외한 private 카드 이용내역·계좌 거래내역의 실제 브라우저 Preview는 Chrome 로컬 파일 접근 권한을 켠 뒤 최종 확인한다. 확정 저장은 그 뒤 Phase 3B vertical slice로 분리하며, 중복 탐지는 Phase 4, 실제 거래 집계와 급여 추정 비교는 Phase 6 전까지 구현하지 않는다.
 
 ## 기능 요구사항
 

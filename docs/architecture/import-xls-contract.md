@@ -1,6 +1,6 @@
 # Legacy XLS Import Contract
 
-> 상태: Phase 3A 구현 계약
+> 상태: Phase 3A 구현 완료 — 실제 private XLS 브라우저 Preview는 `NEEDS_USER_INPUT`
 >
 > 기준일: 2026-08-05
 

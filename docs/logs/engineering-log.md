@@ -216,3 +216,61 @@ Generic CSV Import 전에 모든 입력 형식과 Dashboard가 공유할 최소 
 ### 상태
 
 `DONE`
+
+## 2026-08-05 — Phase 3A Legacy XLS Import Preview
+
+### 작업 목적
+
+Git에서 제외된 계좌 거래·카드 이용 legacy XLS의 구조를 바탕으로, 원본을 저장하거나 자동 반영하지 않는 브라우저 메모리 Preview를 제공한다.
+
+### 변경 파일
+
+- Import Domain: `src/domain/imports/legacy-xls-preview.ts`
+- XLS Infrastructure Reader: `src/infrastructure/imports/legacy-xls-file-reader.ts`
+- Preview use case·UI: `src/application/imports/`, `src/ui/imports/`, `src/ui/dashboard/`, `src/app/`
+- 계약·요구·계획: `docs/architecture/import-xls-contract.md`, `docs/product/requirements.md`, `docs/plans/current-plan.md`
+
+### 구현 내용
+
+- SheetJS `0.20.3`으로 사용자가 선택한 `.xls`의 첫 시트만 브라우저 메모리에서 읽는다.
+- 계좌 거래는 날짜·설명·입금 또는 출금이 명확한 KRW 정수 행만 방향을 가진 `UNKNOWN` 후보로 만든다.
+- 카드 이용은 원화 매입 행만 `EXPENSE + OUTFLOW` 후보로 만들고, 카드 라벨은 끝 4자리 또는 일반 `카드`로 축소한다.
+- 취소·역분개, 외화 금액, 날짜·금액·설명 문제는 원본 값 없이 안전한 issue로 Preview하며 자동 반영하지 않는다.
+- UI는 처리 상태, 후보·문제 수, 일부 후보와 지우기 동작만 제공한다. 파일명·Blob·전체 원본 행·Preview 상태의 저장과 확정 저장은 구현하지 않았다.
+- UI는 Application use case를 통해 Preview reader를 호출하고, SheetJS 세부 구현은 Infrastructure에 국한했다.
+
+### 검증 방법과 결과
+
+| 검증 | 결과 | 비고 |
+| --- | --- | --- |
+| private XLS 구조 분석 | PASS | 파일명·값을 출력하지 않고 레이아웃 호환성만 확인 |
+| `npm run lint` | PASS | warning 0개 |
+| `npm run typecheck` | PASS | TypeScript project build 성공 |
+| `npm run test` | PASS | 12 files, 219 tests |
+| `npm run build` | PASS | Vite production build 성공; SheetJS 포함 번들 크기 경고만 존재 |
+| UI Component 흐름 | PASS | 파일명 비노출, 오류 일반화, Preview 지우기 |
+| 개인정보·Git 검사 | PASS | private 샘플은 Git 미추적, 원본 값·파일명 로그 없음 |
+| 실제 브라우저 XLS 선택 | NEEDS_USER_INPUT | ChatGPT Chrome Extension의 로컬 파일 접근 권한이 꺼져 있어 실제 파일 전달 전 차단됨 |
+| `git diff --check` | PASS | 공백 오류 0개 |
+
+### Review에서 발견하고 반영한 문제
+
+- Presentation UI가 XLS Infrastructure reader를 직접 부르던 결합을 Application의 `LegacyXlsPreviewReader` port와 App composition 연결로 분리했다.
+- 카드 취소·외화·소수 금액은 실제 지출 후보로 만들지 않고 확인 필요 issue로 분리했다.
+- File input의 값을 즉시 비워 민감할 수 있는 파일명이 UI 상태에 남지 않도록 했다.
+
+### 남은 TODO
+
+- Chrome의 `chrome://extensions`에서 ChatGPT Chrome Extension 세부정보의 **파일 URL에 대한 액세스 허용**을 켠 뒤, private XLS 두 종류의 Preview를 수동 확인한다.
+- 확인 뒤 Phase 3A를 `DONE`으로 전환하고, Phase 3B에서 사용자 확인 후보의 Native IndexedDB 원자 저장을 구현한다.
+
+### 기능 단위 커밋
+
+- `6fe0d8c` `[Docs] : Legacy XLS Import 계약 확정`
+- `c173b0d` `[Build] : 브라우저 XLS 파서 의존성 추가`
+- `781d111` `[Feat] : Legacy XLS 거래 Preview 정규화 추가`
+- `1edf6d8` `[Feat] : Legacy XLS 미리보기 화면 제공`
+
+### 상태
+
+`NEEDS_USER_INPUT`

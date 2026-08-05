@@ -1,6 +1,6 @@
 # Architecture
 
-> 상태: Phase 2 Implemented Baseline
+> 상태: Phase 3A Implemented Baseline — 실제 private XLS 브라우저 Preview는 `NEEDS_USER_INPUT`
 >
 > 기준일: 2026-08-05
 
@@ -12,7 +12,7 @@
 
 ## 현재와 목표 상태
 
-### Phase 2 구현 상태
+### Phase 1–3A 구현 상태
 
 - React + TypeScript + Vite 실행 기반과 lint, typecheck, test, build 명령이 있다.
 - 급여 입력 UI가 버전 지정 2026년 정책을 사용하는 순수 `payroll-estimate` Domain을 직접 호출한다.
@@ -20,7 +20,9 @@
 - Dashboard는 실제 거래가 없는 상태와 명시적인 UI 전용 Mock fixture만 제공한다.
 - 공통 Transaction 타입, 금액·달력 날짜·UTC instant 검증과 생활비 판정 규칙은 `src/domain/transactions/`에 구현되어 있다.
 - Transaction 런타임 검증은 신뢰할 수 없는 `unknown` 입력의 모든 문제를 수집하되 원본 값과 금융 식별정보를 오류에 노출하지 않는다.
-- IndexedDB와 아래 Import 흐름은 Phase 3 이후 목표이며 현재 구현 완료를 뜻하지 않는다.
+- SheetJS `0.20.3` 기반 legacy XLS Reader가 첫 시트를 메모리에서만 읽고, 계좌 거래·카드 이용 레이아웃을 ImportCandidate Preview로 정규화한다.
+- XLS Preview는 UI → Application use case → Infrastructure reader 경계로 연결된다. 원본 파일명·Blob·전체 행은 저장하지 않는다.
+- IndexedDB 확정 저장과 아래 Import 흐름의 Confirm 이후 단계는 Phase 3B 목표이며 현재 구현 완료를 뜻하지 않는다.
 
 ### 단계별 기술 방향
 
@@ -30,6 +32,7 @@
 | 테스트 | Vitest + React Testing Library를 실제 UI 검증과 함께 도입 | Phase 1 |
 | 로컬 저장 | Phase 3 첫 확정 저장은 Native IndexedDB를 기본값으로 사용. 복합 조회·마이그레이션 요구가 생기면 Dexie 재평가 | Phase 3 |
 | 런타임 검증 | Phase 2 Transaction은 의존성 없는 TypeScript 검증 함수 사용. 외부 형식 계약이 복잡해질 때 도구 재평가 | Phase 2 |
+| Legacy XLS | SheetJS `0.20.3`으로 `.xls` 첫 시트를 브라우저 메모리에서 읽고, 형식별 정규화는 Infrastructure에 둠 | Phase 3A |
 | CSV | Papa Parse를 포함한 후보는 Generic CSV 요구가 구체화될 때 비교 | Phase 3 |
 | XLSX/PDF | SheetJS, PDF.js 등은 실제 형식과 샘플이 생긴 Phase에만 검토 | Phase 7 |
 | E2E | 핵심 브라우저 흐름이 생기고 단위·통합 테스트로 부족할 때 Playwright 검토 | 필요 시점 |
@@ -74,7 +77,7 @@ Composition Root: 구체 구현을 생성하고 서로 연결
 ### Domain
 
 - Transaction, 금액, 거래 유형과 집계처럼 프레임워크와 무관한 규칙을 가진다.
-- React, 브라우저 `File`, IndexedDB, CSV/PDF 라이브러리에 의존하지 않는다.
+- React, 브라우저 `File`, IndexedDB, SheetJS 같은 파일 라이브러리에 의존하지 않는다.
 - 가능한 한 순수 함수로 검증하고 테스트한다.
 
 ### Infrastructure
@@ -140,7 +143,7 @@ Dashboard 조회
 - `parse`: 원본을 금융기관별 Source Record로 읽고 행 단위 문제를 보고한다.
 - `normalize`: Source Record를 저장 전 공통 Transaction 후보로 변환한다.
 
-Adapter는 저장, Dashboard 집계, UI 렌더링, 사용자 카테고리 질문을 담당하지 않는다. 실제 인터페이스는 첫 Generic CSV 사용 사례에서 필요한 최소 형태로 정의한다. MyPDS와 금융기관별 Adapter는 마스킹된 실제 샘플을 확보한 뒤 설계한다.
+Adapter는 저장, Dashboard 집계, UI 렌더링, 사용자 카테고리 질문을 담당하지 않는다. Phase 3A는 `LegacyXlsPreviewReader`의 최소 Preview port로 구현한다. MyPDS와 금융기관별 Adapter는 마스킹된 실제 샘플을 확보한 뒤 설계한다.
 
 ## 저장 경계
 
