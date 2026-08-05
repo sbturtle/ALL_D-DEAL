@@ -12,7 +12,7 @@ Prepare a safe, opt-in Kakao Map Web SDK boundary for future merchant/place look
 
 - Use only `VITE_KAKAO_MAP_JAVASCRIPT_KEY` for the Kakao Map Web (JavaScript) SDK. It is a browser-visible platform key and must be restricted to the local and deployed JavaScript SDK domains registered in Kakao Developers.
 - Never add a Kakao REST API key, Admin key, client secret, access token, or any financial value to Vite environment variables or client code.
-- This configuration step makes no network request. A later implementation may load the Map SDK and submit a candidate description only after the user explicitly requests a place search for that candidate.
+- XLS 업로드 시 지출 후보 설명을 Kakao에 자동 전송해 장소를 분석한다. 업로드 전 화면에서 외부 전송 사실을 표시한다.
 - Place responses, search terms, map state, raw source rows, and enrichment metadata are Preview-only unless a separate user-confirmed persistence design is accepted.
 - Kakao place lookup is an optional aid for `EXPENSE` candidates. It must not replace transaction type classification, category confirmation, duplicate review, or local file import.
 
@@ -35,5 +35,5 @@ Prepare a safe, opt-in Kakao Map Web SDK boundary for future merchant/place look
 
 - The repository contains an empty, documented JavaScript-key variable only; no private key, REST/Admin key, or user financial data is tracked.
 - The application remains fully usable without `.env` or without a Kakao key.
-- A future place-search request is initiated only by an explicit user action for one visible candidate and clearly says that its query is sent to Kakao.
+- XLS 업로드 시에만 지출 후보 장소 분석 요청이 시작되고, 업로드 전 외부 전송 사실을 명확히 표시한다.
 - No request is made when configuration is missing, and no raw source row, search query, result, or key is written to IndexedDB, logs, URLs, tests, or commits.
