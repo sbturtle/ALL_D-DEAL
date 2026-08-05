@@ -103,8 +103,17 @@ describe('validateTransaction', () => {
     expectIssue(candidate, field, 'required');
   });
 
-  it.each([null, undefined, [], 'transaction', 410])(
-    '객체가 아닌 %j를 root issue로 거부한다',
+  it.each([
+    null,
+    undefined,
+    [],
+    'transaction',
+    410,
+    new Date('2026-08-05T00:00:00Z'),
+    new Map(),
+    /transaction/,
+  ])(
+    '일반 데이터 객체가 아닌 %j를 root issue로 거부한다',
     (candidate) => {
       expectIssue(candidate, '$root', 'invalid_root');
     },
@@ -229,19 +238,19 @@ describe('validateTransaction', () => {
   it('지원하지 않는 추가 필드를 조용히 저장하지 않는다', () => {
     expectIssue(
       { ...validTransaction, sourceRow: '저장하지 않을 가짜 원본' },
-      'sourceRow',
+      '$root',
       'unexpected_field',
     );
   });
 
-  it('여러 오류를 누적하되 issue에 후보 원문 값을 포함하지 않는다', () => {
+  it('여러 오류를 누적하되 issue에 후보 원문 값과 추가 필드명을 포함하지 않는다', () => {
     const sensitiveLikeValue = 'candidate-value-must-not-appear';
     const result = validateTransaction({
       ...validTransaction,
       id: sensitiveLikeValue,
       amountMinor: 0,
       descriptionOriginal: '   ',
-      extraSourceRow: sensitiveLikeValue,
+      [sensitiveLikeValue]: sensitiveLikeValue,
     });
 
     expect(result.isValid).toBe(false);
@@ -252,7 +261,7 @@ describe('validateTransaction', () => {
           'id',
           'amountMinor',
           'descriptionOriginal',
-          'extraSourceRow',
+          '$root',
         ]),
       );
       expect(JSON.stringify(result.issues)).not.toContain(sensitiveLikeValue);

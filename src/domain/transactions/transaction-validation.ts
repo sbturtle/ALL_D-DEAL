@@ -64,7 +64,13 @@ const NIL_UUID = '00000000-0000-0000-0000-000000000000';
 type CandidateRecord = Record<string, unknown>;
 
 function isCandidateRecord(value: unknown): value is CandidateRecord {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+
+  return prototype === Object.prototype || prototype === null;
 }
 
 function hasOwnField(candidate: CandidateRecord, field: string): boolean {
@@ -296,15 +302,17 @@ function findUnexpectedFields(
   candidate: CandidateRecord,
   issues: TransactionValidationIssue[],
 ) {
-  for (const field of Object.keys(candidate)) {
-    if (!transactionFieldSet.has(field)) {
-      addIssue(
-        issues,
-        field,
-        'unexpected_field',
-        'Transaction에서 지원하지 않는 필드입니다.',
-      );
-    }
+  const hasUnexpectedField = Object.keys(candidate).some(
+    (field) => !transactionFieldSet.has(field),
+  );
+
+  if (hasUnexpectedField) {
+    addIssue(
+      issues,
+      '$root',
+      'unexpected_field',
+      'Transaction에서 지원하지 않는 필드가 포함되어 있습니다.',
+    );
   }
 }
 
