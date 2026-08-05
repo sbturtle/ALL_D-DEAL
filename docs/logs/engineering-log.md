@@ -146,3 +146,73 @@ Phase 1 실행 기반과 Dashboard shell을 만들고, 사용자가 연봉 또�
 ### 상태
 
 `DONE`
+
+## 2026-08-05 — Phase 2 Transaction Domain Foundation
+
+### 작업 목적
+
+Generic CSV Import 전에 모든 입력 형식과 Dashboard가 공유할 최소 Transaction 타입, 금액·날짜·시간 검증과 생활비 중복 집계 방지 규칙을 구현한다. 저장 기술은 실제 확정 저장 사용 사례에 맞춰 결정하되 Phase 2에서는 미사용 포트와 DB 코드를 만들지 않는다.
+
+### 변경 파일
+
+- Transaction Domain: `src/domain/transactions/`
+- 모델·아키텍처: `docs/architecture/data-model.md`, `docs/architecture/architecture.md`
+- 요구·계획: `docs/product/requirements.md`, `docs/plans/`
+- 작업 이력: 이 문서
+
+### 구현 내용
+
+- 양의 KRW 원 단위 safe integer와 실제 `YYYY-MM-DD` CalendarDate 경계를 구현했다.
+- 9개 거래 유형, 유입·유출 방향과 MVP Transaction 타입을 구현했다.
+- nil이 아닌 canonical UUID, UTC `Z` instant와 수정 시각 순서를 검증한다.
+- `unknown` 입력의 모든 issue를 수집하고 허용 필드만으로 새 Transaction 객체를 만드는 런타임 검증을 구현했다.
+- `EXPENSE + OUTFLOW`만 생활비로 포함해 카드대금, 이체와 다른 자금 이동의 중복 집계를 막았다.
+- 결제수단 라벨의 ASCII 숫자를 최대 4개로 제한해 전체 카드·계좌번호 저장을 차단했다.
+
+### 저장 결정
+
+- Phase 2에는 IndexedDB 코드, 저장 포트와 새 의존성을 추가하지 않았다.
+- Phase 3 `confirmImport`의 `ImportBatch + Transaction[]` 원자 저장과 날짜 조회는 Native IndexedDB로 시작한다.
+- 복합 쿼리, 페이지네이션, 반응형 조회나 다단계 마이그레이션이 필요해지면 Dexie를 재평가한다.
+
+### 검증 방법과 결과
+
+| 검증 | 결과 | 비고 |
+| --- | --- | --- |
+| `npm run lint` | PASS | warning 0개 |
+| `npm run typecheck` | PASS | TypeScript project build 성공 |
+| `npm run test` | PASS | 8 files, 208 tests |
+| `npm run build` | PASS | Vite production build, 38 modules |
+| Domain 독립 리뷰 | PASS | 모델·날짜·금액·생활비 경계 확인 |
+| 보안 신뢰 경계 리뷰 | PASS | plain object 제한, 후보 키·값 비노출 반영 |
+| 저장·네트워크·급여 결합 검사 | PASS | Phase 2 Domain 의존성 0개 |
+| 실제 금융 fixture 검사 | PASS | 실제 개인 금융 데이터 0개 |
+| 브라우저 수동 확인 | N/A | UI 변경 없음 |
+| `git diff --check` | PASS | 공백 오류 0개 |
+
+### Review에서 발견하고 반영한 문제
+
+- 예상하지 않은 후보 필드명이 issue 경로에 노출되던 문제를 일반화된 `$root` 오류로 수정했다.
+- `Date`, `Map`, 클래스 인스턴스가 객체 입력으로 처리될 가능성을 plain object 경계로 차단했다.
+- 전체 카드·계좌번호처럼 보이는 `paymentInstrumentLabel`과 입력값을 되비추는 오류 메시지를 차단했다.
+
+### 남은 TODO
+
+- Phase 3에서 Generic Test Format CSV 계약과 안전 제한을 먼저 확정한다.
+- 메모리 기반 Parse·Normalize·Preview 흐름을 구현한다.
+- 확인된 거래만 Native IndexedDB schema v1에 원자 저장한다.
+- 중복 fingerprint와 실제 금융기관 Adapter는 각각 Phase 4와 Phase 7까지 구현하지 않는다.
+
+### 기능 단위 커밋
+
+- `88c324e` `[Docs] : Phase 2 Transaction 구현 계약 확정`
+- `43306f6` `[Feat] : 거래 금액과 달력 날짜 경계 추가`
+- `7a4edd4` `[Feat] : Transaction 타입과 런타임 검증 추가`
+- `9c1c505` `[Feat] : 생활비 중복 집계 방지 규칙 추가`
+- `353d142` `[Fix] : Transaction 검증 신뢰 경계 강화`
+- `a837eb0` `[Fix] : 결제수단 금융 식별정보 저장 차단`
+- `[Docs] : Phase 2 검증 결과와 다음 계획 인계`
+
+### 상태
+
+`DONE`

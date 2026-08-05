@@ -6,7 +6,7 @@
 
 ## 현재 개발 범위
 
-Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기는 완료되었다. 현재 활성 범위는 Phase 2 Transaction Domain Foundation이며, 공통 Transaction 타입·금액·날짜·거래 유형 불변식과 최소 저장 경계를 다룬다. 파일 Parser·Preview는 Phase 3, 중복 탐지는 Phase 4, 실제 거래 집계와 급여 추정 비교는 Phase 6 전까지 구현하지 않는다.
+Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기, Phase 2 Transaction Domain Foundation은 완료되었다. 공통 Transaction 타입·금액·날짜·거래 유형 불변식은 구현되었으며, 현재 다음 범위는 Phase 3 Generic CSV Import다. Phase 3에서 명시적인 가짜 형식의 Parser·Preview·확정 저장을 구현한다. 중복 탐지는 Phase 4, 실제 거래 집계와 급여 추정 비교는 Phase 6 전까지 구현하지 않는다.
 
 ## 기능 요구사항
 

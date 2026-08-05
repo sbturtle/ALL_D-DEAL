@@ -1,6 +1,6 @@
 # Architecture
 
-> 상태: Phase 1 Implemented Baseline
+> 상태: Phase 2 Implemented Baseline
 >
 > 기준일: 2026-08-05
 
@@ -12,13 +12,15 @@
 
 ## 현재와 목표 상태
 
-### Phase 1 구현 상태
+### Phase 2 구현 상태
 
 - React + TypeScript + Vite 실행 기반과 lint, typecheck, test, build 명령이 있다.
 - 급여 입력 UI가 버전 지정 2026년 정책을 사용하는 순수 `payroll-estimate` Domain을 직접 호출한다.
 - 급여 입력과 결과는 메모리에서만 유지하며 Application·Infrastructure·Transaction 계층으로 전달하지 않는다.
 - Dashboard는 실제 거래가 없는 상태와 명시적인 UI 전용 Mock fixture만 제공한다.
-- IndexedDB, 공통 Transaction 런타임 모델과 아래 Import 흐름은 Phase 2 이후 목표이며 현재 구현 완료를 뜻하지 않는다.
+- 공통 Transaction 타입, 금액·달력 날짜·UTC instant 검증과 생활비 판정 규칙은 `src/domain/transactions/`에 구현되어 있다.
+- Transaction 런타임 검증은 신뢰할 수 없는 `unknown` 입력의 모든 문제를 수집하되 원본 값과 금융 식별정보를 오류에 노출하지 않는다.
+- IndexedDB와 아래 Import 흐름은 Phase 3 이후 목표이며 현재 구현 완료를 뜻하지 않는다.
 
 ### 단계별 기술 방향
 
@@ -26,8 +28,8 @@
 | --- | --- | --- |
 | Web UI | React + TypeScript + Vite를 Phase 1 기본값으로 사용 | Phase 1 |
 | 테스트 | Vitest + React Testing Library를 실제 UI 검증과 함께 도입 | Phase 1 |
-| 로컬 저장 | IndexedDB 사용. Native API와 Dexie 선택은 쿼리·마이그레이션 요구를 확인한 뒤 결정 | Phase 2 |
-| 런타임 검증 | Zod 또는 동급 도구는 외부 데이터 검증 구현 시 비교 | Phase 2 |
+| 로컬 저장 | Phase 3 첫 확정 저장은 Native IndexedDB를 기본값으로 사용. 복합 조회·마이그레이션 요구가 생기면 Dexie 재평가 | Phase 3 |
+| 런타임 검증 | Phase 2 Transaction은 의존성 없는 TypeScript 검증 함수 사용. 외부 형식 계약이 복잡해질 때 도구 재평가 | Phase 2 |
 | CSV | Papa Parse를 포함한 후보는 Generic CSV 요구가 구체화될 때 비교 | Phase 3 |
 | XLSX/PDF | SheetJS, PDF.js 등은 실제 형식과 샘플이 생긴 Phase에만 검토 | Phase 7 |
 | E2E | 핵심 브라우저 흐름이 생기고 단위·통합 테스트로 부족할 때 Playwright 검토 | 필요 시점 |
@@ -146,7 +148,8 @@ Adapter는 저장, Dashboard 집계, UI 렌더링, 사용자 카테고리 질문
 - 원본 PDF/CSV/XLSX Blob, 전체 원본 행, 민감할 수 있는 파일명은 기본적으로 저장하지 않는다.
 - Preview 후보와 파싱 중간 데이터는 확정 전 메모리에만 둔다.
 - Import 확정 시 Batch와 모든 Transaction을 하나의 IndexedDB 트랜잭션으로 저장한다.
-- DB 스키마 버전과 마이그레이션은 첫 영속 모델을 도입할 때 정의한다.
+- Native IndexedDB를 첫 구현의 기본값으로 하며 DB 스키마 버전과 마이그레이션은 Phase 3 첫 영속 모델을 도입할 때 정의한다.
+- 복합 쿼리, 페이지네이션, 반응형 조회 또는 다단계 스키마 마이그레이션이 실제 요구가 되면 Dexie를 재평가한다.
 - IndexedDB는 배포 origin에 묶이며 브라우저 데이터 삭제나 주소 변경으로 유실될 수 있다. 실제 데이터 사용 전에 삭제 UX와 백업·복구 전략을 별도 계획한다.
 - local-first는 저장 데이터가 자동 암호화된다는 뜻이 아니다.
 
@@ -185,8 +188,8 @@ Adapter는 저장, Dashboard 집계, UI 렌더링, 사용자 카테고리 질문
 
 ## 보류한 결정
 
-- Native IndexedDB와 Dexie 중 선택
-- 런타임 스키마 검증 도구
+- Native IndexedDB 이후 Dexie로 전환할 구체 임계점
+- Generic CSV 외부 형식에 별도 런타임 스키마 검증 도구가 필요한지
 - Import Adapter의 구체 TypeScript 계약
 - 중복 후보 점수, fingerprint 구성과 판정 임계값
 - 환불의 원거래 연결과 월간 집계 기준
