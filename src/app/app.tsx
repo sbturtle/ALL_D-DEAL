@@ -60,7 +60,7 @@ export function App() {
           <a href="#import">XLS 가져오기</a>
         </nav>
 
-        <span className="phase-chip">PHASE 3B · LOCAL</span>
+        <span className="phase-chip">PHASE 4 · LOCAL</span>
       </header>
 
       <main>
