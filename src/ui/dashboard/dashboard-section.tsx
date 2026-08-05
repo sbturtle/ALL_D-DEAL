@@ -1,14 +1,20 @@
 import { useState } from 'react';
 
+import type { LegacyXlsPreviewReader } from '../../application/imports/prepare-legacy-xls-import';
 import { formatWon } from '../../shared/format/currency';
 import {
   dashboardMockSummary,
   dashboardMockTransactions,
 } from './dashboard-fixtures';
+import { LegacyXlsImportPreview } from '../imports/legacy-xls-import-preview';
 
 type DashboardMode = 'EMPTY' | 'MOCK';
 
-export function DashboardSection() {
+type DashboardSectionProps = Readonly<{
+  previewLegacyXls: LegacyXlsPreviewReader;
+}>;
+
+export function DashboardSection({ previewLegacyXls }: DashboardSectionProps) {
   const [mode, setMode] = useState<DashboardMode>('EMPTY');
   const isMock = mode === 'MOCK';
 
@@ -19,8 +25,8 @@ export function DashboardSection() {
           <p className="eyebrow">NEXT · WEEKLY LEDGER</p>
           <h2 id="ledger-title">계산에서 실제 기록으로</h2>
           <p>
-            급여 추정값과 실제 수입은 섞지 않습니다. 파일 Import가 준비되면
-            확인된 거래만 장부에 반영합니다.
+            급여 추정값과 실제 수입은 섞지 않습니다. XLS 파일을 먼저 검토하고,
+            다음 단계에서 확인된 거래만 장부에 반영합니다.
           </p>
         </div>
 
@@ -123,25 +129,8 @@ export function DashboardSection() {
           </article>
         </div>
 
-        <aside className="import-card" aria-labelledby="import-title">
-          <span className="status-pill">준비 중 · Phase 3</span>
-          <p className="panel-kicker">IMPORT</p>
-          <h3 id="import-title">내 금융 파일 가져오기</h3>
-          <p>
-            CSV부터 시작해 저장 전에 신규 거래와 문제를 직접 확인하는 흐름을
-            준비하고 있습니다.
-          </p>
-          <div className="import-flow" aria-label="예정된 가져오기 흐름">
-            <span>파일 선택</span>
-            <i aria-hidden="true">→</i>
-            <span>미리보기</span>
-            <i aria-hidden="true">→</i>
-            <span>로컬 저장</span>
-          </div>
-          <button type="button" disabled>
-            아직 사용할 수 없어요
-          </button>
-          <small>금융 데이터는 외부 서버로 전송하지 않을 계획입니다.</small>
+        <aside className="import-card import-card--active" aria-labelledby="import-title">
+          <LegacyXlsImportPreview previewFile={previewLegacyXls} />
         </aside>
       </div>
     </section>

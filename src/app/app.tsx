@@ -1,6 +1,15 @@
+import {
+  prepareLegacyXlsImportPreview,
+  type LegacyXlsImportFile,
+} from '../application/imports/prepare-legacy-xls-import';
+import { previewLegacyXlsFile } from '../infrastructure/imports/legacy-xls-file-reader';
 import { DashboardSection } from '../ui/dashboard/dashboard-section';
 import { PayrollEstimateCalculator } from '../ui/payroll-estimate/payroll-estimate-calculator';
 import './app.css';
+
+function previewSelectedLegacyXls(file: LegacyXlsImportFile) {
+  return prepareLegacyXlsImportPreview(file, previewLegacyXlsFile);
+}
 
 export function App() {
   return (
@@ -14,9 +23,10 @@ export function App() {
         <nav aria-label="주요 메뉴">
           <a href="#calculator">급여 계산</a>
           <a href="#ledger">장부 미리보기</a>
+          <a href="#import">XLS 가져오기</a>
         </nav>
 
-        <span className="phase-chip">PHASE 1 · LOCAL</span>
+        <span className="phase-chip">PHASE 3A · LOCAL</span>
       </header>
 
       <main>
@@ -56,7 +66,7 @@ export function App() {
           <PayrollEstimateCalculator />
         </section>
 
-        <DashboardSection />
+        <DashboardSection previewLegacyXls={previewSelectedLegacyXls} />
 
         <section className="local-manifesto" aria-labelledby="local-title">
           <div>

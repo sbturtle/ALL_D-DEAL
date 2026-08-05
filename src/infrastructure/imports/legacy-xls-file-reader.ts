@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 
+import type { LegacyXlsImportFile } from '../../application/imports/prepare-legacy-xls-import';
 import {
   MAX_IMPORT_CELL_TEXT_LENGTH,
   MAX_IMPORT_COLUMNS,
@@ -12,8 +13,6 @@ import type {
 } from '../../domain/imports/legacy-xls-preview';
 
 export const MAX_LEGACY_XLS_FILE_BYTES = 5 * 1024 * 1024;
-
-export type BrowserImportFile = Pick<File, 'arrayBuffer' | 'name' | 'size'>;
 
 function createUnsupportedFilePreview(message: string): ImportPreview {
   return {
@@ -113,7 +112,7 @@ export function previewLegacyXlsArrayBuffer(data: ArrayBuffer): ImportPreview {
 }
 
 export async function previewLegacyXlsFile(
-  file: BrowserImportFile,
+  file: LegacyXlsImportFile,
 ): Promise<ImportPreview> {
   if (!hasLegacyXlsExtension(file.name)) {
     return createUnsupportedFilePreview('현재는 XLS 파일만 가져올 수 있습니다.');
