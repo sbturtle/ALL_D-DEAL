@@ -94,6 +94,39 @@ describe('BrowserLedgerRepository', () => {
     await expect(repository.listCategoryRules()).resolves.toEqual([]);
   });
 
+  it('replaces a confirmed rule without rewriting previously stored transactions', async () => {
+    const repository = createRepository();
+    const firstTransaction = transaction(
+      '550e8400-e29b-41d4-a716-446655440031',
+      '2026-08-05',
+    );
+    const nextBatch: ImportBatch = {
+      ...batch,
+      id: '550e8400-e29b-41d4-a716-446655440030',
+      committedAt: '2026-08-06T00:00:00.000Z',
+    };
+    const replacementRule: CategoryRule = {
+      ...categoryRule,
+      categoryId: 'LEISURE',
+      updatedAt: '2026-08-06T00:00:00.000Z',
+    };
+    const nextTransaction: Transaction = {
+      ...transaction('550e8400-e29b-41d4-a716-446655440032', '2026-08-06'),
+      importBatchId: nextBatch.id,
+      createdAt: nextBatch.committedAt,
+      updatedAt: nextBatch.committedAt,
+    };
+
+    await repository.commitImport(batch, [firstTransaction], [categoryRule]);
+    await repository.commitImport(nextBatch, [nextTransaction], [replacementRule]);
+
+    await expect(repository.listCategoryRules()).resolves.toEqual([replacementRule]);
+    await expect(repository.listAllTransactions()).resolves.toEqual([
+      nextTransaction,
+      firstTransaction,
+    ]);
+  });
+
   it('stores and removes an independent budget settlement', async () => {
     const repository = createRepository();
     const settlement = {
