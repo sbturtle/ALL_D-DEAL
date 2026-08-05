@@ -174,6 +174,14 @@ export class BrowserLedgerRepository {
       .map(validateStoredTransaction);
   }
 
+  async replaceTransaction(transactionValue: Transaction): Promise<void> {
+    const transactionToStore = validateStoredTransaction(transactionValue);
+    const database = await this.getDatabase();
+    const transaction = database.transaction(TRANSACTIONS_STORE, 'readwrite');
+    transaction.objectStore(TRANSACTIONS_STORE).put(transactionToStore);
+    await transactionAsPromise(transaction);
+  }
+
   async listImportBatches(): Promise<readonly ImportBatch[]> {
     const database = await this.getDatabase();
     const transaction = database.transaction(IMPORT_BATCHES_STORE, 'readonly');

@@ -130,6 +130,25 @@ describe('BrowserLedgerRepository', () => {
     ]);
   });
 
+  it('replaces one validated stored transaction without changing its import trace', async () => {
+    const repository = createRepository();
+    const storedTransaction = transaction(
+      '550e8400-e29b-41d4-a716-446655440040',
+      '2026-08-05',
+    );
+    await repository.commitImport(batch, [storedTransaction]);
+
+    const replacement: Transaction = {
+      ...storedTransaction,
+      categoryId: 'CAFE',
+      memo: 'Fabricated saved note',
+      updatedAt: '2026-08-05T01:00:00.000Z',
+    };
+    await repository.replaceTransaction(replacement);
+
+    await expect(repository.listAllTransactions()).resolves.toEqual([replacement]);
+  });
+
   it('stores and removes an independent budget settlement', async () => {
     const repository = createRepository();
     const settlement = {
