@@ -9,7 +9,7 @@
 
 ## Decision
 
-Phase 6A는 `/ledger`, `/imports`, `/payroll`을 고유 경로로 제공한다. 앱은 가장 작은 자체 History API 라우터로 현재 경로와 `popstate`를 반영하고, 상단 탐색의 현재 위치를 `aria-current="page"`로 표시한다. `/`는 장부 경로로 해석한다.
+Phase 6A는 `/ledger`, `/imports`, `/payroll`을 고유 경로로 제공했고, Phase 8B는 개인 설정을 장부와 섞지 않기 위해 `/settings`을 추가한다. 앱은 가장 작은 자체 History API 라우터로 현재 경로와 `popstate`를 반영하고, 상단 탐색의 현재 위치를 `aria-current="page"`로 표시한다. `/`는 장부 경로로 해석한다.
 
 각 화면은 필요한 UI만 렌더링한다. 급여 입력은 계속 메모리 전용이며, Import Preview·장부 저장소·카테고리 규칙의 local-first 경계는 바뀌지 않는다.
 

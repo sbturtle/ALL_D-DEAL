@@ -1,6 +1,6 @@
 # Phase 8B — Local Monthly Living-Expense Goal
 
-- Status: `IN_PROGRESS`
+- Status: `DONE`
 - Plan updated: 2026-08-05
 - Prerequisite: Phase 8A Saved Transaction Notes and Categories `DONE`
 
@@ -19,8 +19,8 @@ Let the user set, change, or clear one monthly living-expense goal on this brows
 
 ## Completion
 
-1. `TODO` Define and test the local monthly-goal model and progress calculation, including unset, remaining, and exceeded states.
-2. `TODO` Add validated get/save/remove repository operations and an IndexedDB v2-to-v3 upgrade that preserves prior stores.
-3. `TODO` Add the Settings route and resilient save, clear, loading, and error states.
-4. `TODO` Show monthly goal progress in the saved ledger and preserve the existing shared-payment calculation.
-5. `TODO` Verify lint, typecheck, tests, build, privacy boundary, responsive styles, documentation, and function-sized local commits.
+1. `DONE` Define and test the local monthly-goal model and progress calculation, including unset, remaining, and exceeded states.
+2. `DONE` Add validated get/save/remove repository operations and an IndexedDB v2-to-v3 upgrade that preserves prior stores.
+3. `DONE` Add the Settings route and resilient save, clear, loading, and error states.
+4. `DONE` Show monthly goal progress in the saved ledger and preserve the existing shared-payment calculation.
+5. `DONE` Verify lint, typecheck, 33 test files / 345 tests, production build, privacy boundary, desktop and 360px styles, documentation, and function-sized local commits.

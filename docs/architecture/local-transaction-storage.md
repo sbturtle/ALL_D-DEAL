@@ -1,18 +1,20 @@
 # Local Transaction Storage Contract
 
-> Status: Phase 3B implemented
+> Status: Phase 8B implemented
 >
 > Updated: 2026-08-05
 
 ## Browser database
 
-The browser uses native IndexedDB database `household-ledger`, schema version `1`.
+The browser uses native IndexedDB database `household-ledger`, schema version `3`.
 
 | Store | Key | Index | Stored purpose |
 | --- | --- | --- | --- |
 | `transactions` | `id` | `occurredOn`, `importBatchId` | Confirmed normalized transactions only |
 | `importBatches` | `id` | `committedAt` | Import provenance and counts |
 | `budgetSettlements` | `id` | `payerOutflowTransactionId` | Explicit group-payment links |
+| `categoryRules` | `matchDescriptionNormalized` | — | User-confirmed category choices for future Import Preview candidates |
+| `userSettings` | `id` (`current`) | — | One local monthly living-expense goal and its update time |
 
 The source XLS blob, original file name, parser row arrays, preview state, full account/card numbers, and source financial identifiers are never stored.
 
@@ -40,3 +42,9 @@ The anchor and display semantics use `Asia/Seoul`; no date-only value is convert
 `BudgetSettlement` stores one payer `OUTFLOW` transaction and one or more reimbursement `INFLOW` transactions. The save use case validates participant existence, direction, duplicate IDs, and that no participant already belongs to another settlement.
 
 For a selected period, ordinary `EXPENSE + OUTFLOW` records are summed. A linked payer is replaced with `max(payer amount - all linked reimbursement amounts, 0)` when the payer date is in the period. Reimbursements may be later than the payer date; their amount remains attributed to the payer date for budget progress. The linked original transactions and normal inflow/outflow totals are not mutated. See [ADR-0005](../adr/ADR-0005-manual-shared-payment-settlements.md).
+
+## Local monthly living-expense goal
+
+`userSettings` is a singleton record keyed by `current`. It contains only a positive KRW safe-integer `monthlyLivingExpenseGoalMinor` and a UTC `updatedAt` value. Saving replaces that one record; clearing removes it. No default amount is stored or inferred.
+
+The saved ledger reads the goal only for its calendar-month view. It compares the goal with `calculateLivingExpenseSummary`, so linked shared payments contribute their net out-of-pocket spending. Day, week, and custom ranges show actual spending without proportional goal allocation. Payroll calculator inputs and results never enter this store. See [ADR-0011](../adr/ADR-0011-local-monthly-living-expense-goal.md).

@@ -6,7 +6,7 @@
 
 ## 현재 개발 범위
 
-Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기, Phase 2 Transaction Domain Foundation, Phase 3A/3B Legacy XLS Preview·확정 저장, Phase 4 중복 후보 검토, Phase 5 확정 카테고리 규칙, Phase 6A 기능별 페이지 분리, Phase 6B 계좌 거래 유형 분류, Phase 7A 명시적 Kakao 장소 검색은 완료되었다. Git에서 제외한 private 카드 이용내역·계좌 거래내역은 실제 로컬 브라우저 Preview로 호환성을 확인했다. 후속 Phase는 저장 거래 분석과 사용자 설정을 작은 단위로 진행한다.
+Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기, Phase 2 Transaction Domain Foundation, Phase 3A/3B Legacy XLS Preview·확정 저장, Phase 4 중복 후보 검토, Phase 5 확정 카테고리 규칙, Phase 6A 기능별 페이지 분리, Phase 6B 계좌 거래 유형 분류, Phase 7A/7B/7C Kakao 장소 분류·진행 표시, Phase 8A 저장 거래 메모·카테고리 편집, Phase 8B 월 생활비 목표 로컬 설정은 완료되었다. Git에서 제외한 private 카드 이용내역·계좌 거래내역은 실제 로컬 브라우저 Preview로 호환성을 확인했다. 저축 분석과 장기 자산 모델은 후속 Phase에서 작은 단위로 진행한다.
 
 ## 기능 요구사항
 
@@ -21,8 +21,8 @@ Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 �
 | FR-007 | MUST | `CARD_PAYMENT`와 이미 집계된 카드 사용 거래가 소비로 이중 계산되지 않아야 한다. | 2, 6 |
 | FR-008 | SHOULD | 처음 보는 Merchant는 카테고리 확인을 요청하고, 사용자 동의 후 규칙을 만들며, 이후 동일 Merchant에는 기존 규칙을 재사용해야 한다. | 5 |
 | FR-009 | MUST | 빈 상태와 명시적인 Mock Data 모드를 갖춘 모바일 우선 Dashboard shell을 제공해야 한다. | 1 |
-| FR-010 | SHOULD | 실제 저장 거래를 바탕으로 주간·월간 소비, 수입, 생활비 목표·잔액, 저축액과 월 저축 가능액을 계산해야 한다. | 6 |
-| FR-011 | SHOULD | 생활비 목표 등 개인 재무 설정을 코드 변경 없이 수정할 수 있어야 한다. | 후속 계획 |
+| FR-010 | SHOULD | 실제 저장 거래를 바탕으로 주간·월간 소비, 수입, 생활비 목표·잔액, 저축액과 월 저축 가능액을 계산해야 한다. | 6, 8B (생활비 목표·잔액) |
+| FR-011 | SHOULD | 생활비 목표 등 개인 재무 설정을 코드 변경 없이 수정할 수 있어야 한다. | 8B |
 | FR-012 | LATER | 주거·결혼자금, 비상금, 청약, 투자, 대출, 순자산을 추적할 수 있어야 한다. | 8 |
 | FR-013 | MUST | 실제 MyData·금융기관 파일은 마스킹된 샘플을 받은 뒤 하나의 Adapter부터 지원해야 한다. | 7 |
 | FR-014 | LATER | Galaxy 환경에서 검증된 설치 또는 앱 사용 경험을 제공해야 한다. | 9, 10 |

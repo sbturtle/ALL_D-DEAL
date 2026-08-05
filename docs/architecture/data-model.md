@@ -73,7 +73,7 @@ UNKNOWN
 - 실제 시각이 필요한 파일이 확인되면 `occurredAt`을 별도 instant 또는 local date-time으로 추가할지 결정한다.
 - 승인일과 게시일이 다른 실제 사례가 확인되면 `postedOn`을 선택 필드로 추가한다.
 - `createdAt`과 `updatedAt`처럼 앱이 생성하는 시각은 UTC ISO 8601 instant로 저장하고 UI에서 `Asia/Seoul`로 표시한다.
-- 주간 집계 시작 요일은 Phase 6에서 사용자의 선호를 확인하거나 Settings 기본값으로 결정한다.
+- 현재 `최근 1주`는 선택일과 앞선 6일의 rolling range다. 주 시작 요일을 따르는 별도 정책은 실제 요구가 생길 때 결정한다.
 
 ## Phase별 확장
 
@@ -105,6 +105,12 @@ fingerprint는 후보 검색을 돕는 값이다. 날짜·금액·거래 유형�
 Category와 CategoryRule은 실제 규칙 사용 사례가 생긴 뒤 별도 모델로 정의한다. 처음 보는 Merchant에 대한 사용자 확인과 규칙 생성 동의를 구분한다.
 
 > **Implemented decision (2026-08-05):** `Transaction.categoryId` is optional and `categoryRules` is a separate IndexedDB v2 store. The current importers use an exact normalized `descriptionOriginal` key because they do not provide a reliable merchant field. Rules only fill a new Preview and require explicit consent to create or replace. See [Confirmed Category Rule Contract](category-rule-contract.md) and [ADR-0007](../adr/ADR-0007-confirmed-description-category-rules.md).
+
+### Phase 8B — Local monthly living-expense goal
+
+`LocalUserSettings` is a separate singleton record, not a `Transaction` field. Its only current value is a positive KRW safe-integer monthly living-expense goal with a UTC update instant. IndexedDB schema v3 stores it under the fixed `current` key; removing the record represents an unset goal.
+
+The ledger compares this goal only to the calendar-month result of the existing net living-expense calculation. It does not modify imported transactions, save salary calculator values, or infer a day/week/custom budget. See [ADR-0011](../adr/ADR-0011-local-monthly-living-expense-goal.md).
 
 ## ImportBatch 후보
 
@@ -145,7 +151,7 @@ Phase 2에서는 저장 포트, DB 스키마와 라이브러리를 구현하지 
 
 다음은 방향만 기록하며 현재 구현하거나 빈 인터페이스를 만들지 않는다.
 
-- 생활비 목표와 사용자 Settings: Phase 6 또는 별도 계획
+- 주간 목표, 기간 비례 예산, 저축액과 월 저축 가능액: 별도 요구 확인 후
 - 주거·결혼자금, 비상금, 청약, 투자, 대출: Phase 8
 - 환불 원거래 연결, 분할 거래, 다중 통화: 실제 요구 확인 후
 

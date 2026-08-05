@@ -1,5 +1,31 @@
 # Engineering Log
 
+## 2026-08-05 — Phase 8B Local Monthly Living-Expense Goal
+
+- Added a validated `LocalUserSettings` singleton for one positive KRW monthly goal and a pure remaining/exceeded calculation. The record contains no transaction, payroll, account, or Kakao data.
+- Upgraded `household-ledger` IndexedDB from schema v2 to v3 with a `userSettings` store. Existing transactions, settlements, import batches, and category rules remain intact; the migration is covered by fabricated data tests.
+- Added `/settings` with local-only load, save, clear, retry, and error feedback. A missing goal remains unset rather than receiving a default amount.
+- The saved ledger now shows a monthly goal card using the existing shared-payment net living-expense summary. Day, week, and custom views intentionally do not allocate a monthly goal proportionally.
+- Updated the navigation phase label to `PHASE 8B · LOCAL` and visually checked the new settings page at desktop and 360px widths without entering any financial value.
+
+### Verification
+
+| Check | Result | Note |
+| --- | --- | --- |
+| `npm run lint` | PASS | warnings 0 |
+| `npm run typecheck` | PASS | strict TypeScript build |
+| `npm test` | PASS | 33 files, 345 tests |
+| `npm run build` | PASS | existing >500 kB Vite chunk warning only |
+| IndexedDB v2 migration | PASS | fabricated transactions and category rules preserved |
+| Responsive visual check | PASS | desktop and 360px Settings layouts |
+
+### Function-sized commits
+
+- `2440042` `[Docs] : Phase 8B 생활비 목표 계획 추가`
+- `99f3e12` `[Feat] : 월 생활비 목표 로컬 저장 추가`
+- `c715fbd` `[Feat] : 월 생활비 목표 설정과 장부 잔액 표시`
+- `158463c` `[Test] : IndexedDB v3 마이그레이션 보존 범위 강화`
+
 ## 2026-08-05 — Phase 8A Saved Transaction Notes and Categories
 
 - Added a validated single-Transaction update flow that preserves amount, date, type, and Import trace fields while replacing only category, memo, and `updatedAt` in local IndexedDB.
