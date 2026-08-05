@@ -1,8 +1,13 @@
 export type PlaceSearchResult = Readonly<{
   id: string;
-  name: string;
-  address: string;
-  category: string;
+  placeName: string;
+  categoryName: string;
+  categoryGroupCode: string;
+  categoryGroupName: string;
+  addressName: string;
+  roadAddressName: string;
+  x: string;
+  y: string;
 }>;
 
 export type PlaceSearch = (

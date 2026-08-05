@@ -6,6 +6,10 @@ type KakaoPlace = Readonly<{
   address_name: string;
   road_address_name: string;
   category_name: string;
+  category_group_code: string;
+  category_group_name: string;
+  x: string;
+  y: string;
 }>;
 
 type KakaoPlaces = Readonly<{
@@ -52,12 +56,14 @@ export function createKakaoMapPlaceSearch(
             places.slice(0, 5).map(
               (place): PlaceSearchResult => ({
                 id: place.id,
-                name: place.place_name,
-                address:
-                  place.road_address_name.length > 0
-                    ? place.road_address_name
-                    : place.address_name,
-                category: place.category_name,
+                placeName: place.place_name,
+                categoryName: place.category_name,
+                categoryGroupCode: place.category_group_code,
+                categoryGroupName: place.category_group_name,
+                addressName: place.address_name,
+                roadAddressName: place.road_address_name,
+                x: place.x,
+                y: place.y,
               }),
             ),
           );
