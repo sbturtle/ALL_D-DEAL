@@ -1,8 +1,8 @@
 # Phase 2 — Transaction Domain Foundation
 
-- 상태: `READY`
+- 상태: `IN_PROGRESS`
 - 계획일: 2026-08-05
-- 상태 의미: 구현을 시작할 수 있도록 범위와 완료 조건이 정리되었으며, 코드는 아직 변경하지 않았다.
+- 시작일: 2026-08-05
 
 ## Goal
 
@@ -23,6 +23,18 @@ Phase 2는 급여 추정 결과를 Transaction으로 바꾸거나 실제 금융 
 - 공통 Transaction 런타임 타입, 검증 함수, 저장 포트와 IndexedDB 구현은 아직 없다.
 - 실제 금융 데이터, 실제 금융기관 fixture와 Import Parser는 없다.
 
+## Implementation Contract
+
+- 새 검증 라이브러리 없이 작은 TypeScript type guard와 순수 함수로 구현한다.
+- `unknown` 후보는 예상 가능한 오류를 throw하지 않고 필드별 issue를 모두 수집한다. issue에는 거부된 원문 값과 전체 후보를 넣지 않는다.
+- 반환 Transaction은 허용 필드만 새 객체로 구성하며 추가 키는 오류로 보고해 원본 행이나 Phase 3 메타데이터의 우발적 저장을 막는다.
+- `CalendarDate`는 `0001-01-01`부터 `9999-12-31`까지의 실제 달력 날짜로 검증하고 날짜 전용 값에 `Date` 파싱을 사용하지 않는다.
+- `createdAt`과 `updatedAt`은 `Z`로 끝나는 UTC ISO instant이며 `updatedAt >= createdAt`을 지킨다.
+- ID는 canonical 8-4-4-4-12 UUID 문자열이고 nil UUID는 허용하지 않는다. 버전·생성·유일성은 현재 검증 범위가 아니다.
+- 필수 설명과 제공된 선택 문자열은 공백만으로 구성될 수 없다. 원본 문자열 자체는 trim하거나 수정하지 않는다.
+- 거래 유형과 방향은 별도 축이며 실제 샘플 없이 허용 조합 matrix를 만들지 않는다.
+- 생활비는 `EXPENSE + OUTFLOW`만 포함한다. `CARD_PAYMENT`, `TRANSFER`, `UNKNOWN`을 포함한 나머지는 후속 판정 전까지 포함하지 않는다.
+
 ## Scope
 
 ### Phase 2A — Transaction Domain
@@ -42,6 +54,8 @@ Phase 2는 급여 추정 결과를 Transaction으로 바꾸거나 실제 금융 
 - 필요할 때만 Application 흐름과 Infrastructure 계약 정의
 - DB version, transaction commit과 오류 경계의 최소 설계 기록
 
+Phase 2B의 완료 의미는 저장 구현이 아니라 선택 근거와 재검토 조건의 기록이다. 현재 소비자가 없는 Repository·포트·DB schema는 만들지 않는다. Phase 3의 `confirmImport`에서 `ImportBatch + Transaction[]` 원자 저장과 날짜 조회가 실제로 필요해질 때 Native IndexedDB를 기본값으로 구현한다. 복합 쿼리·페이지네이션·반응형 조회·데이터 마이그레이션이 늘어나면 Dexie를 재평가한다.
+
 ## Out of Scope
 
 - CSV/PDF/XLSX 읽기, Parser, Adapter와 Preview UI
@@ -59,6 +73,8 @@ Phase 2는 급여 추정 결과를 Transaction으로 바꾸거나 실제 금융 
 - ADR-0001 파일 Import, ADR-0002 local-first 결정
 - FR-002, FR-006, FR-007
 - Phase 1의 TypeScript·Vitest·lint·build Toolchain
+- [MDN IndexedDB API](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)와 [트랜잭션 사용 안내](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API/Using_IndexedDB)
+- [Dexie transaction](https://dexie.org/docs/Dexie/Dexie.transaction())과 [schema upgrade](https://dexie.org/docs/Version/Version.upgrade()) 문서
 
 새 라이브러리는 비교 근거와 현재 사용 사례가 있을 때만 추가한다. 저장 구현을 시작하기 전에 Native IndexedDB로 충분한지 먼저 확인한다.
 
@@ -69,8 +85,8 @@ Phase 2는 급여 추정 결과를 Transaction으로 바꾸거나 실제 금융 
 3. 정상값, 0·음수·소수·safe integer 초과, 잘못된 날짜와 거래 유형 경계를 테스트한다.
 4. 생활비 포함·제외 판정에서 `CARD_PAYMENT`와 `TRANSFER` 중복 집계 방지 규칙을 테스트한다.
 5. 급여 추정 결과와 Transaction 사이에 import 또는 영속 의존성이 없는지 확인한다.
-6. Phase 3 저장·조회 사용 사례에 필요한 최소 포트를 정의할지 결정한다.
-7. Native IndexedDB와 Dexie를 비교하고 선택·보류 근거를 계획 또는 ADR에 기록한다.
+6. Phase 3 저장·조회 사용 사례에 필요한 최소 포트는 소비자가 생길 때까지 보류한다고 기록한다.
+7. Native IndexedDB와 Dexie를 비교하고 Native 우선·Dexie 재검토 조건을 기록한다.
 8. lint, typecheck, test, build와 개인정보·Git 검사를 수행한다.
 9. Domain과 저장 경계 결정을 기능 단위 로컬 커밋으로 분리한다.
 
@@ -82,7 +98,7 @@ Phase 2는 급여 추정 결과를 Transaction으로 바꾸거나 실제 금융 
 - `CARD_PAYMENT`와 `TRANSFER`가 생활비 소비로 분류되지 않는 규칙이 자동 테스트로 고정된다.
 - 유효하지 않은 외부 후보를 한 번에 설명할 수 있는 런타임 검증 결과가 정의된다.
 - 급여 추정 결과는 Transaction 또는 `INCOME`으로 생성·저장되지 않는다.
-- IndexedDB 선택은 실제 저장 사용 사례와 대안 비교 근거를 가진다. 구현이 불필요하면 보류 이유를 기록한다.
+- Phase 3의 첫 저장은 Native IndexedDB를 기본값으로 하며, 저장 포트·schema 구현을 지금 보류하는 이유와 Dexie 재검토 조건이 기록된다.
 - Parser, 실제 금융 fixture, 중복·카테고리·실제 Dashboard 기능이 추가되지 않는다.
 - lint, typecheck, test, build가 통과한다.
 - 관련 변경이 지정된 형식의 기능 단위 로컬 커밋으로 분리된다.
