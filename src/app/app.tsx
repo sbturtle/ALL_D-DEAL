@@ -15,6 +15,7 @@ import type { ImportPreview } from '../domain/imports/legacy-xls-preview';
 import type { UtcIsoInstant } from '../domain/transactions/utc-iso-instant';
 import { previewLegacyXlsFile } from '../infrastructure/imports/legacy-xls-file-reader';
 import { BrowserLedgerRepository } from '../infrastructure/storage/browser-ledger-repository';
+import { getKakaoMapPlaceSearch } from '../infrastructure/kakao/kakao-map-config';
 import { DashboardSection } from '../ui/dashboard/dashboard-section';
 import { ImportPage } from '../ui/imports/import-page';
 import { PayrollPage } from '../ui/payroll-estimate/payroll-page';
@@ -32,6 +33,7 @@ const NAVIGATION_ITEMS: readonly Readonly<{
 ];
 
 const ledgerRepository = new BrowserLedgerRepository();
+const kakaoMapPlaceSearch = getKakaoMapPlaceSearch();
 
 function previewSelectedLegacyXls(file: LegacyXlsImportFile) {
   return prepareLegacyXlsImportPreview(file, previewLegacyXlsFile);
@@ -143,7 +145,8 @@ export function App() {
             previewLegacyXls={previewSelectedLegacyXls}
             confirmLegacyXlsImport={confirmSelectedLegacyXlsImport}
             findPotentialLegacyXlsImportDuplicates={findSelectedLegacyXlsImportDuplicates}
-            applyCategoryRulesToLegacyXlsPreview={applySelectedCategoryRules}
+              applyCategoryRulesToLegacyXlsPreview={applySelectedCategoryRules}
+              searchPlaces={kakaoMapPlaceSearch}
           />
         ) : null}
       </main>

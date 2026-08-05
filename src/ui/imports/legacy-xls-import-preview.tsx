@@ -17,6 +17,7 @@ import {
   type CategoryId,
 } from '../../domain/categories/category';
 import type { TransactionType } from '../../domain/transactions/transaction';
+import type { PlaceSearch, PlaceSearchResult } from '../../application/places/place-search';
 import type {
   AccountTransactionTypeClassification,
   AccountTransactionTypeClassificationReasonCode,
@@ -24,6 +25,10 @@ import type {
 import { formatWon } from '../../shared/format/currency';
 
 type ImportStatus = 'IDLE' | 'READING' | 'PREVIEW' | 'SAVING' | 'SAVED';
+type PlaceSearchState = Readonly<{
+  status: 'SEARCHING' | 'COMPLETE' | 'FAILED';
+  results: readonly PlaceSearchResult[];
+}>;
 
 export type LegacyXlsImportPreviewProps = Readonly<{
   previewFile: LegacyXlsPreviewReader;
@@ -36,6 +41,7 @@ export type LegacyXlsImportPreviewProps = Readonly<{
     options?: LegacyXlsImportConfirmationOptions,
   ) => Promise<LegacyXlsImportConfirmationResult>;
   onImportConfirmed?: () => void;
+  searchPlaces?: PlaceSearch;
 }>;
 
 const SOURCE_LABELS: Readonly<Record<ImportSource, string>> = {
@@ -135,6 +141,7 @@ export function LegacyXlsImportPreview({
   findPotentialDuplicates,
   confirmPreview,
   onImportConfirmed,
+  searchPlaces,
 }: LegacyXlsImportPreviewProps) {
   const [status, setStatus] = useState<ImportStatus>('IDLE');
   const [preview, setPreview] = useState<ImportPreview | null>(null);
@@ -155,6 +162,9 @@ export function LegacyXlsImportPreview({
     null,
   );
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [placeSearchByCandidateIndex, setPlaceSearchByCandidateIndex] = useState<
+    ReadonlyMap<number, PlaceSearchState>
+  >(new Map());
   const requestIdRef = useRef(0);
 
   const resetPreview = () => {
@@ -168,6 +178,7 @@ export function LegacyXlsImportPreview({
     setCategoryRuleCandidateIndexes(new Set());
     setOpenCategoryPickerIndex(null);
     setSaveMessage(null);
+    setPlaceSearchByCandidateIndex(new Map());
   };
 
   const handleFileChange = async (
@@ -191,6 +202,7 @@ export function LegacyXlsImportPreview({
     setCategoryRuleCandidateIndexes(new Set());
     setOpenCategoryPickerIndex(null);
     setSaveMessage(null);
+    setPlaceSearchByCandidateIndex(new Map());
 
     try {
       const parsedPreview = await previewFile(file);
@@ -401,6 +413,36 @@ export function LegacyXlsImportPreview({
     });
   };
 
+  const searchCandidatePlace = async (
+    candidateIndex: number,
+    descriptionOriginal: string,
+  ) => {
+    if (searchPlaces === undefined) {
+      return;
+    }
+
+    setPlaceSearchByCandidateIndex((current) => {
+      const next = new Map(current);
+      next.set(candidateIndex, { status: 'SEARCHING', results: [] });
+      return next;
+    });
+
+    try {
+      const results = await searchPlaces(descriptionOriginal);
+      setPlaceSearchByCandidateIndex((current) => {
+        const next = new Map(current);
+        next.set(candidateIndex, { status: 'COMPLETE', results });
+        return next;
+      });
+    } catch {
+      setPlaceSearchByCandidateIndex((current) => {
+        const next = new Map(current);
+        next.set(candidateIndex, { status: 'FAILED', results: [] });
+        return next;
+      });
+    }
+  };
+
   const duplicateCandidateMatches =
     preview === null
       ? []
@@ -526,6 +568,7 @@ export function LegacyXlsImportPreview({
                 const isCategoryPickerOpen = openCategoryPickerIndex === candidateIndex;
                 const isCandidateSelected = selectedCandidateIndexes.has(candidateIndex);
                 const isExpenseCandidate = candidate.draft.type === 'EXPENSE';
+                const placeSearchState = placeSearchByCandidateIndex.get(candidateIndex);
 
                 return (
                 <li key={`${candidate.source}-${candidate.rowNumber}`}>
@@ -549,6 +592,45 @@ export function LegacyXlsImportPreview({
                   </span>
                   {isExpenseCandidate ? (
                     <>
+                  {searchPlaces === undefined ? (
+                    <small className="import-category-rule-help">
+                      Kakao 장소 검색은 이 기기의 환경 설정 후 사용할 수 있어요.
+                    </small>
+                  ) : (
+                    <div className="import-place-search">
+                      <small>
+                        검색을 누르면 이 거래 설명이 Kakao에 전송되며, 결과는 저장하지 않아요.
+                      </small>
+                      <button
+                        type="button"
+                        disabled={placeSearchState?.status === 'SEARCHING'}
+                        onClick={() =>
+                          void searchCandidatePlace(
+                            candidateIndex,
+                            candidate.draft.descriptionOriginal,
+                          )
+                        }
+                      >
+                        {placeSearchState?.status === 'SEARCHING'
+                          ? 'Kakao 검색 중'
+                          : 'Kakao 장소 검색'}
+                      </button>
+                      {placeSearchState?.status === 'FAILED' ? (
+                        <small role="alert">장소 검색을 불러오지 못했어요. 설정과 네트워크를 확인해 주세요.</small>
+                      ) : null}
+                      {placeSearchState?.status === 'COMPLETE' ? (
+                        placeSearchState.results.length === 0 ? (
+                          <small>일치하는 장소가 없어요. 결과는 저장하지 않습니다.</small>
+                        ) : (
+                          <ul aria-label={`후보 ${candidateIndex + 1} Kakao 장소 검색 결과`}>
+                            {placeSearchState.results.map((place) => (
+                              <li key={place.id}>{place.name} · {place.address}</li>
+                            ))}
+                          </ul>
+                        )
+                      ) : null}
+                    </div>
+                  )}
                   <div className="import-category-picker">
                     <span>카테고리</span>
                     <button

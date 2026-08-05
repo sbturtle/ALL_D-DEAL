@@ -2,6 +2,7 @@ import type { LegacyXlsImportConfirmationOptions, LegacyXlsImportConfirmationRes
 import type { LegacyXlsPreviewReader } from '../../application/imports/prepare-legacy-xls-import';
 import type { DuplicateCandidateMatch } from '../../domain/imports/duplicate-candidates';
 import type { ImportPreview } from '../../domain/imports/legacy-xls-preview';
+import type { PlaceSearch } from '../../application/places/place-search';
 
 import { LegacyXlsImportPreview } from './legacy-xls-import-preview';
 
@@ -17,6 +18,7 @@ type ImportPageProps = Readonly<{
   applyCategoryRulesToLegacyXlsPreview: (
     preview: ImportPreview,
   ) => Promise<ImportPreview>;
+  searchPlaces?: PlaceSearch;
 }>;
 
 export function ImportPage({
@@ -24,6 +26,7 @@ export function ImportPage({
   confirmLegacyXlsImport,
   findPotentialLegacyXlsImportDuplicates,
   applyCategoryRulesToLegacyXlsPreview,
+  searchPlaces,
 }: ImportPageProps) {
   return (
     <section className="import-page" aria-labelledby="import-page-title">
@@ -51,6 +54,7 @@ export function ImportPage({
           applyCategoryRules={applyCategoryRulesToLegacyXlsPreview}
           confirmPreview={confirmLegacyXlsImport}
           findPotentialDuplicates={findPotentialLegacyXlsImportDuplicates}
+          searchPlaces={searchPlaces}
         />
       </div>
     </section>

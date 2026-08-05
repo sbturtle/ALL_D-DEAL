@@ -355,4 +355,36 @@ describe('LegacyXlsImportPreview', () => {
     );
     expect(screen.getByLabelText('후보 2 카테고리 규칙 저장')).toBeDisabled();
   });
+
+  it('sends an expense description to Kakao only after an explicit search request', async () => {
+    const user = userEvent.setup();
+    const searchPlaces = vi.fn().mockResolvedValue([
+      {
+        id: 'place-1',
+        name: 'Fabricated Cafe',
+        address: 'Fabricated address',
+        category: 'Food',
+      },
+    ]);
+    render(
+      <LegacyXlsImportPreview
+        previewFile={async () => expensePreview}
+        searchPlaces={searchPlaces}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+    expect(searchPlaces).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('검색을 누르면 이 거래 설명이 Kakao에 전송되며, 결과는 저장하지 않아요.'),
+    ).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Kakao 장소 검색' }));
+
+    expect(searchPlaces).toHaveBeenCalledWith('가짜 식료품점');
+    expect(await screen.findByText('Fabricated Cafe · Fabricated address')).toBeVisible();
+  });
 });

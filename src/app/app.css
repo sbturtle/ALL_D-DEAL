@@ -1570,6 +1570,25 @@ fieldset {
   font-weight: 750;
 }
 
+.import-place-search {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.7rem 0;
+}
+
+.import-place-search small,
+.import-place-search li {
+  color: var(--muted-ink);
+  font-size: 0.78rem;
+}
+
+.import-place-search ul {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding-left: 1rem;
+}
+
 .import-card .import-category-trigger {
   display: flex;
   gap: 8px;
