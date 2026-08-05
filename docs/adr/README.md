@@ -12,6 +12,8 @@ ADR은 기술 선택뿐 아니라 중요한 제품 요구가 왜 바뀌었는지
 
 | [ADR-0006](ADR-0006-duplicate-candidates-require-user-confirmation.md) | Accepted | 중복 가능 후보는 기본 제외하고 사용자의 명시적 재포함 후에만 저장한다. |
 
+| [ADR-0007](ADR-0007-confirmed-description-category-rules.md) | Accepted | 명시적으로 동의한 거래 설명 카테고리 규칙만 Preview에 재사용한다. |
+
 ## 새 ADR 기본 구조
 
 ```text
