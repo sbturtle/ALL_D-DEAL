@@ -10,7 +10,11 @@ export async function applyCategoryRulesToLegacyXlsPreview(
   preview: ImportPreview,
   reader: CategoryRuleReader,
 ): Promise<ImportPreview> {
-  if (preview.candidates.length === 0) {
+  const hasExpenseCandidate = preview.candidates.some(
+    (candidate) => candidate.draft.type === 'EXPENSE',
+  );
+
+  if (!hasExpenseCandidate) {
     return preview;
   }
 
@@ -22,6 +26,10 @@ export async function applyCategoryRulesToLegacyXlsPreview(
   return {
     ...preview,
     candidates: preview.candidates.map((candidate) => {
+      if (candidate.draft.type !== 'EXPENSE') {
+        return candidate;
+      }
+
       const categoryId = categoryIdByDescription.get(
         normalizeCategoryRuleDescription(candidate.draft.descriptionOriginal),
       );

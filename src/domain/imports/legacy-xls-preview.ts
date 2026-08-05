@@ -2,6 +2,8 @@ import { isCalendarDate } from '../transactions/calendar-date';
 import type { CalendarDate } from '../transactions/calendar-date';
 import { isPositiveMinorAmount } from '../transactions/money';
 import type { CurrencyCode } from '../transactions/money';
+import { classifyAccountTransactionType } from '../transactions/account-transaction-type-classifier';
+import type { AccountTransactionTypeClassification } from '../transactions/account-transaction-type-classifier';
 import type {
   TransactionDirection,
   TransactionType,
@@ -34,6 +36,7 @@ export type ImportCandidate = Readonly<{
   source: ImportSource;
   rowNumber: number;
   draft: TransactionDraft;
+  accountTypeClassification?: AccountTransactionTypeClassification;
 }>;
 
 export type ImportIssueCode =
@@ -234,15 +237,22 @@ function createAccountLedgerPreview(rows: LegacyXlsRows): ImportPreview | null {
       continue;
     }
 
+    const direction = isWithdrawal ? 'OUTFLOW' : 'INFLOW';
+    const accountTypeClassification = classifyAccountTransactionType({
+      direction,
+      descriptionOriginal,
+    });
+
     candidates.push({
       source,
       rowNumber,
+      accountTypeClassification,
       draft: {
         occurredOn,
         amountMinor,
         currency: 'KRW',
-        direction: isWithdrawal ? 'OUTFLOW' : 'INFLOW',
-        type: 'UNKNOWN',
+        direction,
+        type: accountTypeClassification.type,
         descriptionOriginal,
       },
     });

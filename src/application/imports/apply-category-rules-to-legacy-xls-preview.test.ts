@@ -66,4 +66,33 @@ describe('applyCategoryRulesToLegacyXlsPreview', () => {
     ).resolves.toEqual({ source: undefined, candidates: [], issues: [] });
     expect(listCategoryRules).not.toHaveBeenCalled();
   });
+
+  it('does not apply a category rule to non-expense account cash flow', async () => {
+    const listCategoryRules = vi.fn();
+    const accountCashFlowPreview: ImportPreview = {
+      source: 'ACCOUNT_LEDGER_XLS',
+      candidates: [
+        {
+          source: 'ACCOUNT_LEDGER_XLS',
+          rowNumber: 5,
+          draft: {
+            occurredOn: '2026-08-05',
+            amountMinor: 42_000,
+            currency: 'KRW',
+            direction: 'OUTFLOW',
+            type: 'CARD_PAYMENT',
+            descriptionOriginal: '가짜 카드 결제',
+          },
+        },
+      ],
+      issues: [],
+    };
+
+    await expect(
+      applyCategoryRulesToLegacyXlsPreview(accountCashFlowPreview, {
+        listCategoryRules,
+      }),
+    ).resolves.toBe(accountCashFlowPreview);
+    expect(listCategoryRules).not.toHaveBeenCalled();
+  });
 });

@@ -60,6 +60,46 @@ describe('confirmLegacyXlsImport', () => {
     );
   });
 
+  it('persists the classified type without Preview-only classification metadata', async () => {
+    const commitImport = vi.fn().mockResolvedValue(undefined);
+    const createId = (() => {
+      let index = 0;
+      return () => ids[index++] ?? '550e8400-e29b-41d4-a716-446655440002';
+    })();
+    const classifiedPreview: ImportPreview = {
+      ...preview,
+      candidates: [
+        {
+          ...preview.candidates[0]!,
+          accountTypeClassification: {
+            type: 'CARD_PAYMENT',
+            source: 'ACCOUNT_RULE_ENGINE',
+            reasonCode: 'card_payment_keyword',
+            confidence: 'HIGH',
+          },
+          draft: {
+            ...preview.candidates[0]!.draft,
+            type: 'CARD_PAYMENT',
+          },
+        },
+      ],
+    };
+
+    const result = await confirmLegacyXlsImport(classifiedPreview, {
+      committer: { commitImport },
+      createId,
+      now: () => '2026-08-05T00:00:00.000Z',
+    });
+
+    expect(result).toMatchObject({
+      isConfirmed: true,
+      transactions: [expect.objectContaining({ type: 'CARD_PAYMENT' })],
+    });
+    expect(commitImport.mock.calls[0]?.[1]?.[0]).not.toHaveProperty(
+      'accountTypeClassification',
+    );
+  });
+
   it('does not attempt storage when there is no supported candidate', async () => {
     const commitImport = vi.fn();
     const result = await confirmLegacyXlsImport(
