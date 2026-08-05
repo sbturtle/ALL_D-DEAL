@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { CategoryId } from '../../domain/categories/category';
+import {
+  CATEGORY_IDS,
+  type CategoryId,
+} from '../../domain/categories/category';
+import { getCategoryPresentation } from '../../domain/categories/category-presentation';
 import { saveManualBudgetSettlement } from '../../application/ledger/save-manual-budget-settlement';
+import { updateTransactionDetails } from '../../application/ledger/update-transaction-details';
 import type { BudgetSettlement } from '../../domain/transactions/budget-settlement';
 import { calculateLivingExpenseSummary } from '../../domain/transactions/living-expense';
 import {
@@ -27,6 +32,7 @@ export type LocalLedgerRepository = Pick<
   | 'listBudgetSettlements'
   | 'saveBudgetSettlement'
   | 'removeBudgetSettlement'
+  | 'replaceTransaction'
 >;
 
 type DashboardSectionProps = Readonly<{
@@ -36,6 +42,12 @@ type DashboardSectionProps = Readonly<{
 type SettlementNotice = Readonly<{
   tone: 'success' | 'error';
   message: string;
+}>;
+
+type TransactionEditDraft = Readonly<{
+  transactionId: string;
+  categoryId: CategoryId | undefined;
+  memo: string;
 }>;
 
 function getTodayInSeoul(): string {
@@ -74,31 +86,6 @@ function getTransactionTypeLabel(type: Transaction['type']): string {
   };
 
   return labels[type];
-}
-
-function getCategoryLabel(categoryId: CategoryId | undefined): string {
-  if (categoryId === undefined) {
-    return '미분류';
-  }
-
-  const labels: Readonly<Record<CategoryId, string>> = {
-    FOOD_DINING: '식비·외식',
-    CAFE: '카페',
-    CONVENIENCE: '편의점',
-    TRANSPORT: '교통',
-    HOUSING_UTILITIES: '주거·공과금',
-    SHOPPING: '쇼핑',
-    HEALTH: '건강',
-    EDUCATION: '교육',
-    LEISURE: '여가',
-    CULTURE: '문화',
-    MEDICAL: '의료',
-    DATE: '데이트',
-    SUBSCRIPTION: '구독',
-    OTHER: '기타',
-  };
-
-  return labels[categoryId];
 }
 
 function getSettlementErrorMessage(code: Exclude<
@@ -152,6 +139,13 @@ export function DashboardSection({
     readonly string[]
   >([]);
   const [settlementNotice, setSettlementNotice] = useState<SettlementNotice | null>(
+    null,
+  );
+  const [transactionEditDraft, setTransactionEditDraft] = useState<
+    TransactionEditDraft | null
+  >(null);
+  const [isSavingTransactionEdit, setIsSavingTransactionEdit] = useState(false);
+  const [transactionEditError, setTransactionEditError] = useState<string | null>(
     null,
   );
   const isMock = mode === 'MOCK';
@@ -290,6 +284,54 @@ export function DashboardSection({
         message: '정산 연결을 해제하지 못했습니다. 기존 거래는 변경되지 않았습니다.',
       });
     }
+  };
+
+  const startTransactionEdit = (transaction: Transaction) => {
+    setTransactionEditDraft({
+      transactionId: transaction.id,
+      categoryId: transaction.categoryId,
+      memo: transaction.memo ?? '',
+    });
+    setTransactionEditError(null);
+  };
+
+  const handleTransactionEditSave = async () => {
+    if (transactionEditDraft === null) {
+      return;
+    }
+
+    setIsSavingTransactionEdit(true);
+    setTransactionEditError(null);
+    const memo = transactionEditDraft.memo.trim();
+    const result = await updateTransactionDetails(
+      {
+        transactionId: transactionEditDraft.transactionId,
+        categoryId: transactionEditDraft.categoryId,
+        memo: memo.length === 0 ? undefined : memo,
+        updatedAt: currentUtcIsoInstant(),
+      },
+      ledgerRepository,
+    );
+    setIsSavingTransactionEdit(false);
+
+    if (!result.isUpdated) {
+      setTransactionEditError(
+        '거래 내용을 저장하지 못했습니다. 기존 거래는 변경되지 않았습니다.',
+      );
+      return;
+    }
+
+    setTransactions((current) =>
+      current.map((transaction) =>
+        transaction.id === result.transaction.id ? result.transaction : transaction,
+      ),
+    );
+    setAllTransactions((current) =>
+      current.map((transaction) =>
+        transaction.id === result.transaction.id ? result.transaction : transaction,
+      ),
+    );
+    setTransactionEditDraft(null);
   };
 
   return (
@@ -486,17 +528,39 @@ export function DashboardSection({
               </ul>
             ) : transactions.length > 0 ? (
               <ul className="transaction-list">
-                {transactions.map((transaction) => (
+                {transactions.map((transaction) => {
+                  const category = getCategoryPresentation(transaction.categoryId);
+                  const isEditingTransaction =
+                    transactionEditDraft?.transactionId === transaction.id;
+
+                  return (
                   <li key={transaction.id}>
                     <span className="transaction-mark" aria-hidden="true">
-                      {transaction.direction === 'INFLOW' ? '+' : '−'}
+                      {category.emoji}
                     </span>
                     <span className="transaction-copy">
                       <strong>{transaction.descriptionOriginal}</strong>
                       <small>
                         {transaction.occurredOn} · {getTransactionTypeLabel(transaction.type)} ·{' '}
-                        {getCategoryLabel(transaction.categoryId)}
+                        {category.emoji} {category.label}
                       </small>
+                      {transaction.memo === undefined ? null : (
+                        <small className="transaction-memo">메모: {transaction.memo}</small>
+                      )}
+                      <button
+                        type="button"
+                        className="transaction-edit-toggle"
+                        aria-expanded={isEditingTransaction}
+                        aria-controls={`transaction-edit-${transaction.id}`}
+                        aria-label={`${transaction.descriptionOriginal} 카테고리·메모 수정`}
+                        onClick={() =>
+                          isEditingTransaction
+                            ? setTransactionEditDraft(null)
+                            : startTransactionEdit(transaction)
+                        }
+                      >
+                        {isEditingTransaction ? '수정 닫기' : '카테고리·메모 수정'}
+                      </button>
                     </span>
                     <strong
                       className={
@@ -508,8 +572,87 @@ export function DashboardSection({
                       {transaction.direction === 'INFLOW' ? '+' : '−'}
                       {formatWon(transaction.amountMinor)}
                     </strong>
+                    {isEditingTransaction ? (
+                      <form
+                        className="transaction-edit-form"
+                        id={`transaction-edit-${transaction.id}`}
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          void handleTransactionEditSave();
+                        }}
+                      >
+                        <label>
+                          카테고리
+                          <select
+                            aria-label={`${transaction.descriptionOriginal} 카테고리`}
+                            value={transactionEditDraft.categoryId ?? ''}
+                            disabled={isSavingTransactionEdit}
+                            onChange={(event) =>
+                              setTransactionEditDraft((current) =>
+                                current === null
+                                  ? current
+                                  : {
+                                      ...current,
+                                      categoryId:
+                                        event.target.value === ''
+                                          ? undefined
+                                          : (event.target.value as CategoryId),
+                                    },
+                              )
+                            }
+                          >
+                            <option value="">🏷️ 미분류</option>
+                            {CATEGORY_IDS.map((categoryId) => {
+                              const presentation = getCategoryPresentation(categoryId);
+
+                              return (
+                                <option key={categoryId} value={categoryId}>
+                                  {presentation.emoji} {presentation.label}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </label>
+                        <label>
+                          메모
+                          <textarea
+                            aria-label={`${transaction.descriptionOriginal} 메모`}
+                            value={transactionEditDraft.memo}
+                            placeholder="예: 공동 결제 후 정산 예정"
+                            maxLength={280}
+                            disabled={isSavingTransactionEdit}
+                            onChange={(event) =>
+                              setTransactionEditDraft((current) =>
+                                current === null
+                                  ? current
+                                  : { ...current, memo: event.target.value },
+                              )
+                            }
+                          />
+                        </label>
+                        {transactionEditError === null ? null : (
+                          <p role="alert">{transactionEditError}</p>
+                        )}
+                        <span className="transaction-edit-actions">
+                          <button type="submit" disabled={isSavingTransactionEdit}>
+                            {isSavingTransactionEdit ? '저장 중' : '저장'}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isSavingTransactionEdit}
+                            onClick={() => {
+                              setTransactionEditDraft(null);
+                              setTransactionEditError(null);
+                            }}
+                          >
+                            취소
+                          </button>
+                        </span>
+                      </form>
+                    ) : null}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             ) : (
               <div className="empty-transactions">

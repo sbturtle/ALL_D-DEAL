@@ -37,6 +37,8 @@ const ordinaryExpense: Transaction = {
   type: 'EXPENSE',
   categoryId: 'TRANSPORT',
   descriptionOriginal: 'Fabricated ordinary expense',
+  importBatchId: '550e8400-e29b-41d4-a716-446655440000',
+  importerId: 'LEGACY_XLS',
   createdAt: '2026-08-04T00:00:00.000Z',
   updatedAt: '2026-08-04T00:00:00.000Z',
 };
@@ -64,6 +66,7 @@ const repository: LocalLedgerRepository = {
   ]),
   saveBudgetSettlement: vi.fn().mockResolvedValue(undefined),
   removeBudgetSettlement: vi.fn().mockResolvedValue(undefined),
+  replaceTransaction: vi.fn().mockResolvedValue(undefined),
 };
 
 describe('DashboardSection', () => {
@@ -76,7 +79,7 @@ describe('DashboardSection', () => {
     );
 
     expect(await screen.findByText('Fabricated group payment')).toBeVisible();
-    expect(screen.getByText('2026-08-04 · 지출 · 교통')).toBeVisible();
+    expect(screen.getByText('2026-08-04 · 지출 · 🚇 교통')).toBeVisible();
     expect(screen.getByText('50,000원')).toBeVisible();
     expect(screen.getByText('공동결제 순지출 1건 반영')).toBeVisible();
     expect(screen.getByRole('button', { name: '최근 1주' })).toBeVisible();
@@ -84,5 +87,43 @@ describe('DashboardSection', () => {
     await user.click(screen.getByRole('button', { name: '직접 선택' }));
     expect(screen.getByLabelText('기간 시작')).toBeVisible();
     expect(screen.getByLabelText('기간 종료')).toBeVisible();
+  });
+
+  it('updates one saved transaction category and memo from the ledger', async () => {
+    const user = userEvent.setup();
+    const replaceTransaction = vi.fn().mockResolvedValue(undefined);
+    const updateRepository: LocalLedgerRepository = {
+      ...repository,
+      getTransactionsByIds: vi.fn().mockResolvedValue([ordinaryExpense]),
+      replaceTransaction,
+    };
+    render(<DashboardSection ledgerRepository={updateRepository} />);
+
+    await screen.findByText('Fabricated ordinary expense');
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Fabricated ordinary expense 카테고리·메모 수정',
+      }),
+    );
+    await user.selectOptions(
+      screen.getByLabelText('Fabricated ordinary expense 카테고리'),
+      'CAFE',
+    );
+    await user.type(
+      screen.getByLabelText('Fabricated ordinary expense 메모'),
+      'Fabricated memo',
+    );
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(replaceTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: ordinaryExpense.id,
+        categoryId: 'CAFE',
+        memo: 'Fabricated memo',
+        importBatchId: ordinaryExpense.importBatchId,
+      }),
+    );
+    expect(await screen.findByText('메모: Fabricated memo')).toBeVisible();
+    expect(screen.getByText('2026-08-04 · 지출 · ☕ 카페')).toBeVisible();
   });
 });

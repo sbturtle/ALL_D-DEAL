@@ -1299,7 +1299,7 @@ fieldset {
   display: grid;
   width: 34px;
   height: 34px;
-  color: var(--green-dark);
+  font-size: 1rem;
   background: #eef0e8;
   border-radius: 50%;
   place-items: center;
@@ -1322,6 +1322,95 @@ fieldset {
 .transaction-copy small {
   color: #858c87;
   font-size: 0.63rem;
+}
+
+.transaction-copy .transaction-memo {
+  color: #51645a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transaction-edit-toggle {
+  width: fit-content;
+  min-height: 0 !important;
+  margin: 3px 0 0 !important;
+  padding: 0 !important;
+  color: #476457 !important;
+  font-size: 0.61rem !important;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.transaction-edit-form {
+  display: grid;
+  grid-column: 2 / -1;
+  grid-template-columns: minmax(130px, 0.65fr) minmax(0, 1fr);
+  gap: 9px 12px;
+  margin: 2px 0 12px;
+  padding: 10px;
+  background: #f6f4ed;
+  border: 1px solid #dedbd0;
+  border-radius: 10px;
+}
+
+.transaction-edit-form label {
+  display: grid;
+  gap: 4px;
+  color: #536059;
+  font-size: 0.61rem;
+  font-weight: 800;
+}
+
+.transaction-edit-form select,
+.transaction-edit-form textarea {
+  width: 100%;
+  color: var(--ink);
+  font: inherit;
+  background: var(--white);
+  border: 1px solid #cfcac0;
+  border-radius: 6px;
+}
+
+.transaction-edit-form select {
+  min-height: 32px;
+  padding: 0 7px;
+}
+
+.transaction-edit-form textarea {
+  min-height: 58px;
+  padding: 7px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.transaction-edit-form p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #a03b35;
+  font-size: 0.65rem;
+}
+
+.transaction-edit-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 7px;
+  justify-content: flex-end;
+}
+
+.transaction-edit-actions button {
+  min-height: 30px !important;
+  margin: 0 !important;
+  padding: 5px 9px;
+  font-size: 0.63rem !important;
+}
+
+.transaction-edit-actions button:first-child {
+  color: #1c3025;
+  background: var(--lime);
 }
 
 .amount {
@@ -2535,6 +2624,11 @@ summary:focus-visible {
 
   .transaction-list .amount {
     grid-column: 2;
+  }
+
+  .transaction-edit-form {
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr;
   }
 
   .empty-transactions {
