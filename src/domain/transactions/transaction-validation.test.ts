@@ -51,7 +51,7 @@ describe('validateTransaction', () => {
       descriptionOriginal: '  가짜 원문 설명  ',
       merchantOriginal: '  예시 상점 원문  ',
       merchantNormalized: '예시 상점',
-      paymentInstrumentLabel: '테스트 카드 A',
+      paymentInstrumentLabel: '테스트 카드 끝 1234',
       memo: '  사용자 예시 메모  ',
     };
     const result = validateTransaction(candidate);
@@ -228,6 +228,29 @@ describe('validateTransaction', () => {
       'invalid_text',
     );
   });
+
+  it.each([
+    '4111111111111111',
+    '4111-1111-1111-1111',
+    '123-456-789012',
+    '테스트 카드 12345',
+  ])('전체 금융 식별자로 보이는 결제수단 라벨을 거부한다', (value) => {
+    expectIssue(
+      { ...validTransaction, paymentInstrumentLabel: value },
+      'paymentInstrumentLabel',
+      'sensitive_financial_identifier',
+    );
+  });
+
+  it.each(['현금', '테스트 카드 A', '끝 1234', '예시 계좌 42'])(
+    '민감하지 않은 결제수단 라벨 %s를 허용한다',
+    (paymentInstrumentLabel) => {
+      expect(
+        validateTransaction({ ...validTransaction, paymentInstrumentLabel })
+          .isValid,
+      ).toBe(true);
+    },
+  );
 
   it('명시적인 undefined 선택 필드는 생략된 값으로 처리한다', () => {
     const result = validateTransaction({ ...validTransaction, memo: undefined });

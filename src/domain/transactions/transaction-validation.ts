@@ -24,6 +24,7 @@ export type TransactionValidationIssue = {
     | 'unsupported_direction'
     | 'unsupported_type'
     | 'invalid_text'
+    | 'sensitive_financial_identifier'
     | 'invalid_utc_instant'
     | 'invalid_timestamp_order'
     | 'unexpected_field';
@@ -128,6 +129,35 @@ function readOptionalNonBlankText(
       field,
       'invalid_text',
       '제공된 선택 값은 공백이 아닌 문자열이어야 합니다.',
+    );
+    return undefined;
+  }
+
+  return value;
+}
+
+function readPaymentInstrumentLabel(
+  candidate: CandidateRecord,
+  issues: TransactionValidationIssue[],
+): string | undefined {
+  const value = readOptionalNonBlankText(
+    candidate,
+    'paymentInstrumentLabel',
+    issues,
+  );
+
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const digitCount = value.match(/[0-9]/g)?.length ?? 0;
+
+  if (digitCount > 4) {
+    addIssue(
+      issues,
+      'paymentInstrumentLabel',
+      'sensitive_financial_identifier',
+      '결제수단 라벨에는 별칭과 끝 4자리까지만 사용할 수 있습니다.',
     );
     return undefined;
   }
@@ -354,11 +384,7 @@ export function validateTransaction(
     'merchantNormalized',
     issues,
   );
-  const paymentInstrumentLabel = readOptionalNonBlankText(
-    candidate,
-    'paymentInstrumentLabel',
-    issues,
-  );
+  const paymentInstrumentLabel = readPaymentInstrumentLabel(candidate, issues);
   const memo = readOptionalNonBlankText(candidate, 'memo', issues);
   const createdAt = readUtcIsoInstant(candidate, 'createdAt', issues);
   const updatedAt = readUtcIsoInstant(candidate, 'updatedAt', issues);
