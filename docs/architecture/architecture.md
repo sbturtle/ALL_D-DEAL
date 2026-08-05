@@ -1,6 +1,6 @@
 # Architecture
 
-> 상태: Phase 3A Implemented Baseline
+> 상태: Phase 6A Implemented Baseline
 >
 > 기준일: 2026-08-05
 
@@ -12,23 +12,25 @@
 
 ## 현재와 목표 상태
 
-### Phase 1–3A 구현 상태
+### Phase 1–6A 구현 상태
 
 - React + TypeScript + Vite 실행 기반과 lint, typecheck, test, build 명령이 있다.
 - 급여 입력 UI가 버전 지정 2026년 정책을 사용하는 순수 `payroll-estimate` Domain을 직접 호출한다.
 - 급여 입력과 결과는 메모리에서만 유지하며 Application·Infrastructure·Transaction 계층으로 전달하지 않는다.
-- Dashboard는 실제 거래가 없는 상태와 명시적인 UI 전용 Mock fixture만 제공한다.
+- Dashboard는 실제 거래가 없는 상태와 명시적인 UI 전용 Mock fixture, 기간별 실제 로컬 거래 조회와 수동 공동결제 정산을 제공한다.
 - 공통 Transaction 타입, 금액·달력 날짜·UTC instant 검증과 생활비 판정 규칙은 `src/domain/transactions/`에 구현되어 있다.
 - Transaction 런타임 검증은 신뢰할 수 없는 `unknown` 입력의 모든 문제를 수집하되 원본 값과 금융 식별정보를 오류에 노출하지 않는다.
 - SheetJS `0.20.3` 기반 legacy XLS Reader가 첫 시트를 메모리에서만 읽고, 계좌 거래·카드 이용 레이아웃을 ImportCandidate Preview로 정규화한다.
 - XLS Preview는 UI → Application use case → Infrastructure reader 경계로 연결된다. 원본 파일명·Blob·전체 행은 저장하지 않는다.
-- IndexedDB 확정 저장과 아래 Import 흐름의 Confirm 이후 단계는 Phase 3B 목표이며 현재 구현 완료를 뜻하지 않는다.
+- Import Preview는 중복 가능 후보와 명시적 카테고리 규칙 동의를 검토한 뒤 IndexedDB에 확정 저장한다. 원본 파일·파일명·행은 저장하지 않는다.
+- 앱은 History API 기반의 작은 클라이언트 라우팅으로 `/ledger`, `/imports`, `/payroll`에서 한 번에 하나의 작업 화면만 렌더링한다.
 
 ### 단계별 기술 방향
 
 | 단계 | 결정 또는 후보 | 도입 시점 |
 | --- | --- | --- |
 | Web UI | React + TypeScript + Vite를 Phase 1 기본값으로 사용 | Phase 1 |
+| 작업 경로 | History API 기반 자체 라우터로 Ledger·Import·Payroll을 분리, 복잡한 요구가 생기면 전용 라우터 재검토 | Phase 6A |
 | 테스트 | Vitest + React Testing Library를 실제 UI 검증과 함께 도입 | Phase 1 |
 | 로컬 저장 | Phase 3 첫 확정 저장은 Native IndexedDB를 기본값으로 사용. 복합 조회·마이그레이션 요구가 생기면 Dexie 재평가 | Phase 3 |
 | 런타임 검증 | Phase 2 Transaction은 의존성 없는 TypeScript 검증 함수 사용. 외부 형식 계약이 복잡해질 때 도구 재평가 | Phase 2 |

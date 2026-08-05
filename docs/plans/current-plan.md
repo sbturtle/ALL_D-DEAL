@@ -1,6 +1,6 @@
 # Phase 6A — Workflow Pages and Category Review UX
 
-- Status: `IN_PROGRESS`
+- Status: `DONE`
 - Plan updated: 2026-08-05
 - Prerequisite: Phase 5 Confirmed Category Rules `DONE`
 
@@ -24,11 +24,11 @@ Split the long single-page application into focused Ledger, Import, and Payroll 
 ## Tasks
 
 1. `DONE` Record page-navigation and category-review UX requirements, constraints, and routing decision.
-2. `TODO` Add and test the minimal History API route model, accessible navigation, and separate Ledger, Import, and Payroll page composition.
-3. `TODO` Move Import Preview out of the Ledger page without changing its file, duplicate, confirmation, or local-storage boundaries.
-4. `TODO` Replace per-candidate select controls with accessible compact category quick selection and clearly separate rule consent.
-5. `TODO` Verify direct paths, history navigation, category edits/rule consent/duplicate exclusion, existing local flows, privacy, and small-screen layout.
-6. `TODO` Run lint, typecheck, tests, build, browser checks, review, documentation, and focused local commits.
+2. `DONE` Add and test the minimal History API route model, accessible navigation, and separate Ledger, Import, and Payroll page composition.
+3. `DONE` Move Import Preview out of the Ledger page without changing its file, duplicate, confirmation, or local-storage boundaries.
+4. `DONE` Replace per-candidate select controls with accessible compact category quick selection and clearly separate rule consent.
+5. `DONE` Verify direct paths, history navigation, category edits/rule consent/duplicate exclusion, existing local flows, privacy, and small-screen layout.
+6. `DONE` Run lint, typecheck, tests, build, browser checks, review, documentation, and focused local commits.
 
 ## Acceptance criteria
 
