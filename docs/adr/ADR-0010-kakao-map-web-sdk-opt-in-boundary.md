@@ -1,22 +1,24 @@
-# ADR-0010 — Kakao 장소 검색은 Web SDK와 후보별 명시적 요청으로 제한한다
+# ADR-0010 Kakao 키워드 장소 분류 경계
 
 - Status: Accepted
 - Date: 2026-08-05
 
 ## Context
 
-거래 설명의 상호·장소를 보조적으로 확인하면 카테고리 검토에 도움이 될 수 있다. 그러나 거래 설명은 개인 금융 기록의 일부이므로 외부 제공자에 자동 전송하면 local-first 경계가 약화된다. 브라우저에 노출되는 Vite 환경변수에는 REST 또는 Admin 자격증명을 둘 수 없다.
+XLS의 거래처 설명은 가계 금융정보의 일부이므로, 브라우저 환경에는 노출 가능한 JavaScript 키만 둘 수 있다. 따라서 REST API 키나 Admin 키를 프런트엔드에 두지 않고 Kakao Map JavaScript SDK의 키워드 장소 검색만 사용한다.
 
-Kakao Map은 웹 지도 SDK에 JavaScript 키를 사용하며, JavaScript SDK 도메인 등록을 요구한다. 장소 검색은 Web SDK의 services 라이브러리로 제공할 수 있다.
+초기 구현은 이 검색의 주소를 Preview에 보이는 보조 정보로만 사용했다. 그러나 키워드 장소 검색은 `category_name`과 카테고리 그룹, 지번·도로명 주소, 좌표도 돌려주므로, 주소만 표시하면 이 연동의 분류 목적을 달성하지 못한다.
 
 ## Decision
 
-초기 연동은 Kakao Map Web (JavaScript) SDK만 사용하며, 환경변수 이름은 `VITE_KAKAO_MAP_JAVASCRIPT_KEY`로 고정한다. 이 값은 브라우저에 노출되는 키이므로 Kakao Developers에서 로컬·배포 JavaScript SDK 도메인으로 제한한다.
-
-REST API key, Admin key, client secret, access token은 `.env.example`, `.env`, 클라이언트 번들, URL, IndexedDB에 넣지 않는다. 사용자가 XLS 파일을 업로드하면 지출 후보 설명을 Kakao에 자동 전송해 장소를 분석하며, 업로드 전 화면에 이 사실을 표시한다. 결과와 검색어는 Preview 메모리에만 두며 자동 카테고리 확정·자동 저장·백그라운드 동기화에 사용하지 않는다.
+- `VITE_KAKAO_MAP_JAVASCRIPT_KEY`로 로드한 Kakao Map Web SDK의 `services.Places.keywordSearch`만 사용한다. REST API key, Admin key, client secret, access token은 `.env.example`, `.env`, 번들, URL, IndexedDB에 넣지 않는다.
+- `id`, `place_name`, `category_name`, 카테고리 그룹 코드·이름, 지번·도로명 주소, 좌표를 짧은 내부 DTO로 보존한다. Kakao 원본 응답 전체는 저장하지 않는다.
+- `EXPENSE` Preview 후보가 사용자 규칙으로 이미 분류되지 않은 경우에만 거래처 설명을 키워드로 검색한다. 정규화한 거래처명과 장소명이 정확히 일치하고, `category_name`이 제한된 내부 카테고리로 매핑될 때만 `KAKAO_LOCAL · HIGH` 제안으로 채운다.
+- PAYCO 오더, 네이버페이, 카카오페이, 토스페이, KG이니시스 같은 결제 중개자 표식은 Kakao 호출 전 제외하고 검토 상태로 둔다. 불일치하거나 미매핑인 결과도 검토 상태로 둔다.
+- Preview에는 원본 거래처명, Kakao 카테고리·그룹, 지번·도로명 주소, 최종 제안 카테고리, 출처, 신뢰도를 표시한다. 사용자는 저장 전에 언제나 변경할 수 있고, Kakao 메타데이터는 Transaction에 저장하지 않는다.
 
 ## Consequences
 
-- 키가 없거나 SDK 도메인이 등록되지 않은 환경에서도 기존 Import·장부 기능은 계속 동작한다.
-- 사용자가 XLS를 업로드한 경우에만 지출 후보 설명이 Kakao로 전송된다.
-- 정확한 상호 매칭, 결과 선택 후 Merchant 저장, 카테고리 제안, REST 기반 서버 프록시, 다른 지도 제공자 비교는 별도 요구사항과 검증 후에만 추가한다.
+- 사용자 규칙이 Kakao 제안보다 항상 우선하며, 현재 저장된 거래처 캐시와 정적 상호 테이블은 도입하지 않았다. 향후 추가 시에도 `사용자 규칙 > 캐시 > 정적 규칙 > Kakao > 검토` 순서를 지켜야 한다.
+- API 키나 SDK가 없는 환경에서는 Import와 로컬 저장이 계속 동작하고, Kakao 보조 분류만 비활성화된다.
+- REST 키워드 API를 직접 호출해야 한다면 키를 안전하게 보관하는 서버 프록시가 별도 요구사항과 보안 검토를 거쳐 추가되어야 한다.

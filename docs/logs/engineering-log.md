@@ -1,5 +1,31 @@
 # Engineering Log
 
+## 2026-08-05 — Phase 7B Kakao Category Enrichment
+
+### 문제와 원인
+
+Kakao 연동은 REST 주소 검색이 아니라 JavaScript SDK의 키워드 장소 검색을 이미 사용하고 있었다. 다만 `category_name`을 일반 문자열로만 받아 Preview에서 상호·주소와 함께 출력했고, 내부 `CategoryId`로 매핑하거나 매칭 신뢰도를 판단하지 않았다. 카테고리 그룹과 좌표도 내부 DTO에서 버려져 주소 수집처럼 보였다.
+
+### 변경 내용
+
+- 키워드 장소 DTO에 장소명, `category_name`, 카테고리 그룹, 지번·도로명 주소, 좌표를 보존했다.
+- 제한된 `category_name` 매퍼와 정확한 정규화 상호명 일치 규칙을 추가해, 일치한 미분류 `EXPENSE`에만 `KAKAO_LOCAL · HIGH` 카테고리를 제안한다.
+- 사용자 규칙이 이미 적용된 후보는 Kakao에 전송하지 않고 `USER_RULE · HIGH`로 표시한다. PAYCO 오더·네이버페이·카카오페이·토스페이·KG이니시스 표식도 전송하지 않고 검토로 둔다.
+- 불일치·미매핑 결과는 검토로 두며, Preview에는 Kakao 카테고리·그룹·주소와 제안 출처·신뢰도를 표시한다. Kakao 메타데이터와 원본 응답은 저장하지 않는다.
+
+### 검증
+
+| 검증 | 결과 | 비고 |
+| --- | --- | --- |
+| `npm run lint` | PASS | warning 0개 |
+| `npm run typecheck` | PASS | TypeScript project build 성공 |
+| `npm test` | PASS | 27 files, 315 tests |
+| Fabricated Kakao fixtures | PASS | 카페, 빈 카테고리 그룹, 상호 불일치, 미매핑, 결제 중개자 제외, 사용자 규칙 우선 |
+
+### 상태
+
+`DONE`
+
 ## 2026-08-05 — Phase 7A Explicit Kakao Place Search
 
 ### 작업 목적
