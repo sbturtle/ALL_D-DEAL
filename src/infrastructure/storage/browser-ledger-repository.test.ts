@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { ImportBatch } from '../../domain/imports/import-batch';
 import type { CategoryRule } from '../../domain/categories/category-rule';
+import type { LocalUserSettings } from '../../domain/settings/local-user-settings';
 import type { Transaction } from '../../domain/transactions/transaction';
 import {
   BrowserLedgerRepository,
@@ -24,6 +25,12 @@ const categoryRule: CategoryRule = {
   matchDescriptionNormalized: 'fabricated cafe',
   categoryId: 'FOOD_DINING',
   createdAt: '2026-08-05T00:00:00.000Z',
+  updatedAt: '2026-08-05T00:00:00.000Z',
+};
+
+const localUserSettings: LocalUserSettings = {
+  id: 'current',
+  monthlyLivingExpenseGoalMinor: 300_000,
   updatedAt: '2026-08-05T00:00:00.000Z',
 };
 
@@ -168,7 +175,28 @@ describe('BrowserLedgerRepository', () => {
     await expect(repository.listBudgetSettlements()).resolves.toEqual([]);
   });
 
-  it('upgrades a v1 local database by adding empty category-rule storage', async () => {
+  it('stores, replaces, and removes one validated local monthly goal', async () => {
+    const repository = createRepository();
+    const replacement: LocalUserSettings = {
+      ...localUserSettings,
+      monthlyLivingExpenseGoalMinor: 320_000,
+      updatedAt: '2026-08-05T01:00:00.000Z',
+    };
+
+    await expect(repository.getLocalUserSettings()).resolves.toBeUndefined();
+    await repository.saveLocalUserSettings(localUserSettings);
+    await expect(repository.getLocalUserSettings()).resolves.toEqual(
+      localUserSettings,
+    );
+
+    await repository.saveLocalUserSettings(replacement);
+    await expect(repository.getLocalUserSettings()).resolves.toEqual(replacement);
+
+    await repository.removeLocalUserSettings();
+    await expect(repository.getLocalUserSettings()).resolves.toBeUndefined();
+  });
+
+  it('upgrades a v1 local database by adding empty category-rule and settings storage', async () => {
     const databaseName = `v1-ledger-${crypto.randomUUID()}`;
     const databaseFactory = new IDBFactory();
     const request = databaseFactory.open(databaseName, 1);
@@ -196,6 +224,81 @@ describe('BrowserLedgerRepository', () => {
 
     await expect(repository.listCategoryRules()).resolves.toEqual([]);
     await expect(repository.listAllTransactions()).resolves.toEqual([]);
+    await expect(repository.getLocalUserSettings()).resolves.toBeUndefined();
+  });
+
+  it('upgrades a v2 local database without changing existing transactions or rules', async () => {
+    const databaseName = `v2-ledger-${crypto.randomUUID()}`;
+    const databaseFactory = new IDBFactory();
+    const storedTransaction = transaction(
+      '550e8400-e29b-41d4-a716-446655440060',
+      '2026-08-05',
+    );
+    const request = databaseFactory.open(databaseName, 2);
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.addEventListener(
+        'upgradeneeded',
+        () => {
+          const v2Database = request.result;
+          const transactions = v2Database.createObjectStore('transactions', {
+            keyPath: 'id',
+          });
+          transactions.createIndex('occurredOn', 'occurredOn', { unique: false });
+          transactions.createIndex('importBatchId', 'importBatchId', {
+            unique: false,
+          });
+          const importBatches = v2Database.createObjectStore('importBatches', {
+            keyPath: 'id',
+          });
+          importBatches.createIndex('committedAt', 'committedAt', {
+            unique: false,
+          });
+          const settlements = v2Database.createObjectStore('budgetSettlements', {
+            keyPath: 'id',
+          });
+          settlements.createIndex(
+            'payerOutflowTransactionId',
+            'payerOutflowTransactionId',
+            { unique: false },
+          );
+          v2Database.createObjectStore('categoryRules', {
+            keyPath: 'matchDescriptionNormalized',
+          });
+        },
+        { once: true },
+      );
+      request.addEventListener('success', () => resolve(request.result), { once: true });
+      request.addEventListener('error', () => reject(request.error), { once: true });
+    });
+    const writeTransaction = database.transaction(
+      ['transactions', 'importBatches', 'categoryRules'],
+      'readwrite',
+    );
+    writeTransaction.objectStore('transactions').add(storedTransaction);
+    writeTransaction.objectStore('importBatches').add(batch);
+    writeTransaction.objectStore('categoryRules').put(categoryRule);
+    await new Promise<void>((resolve, reject) => {
+      writeTransaction.addEventListener('complete', () => resolve(), { once: true });
+      writeTransaction.addEventListener('abort', () => reject(writeTransaction.error), {
+        once: true,
+      });
+      writeTransaction.addEventListener('error', () => reject(writeTransaction.error), {
+        once: true,
+      });
+    });
+    database.close();
+
+    const repository = new BrowserLedgerRepository(
+      databaseName,
+      databaseFactory,
+      IDBKeyRange,
+    );
+
+    await expect(repository.listAllTransactions()).resolves.toEqual([
+      storedTransaction,
+    ]);
+    await expect(repository.listCategoryRules()).resolves.toEqual([categoryRule]);
+    await expect(repository.getLocalUserSettings()).resolves.toBeUndefined();
   });
 
   it('fails safely instead of waiting forever when another tab blocks a v1 upgrade', async () => {

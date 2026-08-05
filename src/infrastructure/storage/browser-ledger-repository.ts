@@ -1,6 +1,11 @@
 import type { ImportBatch } from '../../domain/imports/import-batch';
 import type { CategoryRule } from '../../domain/categories/category-rule';
 import { validateCategoryRule } from '../../domain/categories/category-rule';
+import {
+  LOCAL_USER_SETTINGS_ID,
+  validateLocalUserSettings,
+  type LocalUserSettings,
+} from '../../domain/settings/local-user-settings';
 import type { BudgetSettlement } from '../../domain/transactions/budget-settlement';
 import { validateBudgetSettlement } from '../../domain/transactions/budget-settlement';
 import type { TransactionDateRange } from '../../domain/transactions/transaction-period';
@@ -8,12 +13,13 @@ import type { Transaction } from '../../domain/transactions/transaction';
 import { validateTransaction } from '../../domain/transactions/transaction-validation';
 
 export const LOCAL_LEDGER_DATABASE_NAME = 'household-ledger';
-const LOCAL_LEDGER_DATABASE_VERSION = 2;
+const LOCAL_LEDGER_DATABASE_VERSION = 3;
 export const INDEXED_DB_OPEN_TIMEOUT_MS = 5_000;
 const TRANSACTIONS_STORE = 'transactions';
 const IMPORT_BATCHES_STORE = 'importBatches';
 const BUDGET_SETTLEMENTS_STORE = 'budgetSettlements';
 const CATEGORY_RULES_STORE = 'categoryRules';
+const USER_SETTINGS_STORE = 'userSettings';
 
 type KeyRangeFactory = Readonly<{
   bound: (lower: string, upper: string) => IDBKeyRange;
@@ -70,6 +76,15 @@ function validateStoredCategoryRule(value: unknown): CategoryRule {
   const validation = validateCategoryRule(value);
   if (!validation.isValid) {
     throw new Error('Stored category rule is invalid.');
+  }
+
+  return validation.value;
+}
+
+function validateStoredLocalUserSettings(value: unknown): LocalUserSettings {
+  const validation = validateLocalUserSettings(value);
+  if (!validation.isValid) {
+    throw new Error('Stored local user settings are invalid.');
   }
 
   return validation.value;
@@ -238,6 +253,32 @@ export class BrowserLedgerRepository {
     await transactionAsPromise(transaction);
   }
 
+  async getLocalUserSettings(): Promise<LocalUserSettings | undefined> {
+    const database = await this.getDatabase();
+    const transaction = database.transaction(USER_SETTINGS_STORE, 'readonly');
+    const value = await requestAsPromise(
+      transaction.objectStore(USER_SETTINGS_STORE).get(LOCAL_USER_SETTINGS_ID),
+    );
+    await transactionAsPromise(transaction);
+
+    return value === undefined ? undefined : validateStoredLocalUserSettings(value);
+  }
+
+  async saveLocalUserSettings(settings: LocalUserSettings): Promise<void> {
+    const settingsToStore = validateStoredLocalUserSettings(settings);
+    const database = await this.getDatabase();
+    const transaction = database.transaction(USER_SETTINGS_STORE, 'readwrite');
+    transaction.objectStore(USER_SETTINGS_STORE).put(settingsToStore);
+    await transactionAsPromise(transaction);
+  }
+
+  async removeLocalUserSettings(): Promise<void> {
+    const database = await this.getDatabase();
+    const transaction = database.transaction(USER_SETTINGS_STORE, 'readwrite');
+    transaction.objectStore(USER_SETTINGS_STORE).delete(LOCAL_USER_SETTINGS_ID);
+    await transactionAsPromise(transaction);
+  }
+
   private getDatabase(): Promise<IDBDatabase> {
     if (this.databasePromise === undefined) {
       this.databasePromise = this.openDatabase();
@@ -303,6 +344,11 @@ export class BrowserLedgerRepository {
           if (!database.objectStoreNames.contains(CATEGORY_RULES_STORE)) {
             database.createObjectStore(CATEGORY_RULES_STORE, {
               keyPath: 'matchDescriptionNormalized',
+            });
+          }
+          if (!database.objectStoreNames.contains(USER_SETTINGS_STORE)) {
+            database.createObjectStore(USER_SETTINGS_STORE, {
+              keyPath: 'id',
             });
           }
         },
