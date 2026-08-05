@@ -1,6 +1,6 @@
 # Phase 3B — Local Transaction Storage, Period View, and Shared-payment Settlement
 
-- Status: `IN_PROGRESS`
+- Status: `DONE`
 - Plan updated: 2026-08-05
 - Prerequisite: Phase 3A Legacy XLS Preview `DONE`
 - Evidence: Git-ignored `samples/private/` account-ledger and card-usage legacy XLS layouts
@@ -36,13 +36,13 @@ Confirm valid Legacy XLS preview candidates as local `Transaction` records. Let 
 
 ## Tasks
 
-1. `IN_PROGRESS` Document the period semantics, local-storage schema, and manual settlement calculation contract.
-2. `TODO` Add pure domain rules for period ranges, shared-payment settlements, and net living-expense aggregation with boundary tests.
-3. `TODO` Create the IndexedDB repository and atomic import-confirm application service, including explicit error results.
-4. `TODO` Extend the import preview with an explicit local-save confirmation and success/failure state.
-5. `TODO` Replace the dashboard's saved-data placeholder with period controls, local transaction list, net living-expense summary, and manual settlement controls.
-6. `TODO` Run lint, typecheck, tests, production build, browser smoke checks without importing private samples, privacy scans, and focused code review.
-7. `TODO` Record verification evidence and commit each independent change locally with the required message title and body.
+1. `DONE` Document the period semantics, local-storage schema, and manual settlement calculation contract.
+2. `DONE` Add pure domain rules for period ranges, shared-payment settlements, and net living-expense aggregation with boundary tests.
+3. `DONE` Create the IndexedDB repository and atomic import-confirm application service, including explicit error results.
+4. `DONE` Extend the import preview with an explicit local-save confirmation and success/failure state.
+5. `DONE` Replace the dashboard's saved-data placeholder with period controls, local transaction list, net living-expense summary, and manual settlement controls.
+6. `DONE` Run lint, typecheck, tests, production build, browser smoke checks without importing private samples, privacy scans, and focused code review.
+7. `DONE` Record verification evidence and commit each independent change locally with the required message title and body.
 
 ## Acceptance criteria
 

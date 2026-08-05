@@ -69,6 +69,53 @@
 
 `DONE`
 
+## 2026-08-05 — Phase 3B Local Transaction Storage, Period View, and Shared-payment Settlement
+
+### 작업 목적
+
+Preview로 확인한 XLS 후보를 현재 브라우저에만 저장하고, 사용자가 하루·최근 1주·이번 달·직접 기간으로 거래를 볼 수 있게 한다. 단체 결제의 원결제와 받은 정산금을 수동 연결해 생활비에는 실제 순지출만 반영한다.
+
+### 변경 내용
+
+- Native IndexedDB v1의 `transactions`, `importBatches`, `budgetSettlements` 저장소와 `occurredOn` 범위 인덱스를 추가했다.
+- ImportBatch와 Transaction 전체를 하나의 read-write transaction으로 저장해 중간 실패 시 부분 저장이 남지 않게 했다.
+- 하루, 선택일 포함 최근 7일, 선택일의 달 전체, 직접 입력한 양끝 포함 날짜 범위를 구현했다.
+- 원결제 출금 1건과 정산 입금 1건 이상을 명시적으로 연결하고, 생활비에는 `max(원결제 - 정산 입금 합계, 0)`만 원결제일에 귀속하도록 했다.
+- 원본 거래, 입출금 합계, 잔액을 수정하지 않으며 자동 정산 매칭도 하지 않는다.
+- Preview 화면에 명시적 로컬 저장 확인을 추가하고, 저장 거래·기간 제어·공동결제 정산 UI를 연결했다.
+
+### 검증 방법과 결과
+
+| 검증 | 결과 | 비고 |
+| --- | --- | --- |
+| `npm run lint` | PASS | warning 0개 |
+| `npm run typecheck` | PASS | TypeScript project build 성공 |
+| `npm run test` | PASS | 18 files, 243 tests |
+| `npm run build` | PASS | Vite production build 성공; SheetJS 포함 번들 크기 경고만 존재 |
+| IndexedDB 원자성 테스트 | PASS | 중복 key 실패 시 Batch와 Transaction 모두 rollback |
+| 기간·정산 도메인 테스트 | PASS | 주·월 경계, 사용자 지정 범위, 다음 기간 입금, 과다 정산 0 하한 확인 |
+| 브라우저 수동 점검 | PASS | 빈 장부, 직접 기간 입력, 공동결제 정산 UI 표시, 콘솔 error 0개 |
+| private 데이터 경계 | PASS | 실제 private XLS를 저장하지 않았고, `samples/private/*`는 Git ignore이며 추적 파일 0개 |
+| `git diff --check` | PASS | 공백 오류 0개 |
+
+### 리뷰에서 반영한 사항
+
+- 예전 Preview 전용 안내 문구를 저장 확인 흐름에 맞게 갱신했다.
+- 기존 Mock/급여 화면 테스트와 충돌하지 않도록 로컬 장부의 상태 표기를 정리했다.
+- 이미 정산에 사용한 거래는 새 정산 선택지에서 제외해 이중 반영을 막았다.
+
+### 기능 단위 커밋
+
+- `6f9b502` `[Docs] : 기간 조회와 단체 정산 계약 추가`
+- `22452f4` `[Feat] : 기간 조회와 단체 정산 생활비 규칙 추가`
+- `f76a7d6` `[Feat] : 로컬 거래 저장소와 Import 확정 추가`
+- `3dd8edb` `[Feat] : 수동 단체 정산 저장 검증 추가`
+- `b83ab4c` `[Feat] : 저장 거래 기간 조회와 공동결제 화면 제공`
+
+### 상태
+
+`DONE`
+
 ## 2026-08-05 — Phase 1 Web Foundation & 급여 실수령 추정기
 
 ### 작업 목적
