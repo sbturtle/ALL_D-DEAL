@@ -92,6 +92,8 @@ UNKNOWN
 
 fingerprint는 후보 검색을 돕는 값이다. 날짜·금액·거래 유형·정규화 Merchant·결제수단 등 여러 신호와 사용자 확인을 함께 사용하며, 단일 해시 일치만으로 거래를 삭제하지 않는다. 구성과 versioning은 Phase 4 ADR 또는 설계 문서에서 확정한다.
 
+> **Implemented decision (2026-08-05):** Phase 4 keeps the v1 fingerprint and normalized description in memory only, rather than adding either field to `Transaction` or IndexedDB. It compares `occurredOn`, `amountMinor`, `currency`, `direction`, `type`, and normalized `descriptionOriginal`; `paymentInstrumentLabel` is excluded. The exact contract is [Duplicate Candidate Review](duplicate-candidate-review.md) and [ADR-0006](../adr/ADR-0006-duplicate-candidates-require-user-confirmation.md).
+
 ### Phase 5 — Category Rule
 
 - `categoryId`

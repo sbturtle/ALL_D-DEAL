@@ -1,5 +1,52 @@
 # Engineering Log
 
+## 2026-08-05 — Phase 4 Duplicate Candidate Review
+
+### 작업 목적
+
+새 Legacy XLS Preview가 이미 이 브라우저에 저장된 거래 또는 같은 Preview의 앞선 후보와 정확히 같을 가능성을 저장 전에 보여주고, 사용자가 직접 재포함 여부를 결정하게 한다. 기존 원장은 자동으로 삭제·병합·수정하지 않는다.
+
+### 변경 내용
+
+- 날짜, 금액, 통화, 방향, 유형, 정규화 설명으로 계산하는 메모리 전용 v1 비교 지문을 추가했다.
+- 저장 거래와 Preview 내 앞선 후보의 일치 결과를 후보 인덱스와 안전한 참조 메타데이터로만 반환한다.
+- 중복 가능 후보는 기본 저장 선택에서 제외하고, 후보별 체크와 전체 재포함을 제공한다.
+- 선택된 후보만 원자 저장하며, 제외한 수를 `ImportBatch.skippedCount`와 `reviewedCount`에 반영한다.
+- 비교 실패 시 저장을 비활성화하고, 원본 행·파일 이름을 노출하지 않는 안내를 제공한다.
+- IndexedDB v1 스키마에는 지문·정규화 설명·새 인덱스를 저장하지 않는다.
+
+### 검증 방법과 결과
+
+| 검증 | 결과 | 비고 |
+| --- | --- | --- |
+| `npm run lint` | PASS | warning 0개 |
+| `npm run typecheck` | PASS | TypeScript project build 성공 |
+| `npm test` | PASS | 20 files, 251 tests |
+| `npm run build` | PASS | Vite production build 성공 |
+| Domain/Application/UI 테스트 | PASS | 정규화, 저장 거래·Preview 내 중복, 기본 제외, 개별·전체 재포함, skippedCount 검증 |
+| 브라우저 수동 점검 | PASS | 로컬 빈 장부, 기간·정산·XLS 진입점 및 Phase 4 표기 확인; 개인 XLS를 열거나 저장하지 않음 |
+| 개인정보 경계 | PASS | 실제 XLS·파일명·원본 행을 테스트와 로그에 사용하지 않음 |
+| `git diff --check` | PASS | 최종 문서 커밋 전 재확인 예정 |
+
+프로덕션 빌드는 기존 SheetJS 포함 JavaScript 청크가 500 kB를 넘는다는 경고만 출력했다. 동작 실패는 없으며, 코드 분할은 별도 성능 작업으로 남긴다.
+
+### 리뷰에서 반영한 사항
+
+- 비교 지문이 저장되거나 중복의 증명으로 해석되지 않도록 ADR과 저장 경계를 명시했다.
+- 저장 거래 비교를 끝내지 못한 경우 후보를 전부 자동 저장하지 않고 재시도를 요구하도록 했다.
+- UI 상단의 구현 Phase 표기를 `PHASE 4 · LOCAL`로 갱신했다.
+
+### 기능 단위 커밋
+
+- `d7f5870` `[Docs] : 중복 후보 검토 계약 추가`
+- `565ef8c` `[Feat] : Import 중복 후보 감지 추가`
+- `5552250` `[Feat] : Import 중복 후보 검토 화면 추가`
+- `337a5f8` `[Fix] : 현재 개발 Phase 표기 갱신`
+
+### 상태
+
+`DONE`
+
 중요한 작업의 목적, 변경, 검증과 후속 과제를 기록한다. 사소한 편집보다 다른 작업자가 결정의 맥락을 복원하는 데 필요한 내용을 우선한다.
 
 ## 2026-08-05 — Phase 0 Agent Harness / Repository Foundation

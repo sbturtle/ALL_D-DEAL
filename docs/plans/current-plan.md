@@ -1,6 +1,6 @@
 # Phase 4 — Duplicate Candidate Review
 
-- Status: `IN_PROGRESS`
+- Status: `DONE`
 - Plan updated: 2026-08-05
 - Prerequisite: Phase 3B Local Transaction Storage `DONE`
 
@@ -27,11 +27,11 @@ Compare a new Legacy XLS Preview with transactions already saved on this browser
 ## Tasks
 
 1. `DONE` Record duplicate-review requirements, fingerprint limits, and user-confirmation decision.
-2. `IN_PROGRESS` Implement and test versioned v1 fingerprint normalization and saved/in-preview duplicate candidate detection.
-3. `TODO` Add an application query that reads local saved transactions and returns only safe duplicate-match metadata for a Preview.
-4. `TODO` Add Preview selection state, duplicate indicators, individual override, and explicit "include all" action before local confirmation.
-5. `TODO` Record skipped candidate count in ImportBatch and verify only the selected candidates are stored.
-6. `TODO` Run lint, typecheck, tests, build, browser smoke checks, privacy scans, review, documentation, and focused local commits.
+2. `DONE` Implement and test versioned v1 fingerprint normalization and saved/in-preview duplicate candidate detection.
+3. `DONE` Add an application query that reads local saved transactions and returns only safe duplicate-match metadata for a Preview.
+4. `DONE` Add Preview selection state, duplicate indicators, individual override, and explicit "include all" action before local confirmation.
+5. `DONE` Record skipped candidate count in ImportBatch and verify only the selected candidates are stored.
+6. `DONE` Run lint, typecheck, tests, build, browser smoke checks, privacy scans, review, documentation, and focused local commits.
 
 ## Acceptance criteria
 
