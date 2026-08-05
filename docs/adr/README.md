@@ -7,6 +7,7 @@ ADR은 기술 선택뿐 아니라 중요한 제품 요구가 왜 바뀌었는지
 | [ADR-0001](ADR-0001-file-import-over-financial-api.md) | Accepted | 금융 API 직접 연동보다 사용자 주도 파일 Import를 우선한다. |
 | [ADR-0002](ADR-0002-local-first-architecture.md) | Accepted | 초기 금융 데이터 처리와 저장을 브라우저 내부로 제한한다. |
 | [ADR-0003](ADR-0003-weekly-import-instead-of-realtime.md) | Accepted | 실시간 동기화보다 주 1회 검토 흐름을 최적화한다. |
+| [ADR-0004](ADR-0004-versioned-local-payroll-estimation.md) | Accepted | 공식 근거를 버전으로 고정한 급여 추정 정책을 브라우저에서 실행한다. |
 
 ## 새 ADR 기본 구조
 
