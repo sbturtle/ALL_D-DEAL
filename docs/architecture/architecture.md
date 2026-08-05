@@ -1,6 +1,6 @@
 # Architecture
 
-> 상태: Phase 0 Initial Draft
+> 상태: Phase 1 Implemented Baseline
 >
 > 기준일: 2026-08-05
 
@@ -8,15 +8,17 @@
 
 초기 애플리케이션은 백엔드가 없는 단일 사용자용 웹 앱이다. 이 문서는 구현을 앞서 확장하기 위한 설계가 아니라, 금융 파일 Parser와 UI의 결합을 막고 민감한 데이터를 사용자 기기 안에서 처리하기 위한 최소 경계를 정의한다.
 
-관련 결정은 [ADR-0001 파일 Import](../adr/ADR-0001-file-import-over-financial-api.md), [ADR-0002 local-first](../adr/ADR-0002-local-first-architecture.md), [ADR-0003 주 1회 Import](../adr/ADR-0003-weekly-import-instead-of-realtime.md)를 따른다.
+관련 결정은 [ADR-0001 파일 Import](../adr/ADR-0001-file-import-over-financial-api.md), [ADR-0002 local-first](../adr/ADR-0002-local-first-architecture.md), [ADR-0003 주 1회 Import](../adr/ADR-0003-weekly-import-instead-of-realtime.md), [ADR-0004 버전 지정 급여 추정](../adr/ADR-0004-versioned-local-payroll-estimation.md)을 따른다.
 
 ## 현재와 목표 상태
 
-### Phase 0 현재 상태
+### Phase 1 구현 상태
 
-- 애플리케이션 코드와 런타임 의존성은 없다.
-- 제품·설계·작업 규칙만 확정한다.
-- 아래 Import 흐름은 목표 구조이며 현재 구현 완료를 뜻하지 않는다.
+- React + TypeScript + Vite 실행 기반과 lint, typecheck, test, build 명령이 있다.
+- 급여 입력 UI가 버전 지정 2026년 정책을 사용하는 순수 `payroll-estimate` Domain을 직접 호출한다.
+- 급여 입력과 결과는 메모리에서만 유지하며 Application·Infrastructure·Transaction 계층으로 전달하지 않는다.
+- Dashboard는 실제 거래가 없는 상태와 명시적인 UI 전용 Mock fixture만 제공한다.
+- IndexedDB, 공통 Transaction 런타임 모델과 아래 Import 흐름은 Phase 2 이후 목표이며 현재 구현 완료를 뜻하지 않는다.
 
 ### 단계별 기술 방향
 

@@ -6,7 +6,7 @@
 
 ## 현재 개발 범위
 
-현재 활성 범위는 Phase 1의 모바일 우선 Web Skeleton과 급여 실수령 추정기다. Phase 1은 실행 기반과 Dashboard shell을 만드는 `1A`, 저장하지 않는 급여 추정 기능을 만드는 `1B`로 나눈다. Import·중복 탐지·실제 거래 집계·자산 관리는 각 후속 Phase 전까지 구현하지 않는다.
+Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기는 완료되었다. 현재 활성 범위는 Phase 2 Transaction Domain Foundation이며, 공통 Transaction 타입·금액·날짜·거래 유형 불변식과 최소 저장 경계를 다룬다. 파일 Parser·Preview는 Phase 3, 중복 탐지는 Phase 4, 실제 거래 집계와 급여 추정 비교는 Phase 6 전까지 구현하지 않는다.
 
 ## 기능 요구사항
 

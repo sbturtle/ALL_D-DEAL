@@ -68,3 +68,81 @@
 ### 상태
 
 `DONE`
+
+## 2026-08-05 — Phase 1 Web Foundation & 급여 실수령 추정기
+
+### 작업 목적
+
+Phase 1 실행 기반과 Dashboard shell을 만들고, 사용자가 연봉 또는 월급과 상여·비과세 조건을 넣어 2026년 기준 예상 실수령액을 확인할 수 있는 메모리 전용 계산기를 첫 실제 기능으로 제공한다.
+
+### 변경 파일
+
+- 실행 기반: `package.json`, `package-lock.json`, TypeScript·Vite·ESLint 설정, `src/main.tsx`
+- 급여 Domain: `src/domain/payroll-estimate/`
+- 계산기 UI: `src/ui/payroll-estimate/`, `src/shared/format/currency.ts`
+- Dashboard: `src/ui/dashboard/`
+- 앱·스타일·테스트: `src/app/`, `src/test/setup.ts`
+- 제품·결정·계획: `docs/product/requirements.md`, `docs/adr/ADR-0004-versioned-local-payroll-estimation.md`, `docs/plans/`
+- 아키텍처·작업 이력: `docs/architecture/architecture.md`, 이 문서
+
+### 구현 내용
+
+- React 19, TypeScript, Vite와 lint, typecheck, Vitest, React Testing Library, production build 명령을 구성했다.
+- 연봉·월급 모드를 구분하고 연간 상여금, 월 비과세액, 가족·자녀 수와 80%·100%·120% 원천징수를 입력받는다.
+- 공식 2026-03-01 근로소득 간이세액표의 770,000원~10,000,000원 646개 구간과 고액 계산식을 로컬 TypeScript 정책 데이터로 포함했다.
+- 2026년 하반기 국민연금과 건강·장기요양·고용보험 기준을 버전 정책으로 분리하고 React와 독립된 순수 함수로 계산한다.
+- 상여 포함 연간·월평균 세전액, 6개 공제 내역과 예상 실수령액을 정책 기준일·공식 출처·면책과 함께 표시한다.
+- 상여는 연간 총액의 12개월 평균으로만 반영하고 지급월별 정확한 원천징수는 지원하지 않음을 명시했다.
+- 입력값·결과는 외부 전송이나 브라우저 저장 없이 현재 React 상태에서만 사용한다. 실제 Transaction과 자동 합산·생성하지 않는다.
+- 기본 Dashboard는 실제 거래가 없음을 설명하고 별도 토글에서만 명백한 Mock fixture를 표시한다.
+
+### 검증 방법과 결과
+
+| 검증 | 결과 | 비고 |
+| --- | --- | --- |
+| `npm run lint` | PASS | warning 0개 |
+| `npm run typecheck` | PASS | TypeScript project build 성공 |
+| `npm run test` | PASS | 3 files, 34 tests |
+| `npm run build` | PASS | 38 modules production build |
+| 공식 세액표 연속성·대표값 | PASS | 646개 구간, 공식 가족·자녀 예시와 고액 경계 |
+| 사회보험 상·하한·절사 | PASS | 국민연금·건강보험 경계와 10원 단수 테스트 |
+| 계산 불변식 | PASS | 월·연 공제 합계와 세전-공제=예상 실수령 |
+| Component 흐름 | PASS | 모드 보존, 오류·결과 포커스, 상여 반영, 초기화, 빈·Mock 상태 |
+| 비영속·외부 요청 검사 | PASS | storage, IndexedDB, fetch, console 사용 0개 |
+| 임시·민감 데이터 검사 | PASS | 추출 임시 파일 제거, 실제 개인 금융 fixture 0개 |
+| `git diff --check` | PASS | 공백 오류 0개 |
+| Git 메시지 형식·본문 | PASS | 기능 단위 4개 구현 커밋 확인 |
+
+모바일 레이아웃은 320px 최소 폭과 420px breakpoint를 코드 리뷰했고, 키보드 흐름은 Component Test로 검증했다. 자동 브라우저 시각 제어는 수행하지 않았으므로 실제 360px 시각 회귀 확인은 첫 수동 사용 때 보완한다.
+
+### Review에서 발견하고 반영한 문제
+
+- 과세 월평균 0원 입력의 최저 보험료 우회와 월급 연간 환산 overflow를 검증 오류로 차단했다.
+- 국민연금 최소 지원액을 정책 주입값으로 읽고 소득세 30M·45M·87M 경계를 추가 테스트했다.
+- 테스트 DOM cleanup을 명시해 Component 간 중복 ID와 상태 누수를 제거했다.
+- 오류 제출 시 첫 필드, 성공 시 결과 제목으로 포커스를 이동하고 결과 포커스 링을 복원했다.
+- 가족·자녀 설명 연결, 핵심 안내 글자 크기와 어두운 결과 패널의 포커스 대비를 보완했다.
+- 화면의 정책 날짜를 하드코딩하지 않고 정책·결과 값에서 표시하도록 바꿨다.
+
+### 남은 TODO
+
+- Phase 2에서 Transaction MVP 타입과 금액·날짜·거래 유형 불변식을 구현한다.
+- Native IndexedDB와 Dexie를 실제 저장 사용 사례 기준으로 비교하고 최소 저장 경계를 결정한다.
+- 급여 추정 결과는 비영속 도구로 유지하고 실제 Import된 `INCOME`과 분리한다.
+- Phase 3 전까지 금융 파일 Parser와 실제 저장·Preview를 구현하지 않는다.
+
+### 관련 ADR
+
+- ADR-0002 초기 버전에 local-first 아키텍처 채택
+- ADR-0004 버전 지정 공식 정책으로 급여 실수령액 로컬 추정
+
+### 기능 단위 커밋
+
+- `7a72b90` `[Docs] : Phase 1 급여 추정기 요구와 범위 추가`
+- `41e87e7` `[Build] : React 앱과 자동 검증 기반 구성`
+- `032ca83` `[Feat] : 급여 추정 입력과 계산 도메인 추가`
+- `3621fc2` `[Feat] : 실수령 추정 결과와 면책 UX 제공`
+
+### 상태
+
+`DONE`

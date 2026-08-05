@@ -1,161 +1,99 @@
-# Phase 1 — Web Foundation & 급여 실수령 추정기
+# Phase 2 — Transaction Domain Foundation
 
-- 상태: `IN_PROGRESS`
+- 상태: `READY`
 - 계획일: 2026-08-05
-- 계산 정책 기준일: 2026-03-01 세액표, 2026-07-01 국민연금 상·하한
+- 상태 의미: 구현을 시작할 수 있도록 범위와 완료 조건이 정리되었으며, 코드는 아직 변경하지 않았다.
 
 ## Goal
 
-React, TypeScript, Vite 기반의 모바일 우선 브라우저 앱을 만들고, 저장하지 않는 급여 실수령 추정기를 첫 번째 실제 기능으로 제공한다. Dashboard의 빈 상태와 명시적인 Mock Data 상태도 함께 실행·검증한다.
+금융기관별 원본 표현과 저장 기술에서 독립된 최소 Transaction Domain을 구현하고, 이후 Import·중복 탐지·Dashboard 집계가 공유할 금액·날짜·거래 유형 불변식을 자동 테스트로 고정한다.
 
-Phase 1은 다음 두 Vertical Slice로 수행한다.
-
-1. `Phase 1A — Web Skeleton`: 실행 환경, 자동 검증, Dashboard shell
-2. `Phase 1B — 급여 실수령 추정기`: 버전 지정 정책, 순수 계산 도메인, 입력·결과 UX
+Phase 2는 급여 추정 결과를 Transaction으로 바꾸거나 실제 금융 파일을 읽지 않는다. 저장 경계는 실제 Domain 사용 사례가 요구하는 최소 수준에서 Native IndexedDB와 Dexie를 비교한 뒤 결정한다.
 
 ## User Value
 
-- 세전 기본 연봉 또는 월급, 연간 상여금과 비과세액을 입력해 상여 포함 연간·월평균 예상 실수령액을 확인할 수 있다.
-- 국민연금, 건강보험, 장기요양보험, 고용보험, 소득세와 지방소득세의 예상 공제를 한 화면에서 이해할 수 있다.
-- 실제 금융 데이터를 넣기 전에 앱의 화면 구조와 핵심 정보 우선순위를 작은 화면에서 확인할 수 있다.
-- 이후 Transaction Domain과 Import 흐름을 연결할 실행 가능한 기반을 얻는다.
+- 수입·지출·이체·카드대금·저축 등 서로 다른 금융 활동을 일관된 의미로 다룰 기반을 얻는다.
+- 카드 사용과 카드대금 납부가 생활비로 중복 집계되는 오류를 Domain 단계에서 예방한다.
+- 이후 파일 Import가 특정 UI나 금융기관 형식에 결합되지 않도록 공통 수용 경계를 갖는다.
 
 ## Current State
 
-- Phase 0 문서 기반과 작업 규칙은 완료되었다.
-- 애플리케이션 코드, `package.json`, Node 의존성과 자동 검증 명령은 아직 없다.
-- 2026년 사회보험 공식 기준과 2026-03-01 시행 근로소득 간이세액표를 확인했다.
-- 현재 저장소에는 실제 금융 데이터가 없다.
+- Phase 1 React 앱, 자동 검증과 메모리 전용 급여 실수령 추정기가 완료되었다.
+- `docs/architecture/data-model.md`에 Transaction MVP 필드와 불변식이 설계 기준선으로 존재한다.
+- 공통 Transaction 런타임 타입, 검증 함수, 저장 포트와 IndexedDB 구현은 아직 없다.
+- 실제 금융 데이터, 실제 금융기관 fixture와 Import Parser는 없다.
 
 ## Scope
 
-### Phase 1A — Web Skeleton
+### Phase 2A — Transaction Domain
 
-- React + TypeScript + Vite 프로젝트 초기화
-- 현재 Phase에 필요한 최소 ESLint, Vitest, React Testing Library 설정
-- Mobile First 단일 Dashboard shell
-- 최근 거래 빈 상태와 명백한 가짜 값만 사용하는 Mock Data 모드
-- 금융 데이터 가져오기 진입점의 준비 상태 표현
-- 기본 접근성 및 반응형 스타일
+- `Transaction`, `TransactionType`, `Money`, `CalendarDate`의 현재 MVP 타입
+- 양의 KRW 원 단위 safe integer와 별도 `direction` 규칙
+- `YYYY-MM-DD` 날짜 전용 값의 런타임 검증
+- 필수 원문 설명과 선택 Merchant·결제수단 필드의 경계
+- `CARD_PAYMENT`와 `TRANSFER`를 생활비에서 제외하는 순수 판정 규칙
+- `UNKNOWN`과 지원하는 모든 거래 유형의 명시적 처리
+- 유효·무효·경계 입력을 다루는 table-driven Domain Test
 
-### Phase 1B — 급여 실수령 추정기
+### Phase 2B — 최소 저장 경계 결정
 
-- 연봉·월급 입력 모드
-- 상여를 제외한 세전 기본 급여
-- 기본 급여에 포함되지 않은 연간 상여금
-- 기본 급여 안에 포함된 월 비과세액
-- 본인 포함 공제대상 가족 수와 8세 이상 20세 이하 자녀 수
-- 근로소득 원천징수 80%·100%·120% 선택
-- 상여 포함 연간 세전 총액, 월평균 세전액과 예상 실수령액
-- 국민연금, 건강보험, 장기요양보험, 고용보험, 근로소득세와 지방소득세 예상 내역
-- 공식 출처를 가진 2026년 계산 정책과 정책 기준일 표시
-- 입력 오류, 초기화, 계산 전 상태, 계산 결과와 면책 안내
-- 메모리 전용 처리와 외부 네트워크 요청 없음
-
-### 공통
-
-- 실행·lint·typecheck·test·build 검증
-- 기능 단위 로컬 커밋
-
-## 계산 계약과 가정
-
-- 연봉 모드의 기본 연봉과 월급 모드의 월급은 상여를 제외하고 비과세 수당을 포함한 세전 기본 급여다.
-- 월 비과세액은 기본 급여 안에 이미 포함되어 있으므로 총액에 다시 더하지 않는다.
-- 연간 상여금은 전액 과세로 가정하고 12개월 월평균에 한 번만 나눠 반영한다.
-- 연봉을 월평균으로 바꿀 때 원 단위 미만은 버리고, 연간 결과는 원래 연간 입력 총액을 유지한다.
-- 사회보험은 월평균 보수를 기준으로 한 간편 추정이며 지원·감면·가입 제외와 회사의 보수 신고 차이는 반영하지 않는다.
-- 근로소득세는 2026-03-01 시행 간이세액표, 자녀 차감과 선택 비율을 적용하고 10원 미만을 버린다.
-- 실제 상여 원천징수식에 필요한 지급대상기간과 기납부세액은 입력받지 않으므로 지급월 실수령액을 제공하지 않는다.
-- 결과는 공식 급여명세서나 연말정산 결과가 아니다.
+- Phase 3의 Confirmed Transaction 저장·조회에 실제 필요한 사용 사례 식별
+- Native IndexedDB와 Dexie의 번들 크기, 마이그레이션, 테스트 가능성 비교
+- 필요할 때만 Application 흐름과 Infrastructure 계약 정의
+- DB version, transaction commit과 오류 경계의 최소 설계 기록
 
 ## Out of Scope
 
-- 입력값·결과·기본값의 IndexedDB, localStorage, URL 또는 Settings 저장
-- 예상 급여를 Transaction 또는 `INCOME` 거래로 생성
-- 정확한 상여 지급월별 원천징수와 현금흐름
-- 연말정산 환급·추징, 퇴직금, 중도 입·퇴사와 일부 월 근무
-- 사업소득자, 프리랜서, 일용직, 외국인 과세 특례
-- 보험 가입 제외·감면의 모든 조합과 회사별 사용자 정의 공제
-- 공통 Transaction Domain의 최종 구현
-- CSV/PDF/XLSX 파일 읽기와 Import
-- 중복 탐지와 카테고리 Rule
-- 실제 월간 집계와 Settings 저장
-- 백엔드, 배포, PWA, Android 앱
-- 실제 금융 데이터 또는 실제 금융기관 형식을 닮은 fixture
-
-## Phase 연계
-
-- Phase 2~5의 Transaction·Import·중복·분류 기능은 급여 추정 결과에 의존하지 않는다.
-- Phase 6은 실제 Import된 `INCOME` 거래로 수입을 집계한다. 예상 급여와 실제 수입 비교는 별도 표시할 수 있지만 자동 합산하거나 대체하지 않는다.
-- 개인별 입력 기본값 저장, 지급월 시나리오와 장기 소득 전망은 실제 사용 요구가 확인된 뒤 Phase 6 또는 Phase 8 계획에서 다시 결정한다.
+- CSV/PDF/XLSX 읽기, Parser, Adapter와 Preview UI
+- 실제 거래 저장 화면과 Dashboard 실제 집계
+- 중복 탐지와 fingerprint
+- Merchant 정규화, Category와 CategoryRule
+- ImportBatch 최종 모델
+- 실제 금융기관 또는 개인 금융 샘플
+- 급여 추정 결과의 자동 저장 또는 `INCOME` Transaction 생성
+- 백업·복원, 암호화, 동기화와 백엔드
 
 ## Dependencies
 
-- 로컬 Node.js 20.10.0과 npm 10.5.0 실행 환경
-- React, TypeScript, Vite
-- Vitest, React Testing Library, DOM 테스트 환경
-- ESLint
-- 빌드 시 포함되는 2026년 근로소득 간이세액표 데이터
+- `docs/architecture/data-model.md` Transaction MVP 기준선
+- ADR-0001 파일 Import, ADR-0002 local-first 결정
+- FR-002, FR-006, FR-007
+- Phase 1의 TypeScript·Vitest·lint·build Toolchain
 
-의존성은 이 Scope에 필요한 것만 추가하고 lockfile을 커밋한다. 앱 런타임은 외부 급여 계산 서비스나 CDN에 의존하지 않는다.
+새 라이브러리는 비교 근거와 현재 사용 사례가 있을 때만 추가한다. 저장 구현을 시작하기 전에 Native IndexedDB로 충분한지 먼저 확인한다.
 
 ## Tasks
 
-1. 제품 요구, ADR과 현재 계획에 급여 추정 범위와 Phase 경계를 기록한다.
-2. React + TypeScript + Vite 최소 프로젝트와 자동 검증 명령을 구성한다.
-3. 공식 PDF의 2026년 간이세액표를 로컬 정책 데이터로 변환하고 시작·끝·대표·고액 구간을 대조한다.
-4. 급여 입력 검증, 연간·월평균 정규화, 보험·세액·실수령액 계산을 React와 분리된 순수 함수로 구현한다.
-5. 정책 경계와 공식 대표값을 포함한 Domain Test를 작성한다.
-6. 360px 폭을 우선한 입력 폼, 결과, 공제 내역, 정책·면책 안내를 구현한다.
-7. 계산 전·오류·결과·초기화 흐름과 접근성을 Component Test로 검증한다.
-8. Dashboard 빈 상태와 명시적인 Mock Data 모드를 추가하고 Component에 개인 재무 값을 하드코딩하지 않는다.
-9. lint, typecheck, test, build와 `git diff --check`를 실행한다.
-10. Review 결과와 검증 근거를 문서에 반영하고 기능 단위로 커밋한다.
+1. Data Model의 필드와 불변식을 구현 직전 다시 검토하고 미결정 항목을 Scope 밖에 유지한다.
+2. 금액, 날짜, 방향과 거래 유형을 프레임워크에 독립된 Domain 타입·순수 함수로 구현한다.
+3. 정상값, 0·음수·소수·safe integer 초과, 잘못된 날짜와 거래 유형 경계를 테스트한다.
+4. 생활비 포함·제외 판정에서 `CARD_PAYMENT`와 `TRANSFER` 중복 집계 방지 규칙을 테스트한다.
+5. 급여 추정 결과와 Transaction 사이에 import 또는 영속 의존성이 없는지 확인한다.
+6. Phase 3 저장·조회 사용 사례에 필요한 최소 포트를 정의할지 결정한다.
+7. Native IndexedDB와 Dexie를 비교하고 선택·보류 근거를 계획 또는 ADR에 기록한다.
+8. lint, typecheck, test, build와 개인정보·Git 검사를 수행한다.
+9. Domain과 저장 경계 결정을 기능 단위 로컬 커밋으로 분리한다.
 
 ## Acceptance Criteria
 
-- `npm run dev`로 브라우저에서 앱을 실행할 수 있다.
-- 사용자는 연봉 또는 월급 중 하나를 선택하고 상여금·비과세액·가족·자녀·원천징수 비율을 입력할 수 있다.
-- 모드를 전환해도 기존 숫자를 다른 단위로 조용히 재해석하지 않는다.
-- 연간 상여금은 상여 포함 세전 총액과 월평균 과세급여에 정확히 한 번 반영된다.
-- 월 비과세액은 기본 급여에 다시 가산되지 않는다.
-- 공제 항목 합계와 총 공제액이 일치하고 `세전 총액 - 공제 = 예상 실수령액` 불변식이 성립한다.
-- 모든 계산 금액은 KRW 원 단위 safe integer이며 명시된 10원 단수 처리와 보험 상·하한을 따른다.
-- 과세 월급여 3,500,000원, 가족 4명, 대상 자녀 2명, 100%의 근로소득세가 3,510원이고 지방소득세가 350원이다.
-- 결과에 `예상` 표현, 정책 ID·기준일, 입력 비저장 안내와 실제 금액이 달라질 수 있는 이유가 표시된다.
-- 초기화하면 기본 입력과 계산 전 상태로 돌아간다.
-- 입력과 결과는 새로고침 후 남지 않고 Transaction, Settings, URL 또는 브라우저 저장소에 기록되지 않는다.
-- 기본 Dashboard는 실제 거래가 없는 상태를 정확히 설명하고 Mock Data가 실제 금융정보가 아님을 표시한다.
-- 가져오기 기능이 아직 구현되지 않았다는 사실을 오해 없이 표현한다.
-- 특정 금융 파일 Parser, IndexedDB와 백엔드 코드가 추가되지 않는다.
-- 360px 화면에서 가로 overflow 없이 입력과 결과를 읽고 키보드로 모든 동작을 수행할 수 있다.
-- lint, typecheck, test, build가 모두 통과한다.
-- 관련 변경이 기능 단위 로컬 커밋으로 분리되고 지정된 메시지 형식을 따른다.
-
-## Verification
-
-- `npm run lint`
-- `npm run typecheck`
-- `npm run test -- --run`
-- `npm run build`
-- Domain Test로 표 시작·끝·1천만원·고액 구간, 자녀 차감, 보험 상·하한과 금액 불변식 확인
-- Component Test로 모드 전환, 입력 오류, 상여 반영, 계산 결과, 초기화, 빈 상태와 Mock 상태 확인
-- 공식 PDF의 대표 구간과 추출 데이터 수동 대조
-- `git diff --check`와 staged 민감정보 점검
+- 모든 Transaction 필수 필드와 지원 거래 유형이 TypeScript에서 명시된다.
+- 금액은 0보다 큰 KRW 원 단위 safe integer이고 부호와 방향을 중복 표현하지 않는다.
+- 날짜 전용 값은 유효한 `YYYY-MM-DD`로 검증되며 JavaScript UTC 변환에 의존하지 않는다.
+- `CARD_PAYMENT`와 `TRANSFER`가 생활비 소비로 분류되지 않는 규칙이 자동 테스트로 고정된다.
+- 유효하지 않은 외부 후보를 한 번에 설명할 수 있는 런타임 검증 결과가 정의된다.
+- 급여 추정 결과는 Transaction 또는 `INCOME`으로 생성·저장되지 않는다.
+- IndexedDB 선택은 실제 저장 사용 사례와 대안 비교 근거를 가진다. 구현이 불필요하면 보류 이유를 기록한다.
+- Parser, 실제 금융 fixture, 중복·카테고리·실제 Dashboard 기능이 추가되지 않는다.
+- lint, typecheck, test, build가 통과한다.
+- 관련 변경이 지정된 형식의 기능 단위 로컬 커밋으로 분리된다.
 
 ## Risks
 
-- 급여 추정치가 확정 급여로 오해될 수 있다. 결과 전체에 예상 표현과 면책, 정책 기준일을 유지한다.
-- 상여 월평균 가정이 지급월 현금흐름과 다르다. 입력 라벨과 결과에서 지급월 계산이 아님을 반복해서 설명한다.
-- 정책 표 추출 오류가 많은 급여 구간에 영향을 줄 수 있다. 행 연속성, 공식 대표값, 시작·끝·고액 경계를 자동 테스트한다.
-- Dashboard용 임시 View Model이 Phase 2 Domain 모델처럼 굳어질 수 있다. 이름과 위치로 UI fixture임을 명확히 한다.
-- 초기 Toolchain 설정이 기능보다 커질 수 있다. 현재 검증에 필요한 설정만 추가한다.
+- Phase 3 요구를 예상해 필드를 과도하게 추가할 수 있다. 현재 Transaction 불변식에 필요한 필드만 구현한다.
+- 런타임 검증 도구 도입이 Domain보다 커질 수 있다. 작은 순수 함수와 직접 타입 가드로 충분한지 먼저 확인한다.
+- IndexedDB 포트가 범용 CRUD Repository가 될 수 있다. 실제 저장·조회 흐름에 필요한 메서드만 정의한다.
+- 거래 방향과 경제적 유형을 혼합하면 집계가 틀어진다. 별도 축으로 유지하고 대표 조합을 테스트한다.
 
 ## Questions / Blockers
 
-현재 시작을 막는 질문은 없다.
-
-- 패키지 매니저는 별도 선호가 없으므로 npm을 사용한다.
-- 제품명은 확정 전까지 “가계부”를 사용한다.
-- 급여 계산은 대한민국 일반 직장근로자와 2026년 현재 정책을 기본으로 한다.
-- 실제 개인 급여나 금융 값은 fixture로 사용하지 않고 명백한 가짜 예시만 테스트한다.
+현재 구현 시작을 막는 질문은 없다. 저장 라이브러리와 구체 포트는 Phase 2A Domain 완료 뒤 실제 요구를 기준으로 결정한다.
