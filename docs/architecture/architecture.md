@@ -1,6 +1,6 @@
 # Architecture
 
-> 상태: Phase 3A Implemented Baseline — 실제 private XLS 브라우저 Preview는 `NEEDS_USER_INPUT`
+> 상태: Phase 3A Implemented Baseline
 >
 > 기준일: 2026-08-05
 

@@ -250,7 +250,7 @@ Git에서 제외된 계좌 거래·카드 이용 legacy XLS의 구조를 바탕�
 | `npm run build` | PASS | Vite production build 성공; SheetJS 포함 번들 크기 경고만 존재 |
 | UI Component 흐름 | PASS | 파일명 비노출, 오류 일반화, Preview 지우기 |
 | 개인정보·Git 검사 | PASS | private 샘플은 Git 미추적, 원본 값·파일명 로그 없음 |
-| 실제 브라우저 XLS 선택 | NEEDS_USER_INPUT | ChatGPT Chrome Extension의 로컬 파일 접근 권한이 꺼져 있어 실제 파일 전달 전 차단됨 |
+| 실제 브라우저 XLS 선택 | PASS | 계좌 거래·카드 이용 XLS를 로컬 Preview로 확인, 파일명·거래 값은 검증 출력에 남기지 않음 |
 | `git diff --check` | PASS | 공백 오류 0개 |
 
 ### Review에서 발견하고 반영한 문제
@@ -261,8 +261,7 @@ Git에서 제외된 계좌 거래·카드 이용 legacy XLS의 구조를 바탕�
 
 ### 남은 TODO
 
-- Chrome의 `chrome://extensions`에서 ChatGPT Chrome Extension 세부정보의 **파일 URL에 대한 액세스 허용**을 켠 뒤, private XLS 두 종류의 Preview를 수동 확인한다.
-- 확인 뒤 Phase 3A를 `DONE`으로 전환하고, Phase 3B에서 사용자 확인 후보의 Native IndexedDB 원자 저장을 구현한다.
+- Phase 3B에서 사용자 확인 후보의 Native IndexedDB 원자 저장을 구현한다.
 
 ### 기능 단위 커밋
 
@@ -273,4 +272,4 @@ Git에서 제외된 계좌 거래·카드 이용 legacy XLS의 구조를 바탕�
 
 ### 상태
 
-`NEEDS_USER_INPUT`
+`DONE`

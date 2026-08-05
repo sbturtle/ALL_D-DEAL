@@ -1,6 +1,6 @@
 # Phase 3 — Legacy XLS Import Preview
 
-- 상태: `NEEDS_USER_INPUT`
+- 상태: `DONE`
 - 계획 갱신일: 2026-08-05
 - 선행 조건: Phase 2 Transaction Domain `DONE`
 - 근거: Git에서 제외된 `samples/private/`의 카드 이용내역·계좌 거래내역 XLS 구조
@@ -15,7 +15,7 @@
 - 카드 취소, 외화 후보, 날짜·금액 문제를 자동 반영하지 않고 이유와 함께 확인할 수 있다.
 - 원본 파일은 브라우저 메모리에서만 사용하며 이번 slice에서는 장부가 바뀌지 않는다.
 
-## Current Vertical Slice — Phase 3A (구현 완료, 로컬 브라우저 파일 선택 검증 대기)
+## Current Vertical Slice — Phase 3A (완료)
 
 - SheetJS `0.20.3`으로 브라우저 `File.arrayBuffer()`의 legacy XLS를 읽는다.
 - 계좌 거래 레이아웃은 날짜·설명·출금·입금의 명확한 행만 `UNKNOWN` TransactionDraft 후보로 만든다.
@@ -26,7 +26,7 @@
 
 ## Next Vertical Slice — Phase 3B
 
-- Phase 3A의 실제 파일 Preview 확인 뒤, 사용자가 선택한 유효 후보만 Transaction으로 완성한다.
+- 사용자가 선택한 유효 후보만 Transaction으로 완성한다.
 - Native IndexedDB schema v1의 `transactions`, `importBatches`에 하나의 transaction으로 저장한다.
 - 실패 시 부분 저장 없이 Preview로 돌아가고, 성공 후에만 날짜 범위 조회를 제공한다.
 
@@ -47,10 +47,10 @@
 2. `DONE` — 브라우저 XLS 파서와 계좌·카드 TransactionDraft 정규화를 구현했다.
 3. `DONE` — 가짜 행 배열로 금액·날짜·취소·외화·식별정보 경계를 자동 테스트했다.
 4. `DONE` — 파일 선택과 메모리 Preview UI를 구현하고 접근성 흐름을 테스트했다.
-5. `NEEDS_USER_INPUT` — 실제 private XLS 두 종류의 로컬 브라우저 Preview는 Chrome 확장 프로그램의 로컬 파일 접근 권한을 켠 뒤 확인한다.
+5. `DONE` — 실제 private XLS 두 종류를 로컬 브라우저 Preview로 확인했다.
 6. `DONE` — 독립 코드 리뷰, lint, typecheck, test, build와 개인정보·Git 검사를 수행했다.
 7. `DONE` — 계약·의존성·정규화·UI·검증 결과를 기능 단위 로컬 커밋으로 분리했다.
-8. `PENDING` — Phase 3A 수동 Preview 확인 뒤에만 Phase 3B Native IndexedDB 저장을 시작한다.
+8. `READY` — 다음 vertical slice에서 Phase 3B Native IndexedDB 저장을 시작한다.
 
 ## Acceptance Criteria
 
@@ -61,7 +61,7 @@
 - 카드 취소·외화 후보·날짜·금액 오류는 자동 반영하지 않고 안전한 issue로 보인다.
 - 카드 라벨은 별칭 또는 끝 4자리만 가지며 전체 식별정보를 보존하지 않는다.
 - 파일 선택은 어떤 영속 데이터도 변경하지 않는다.
-- lint, typecheck, test, build가 통과했다. private XLS 두 종류의 수동 Preview는 Chrome의 로컬 파일 접근 권한을 켠 뒤 통과시킨다.
+- lint, typecheck, test, build와 private XLS 두 종류의 로컬 브라우저 Preview가 통과했다.
 - 변경은 `[Type] : 커밋 제목`과 비어 있지 않은 본문을 가진 기능 단위 로컬 커밋으로 분리한다.
 
 ## Risks
@@ -73,4 +73,4 @@
 
 ## Questions / Blockers
 
-Chrome 확장 프로그램이 실제 XLS 선택을 막고 있다. Chrome의 `chrome://extensions`에서 ChatGPT Chrome Extension의 **세부정보**를 열어 **파일 URL에 대한 액세스 허용**을 켜야 한다. 이 설정 뒤 실제 private XLS 두 종류를 브라우저 Preview로 확인하면 Phase 3A는 `DONE`이다. 취소·환불의 원거래 연결과 외화 환산은 실제 사용 사례를 확인한 뒤 별도 Phase에서 결정한다.
+Phase 3A 시작을 막는 질문은 없다. 다음 Phase 3B는 사용자 확인 후보의 Native IndexedDB 원자 저장을 구현한다. 취소·환불의 원거래 연결과 외화 환산은 실제 사용 사례를 확인한 뒤 별도 Phase에서 결정한다.
