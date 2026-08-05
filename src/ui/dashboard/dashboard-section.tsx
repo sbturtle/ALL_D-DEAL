@@ -63,10 +63,12 @@ function getTransactionTypeLabel(type: Transaction['type']): string {
     EXPENSE: '지출',
     INCOME: '수입',
     TRANSFER: '이체',
+    SELF_TRANSFER: '내 계좌 이체',
     CARD_PAYMENT: '카드대금',
     SAVING: '저축',
     INVESTMENT: '투자',
     LOAN_PAYMENT: '대출 상환',
+    REWARD: '리워드',
     REFUND: '환불',
     UNKNOWN: '확인 필요',
   };

@@ -11,6 +11,12 @@ const accountPreview: ImportPreview = {
     {
       source: 'ACCOUNT_LEDGER_XLS',
       rowNumber: 5,
+      accountTypeClassification: {
+        type: 'UNKNOWN',
+        source: 'ACCOUNT_RULE_ENGINE',
+        reasonCode: 'no_matching_rule',
+        confidence: 'REVIEW',
+      },
       draft: {
         occurredOn: '2026-08-01',
         amountMinor: 15_000,
@@ -31,19 +37,38 @@ const accountPreview: ImportPreview = {
   ],
 };
 
-const multipleCandidatePreview: ImportPreview = {
-  ...accountPreview,
+const expensePreview: ImportPreview = {
+  source: 'CARD_USAGE_XLS',
   candidates: [
-    ...accountPreview.candidates,
     {
-      source: 'ACCOUNT_LEDGER_XLS',
-      rowNumber: 8,
+      source: 'CARD_USAGE_XLS',
+      rowNumber: 5,
+      draft: {
+        occurredOn: '2026-08-01',
+        amountMinor: 15_000,
+        currency: 'KRW',
+        direction: 'OUTFLOW',
+        type: 'EXPENSE',
+        descriptionOriginal: '가짜 식료품점',
+      },
+    },
+  ],
+  issues: [],
+};
+
+const multipleExpensePreview: ImportPreview = {
+  ...expensePreview,
+  candidates: [
+    ...expensePreview.candidates,
+    {
+      source: 'CARD_USAGE_XLS',
+      rowNumber: 6,
       draft: {
         occurredOn: '2026-08-02',
         amountMinor: 22_000,
         currency: 'KRW',
         direction: 'OUTFLOW',
-        type: 'UNKNOWN',
+        type: 'EXPENSE',
         descriptionOriginal: '가짜 대중교통',
       },
     },
@@ -64,7 +89,16 @@ describe('LegacyXlsImportPreview', () => {
     expect(previewFile).toHaveBeenCalledWith(file);
     expect(screen.getByText('계좌 거래 XLS · 후보 1건 · 확인 필요 1건')).toBeVisible();
     expect(screen.getByText('가짜 식료품점')).toBeVisible();
-    expect(screen.getByText('유형 확인 필요 · 출금')).toBeVisible();
+    expect(screen.getByText('검토 필요 · 출금')).toBeVisible();
+    expect(
+      screen.getByText('분류: 계좌 규칙 · 검토 필요 · 일치 규칙 없음'),
+    ).toBeVisible();
+    expect(
+      screen.getByText('카테고리는 지출 유형에서만 지정할 수 있어요.'),
+    ).toBeVisible();
+    expect(
+      screen.queryByLabelText('후보 1 카테고리 열기'),
+    ).not.toBeInTheDocument();
     expect(screen.getByText('−15,000원')).toBeVisible();
     expect(
       screen.getByText('7행 · 입금 또는 출금 금액을 하나만 확인할 수 있어야 합니다.'),
@@ -231,7 +265,7 @@ describe('LegacyXlsImportPreview', () => {
     });
     render(
       <LegacyXlsImportPreview
-        previewFile={async () => accountPreview}
+        previewFile={async () => expensePreview}
         confirmPreview={confirmPreview}
       />,
     );
@@ -263,7 +297,7 @@ describe('LegacyXlsImportPreview', () => {
     const user = userEvent.setup();
     render(
       <LegacyXlsImportPreview
-        previewFile={async () => accountPreview}
+        previewFile={async () => expensePreview}
         findPotentialDuplicates={async () => [
           {
             candidateIndex: 0,
@@ -291,7 +325,7 @@ describe('LegacyXlsImportPreview', () => {
   it('opens one compact picker at a time and clears a category separately from rule consent', async () => {
     const user = userEvent.setup();
     render(
-      <LegacyXlsImportPreview previewFile={async () => multipleCandidatePreview} />,
+      <LegacyXlsImportPreview previewFile={async () => multipleExpensePreview} />,
     );
 
     await user.upload(

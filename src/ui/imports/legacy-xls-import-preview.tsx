@@ -17,6 +17,10 @@ import {
   type CategoryId,
 } from '../../domain/categories/category';
 import type { TransactionType } from '../../domain/transactions/transaction';
+import type {
+  AccountTransactionTypeClassification,
+  AccountTransactionTypeClassificationReasonCode,
+} from '../../domain/transactions/account-transaction-type-classifier';
 import { formatWon } from '../../shared/format/currency';
 
 type ImportStatus = 'IDLE' | 'READING' | 'PREVIEW' | 'SAVING' | 'SAVED';
@@ -61,14 +65,55 @@ function withCategoryId(
   return {
     ...candidate,
     draft:
-      categoryId === undefined
+      candidate.draft.type !== 'EXPENSE' || categoryId === undefined
         ? draftWithoutCategory
         : { ...draftWithoutCategory, categoryId },
   };
 }
 
 function getCandidateTypeLabel(type: TransactionType): string {
-  return type === 'EXPENSE' ? '지출 후보' : '유형 확인 필요';
+  const labels: Readonly<Record<TransactionType, string>> = {
+    EXPENSE: '지출',
+    INCOME: '수입',
+    TRANSFER: '이체',
+    SELF_TRANSFER: '내 계좌 이체',
+    CARD_PAYMENT: '카드대금',
+    SAVING: '저축',
+    INVESTMENT: '투자',
+    LOAN_PAYMENT: '대출 상환',
+    REWARD: '리워드',
+    REFUND: '환불',
+    UNKNOWN: '검토 필요',
+  };
+
+  return labels[type];
+}
+
+function getClassificationReasonLabel(
+  reasonCode: AccountTransactionTypeClassificationReasonCode,
+): string {
+  const labels: Readonly<
+    Record<AccountTransactionTypeClassificationReasonCode, string>
+  > = {
+    card_payment_keyword: '카드대금 표식',
+    savings_keyword: '저축 표식',
+    loan_payment_keyword: '대출상환 표식',
+    investment_keyword: '투자 표식',
+    transfer_keyword: '이체 표식',
+    income_keyword: '수입 표식',
+    reward_keyword: '리워드 표식',
+    no_matching_rule: '일치 규칙 없음',
+  };
+
+  return labels[reasonCode];
+}
+
+function getClassificationLabel(
+  classification: AccountTransactionTypeClassification,
+): string {
+  return `계좌 규칙 · ${
+    classification.confidence === 'HIGH' ? '높은 확신' : '검토 필요'
+  } · ${getClassificationReasonLabel(classification.reasonCode)}`;
 }
 
 function getIssueLabel(issue: ImportIssue): string {
@@ -180,10 +225,11 @@ export function LegacyXlsImportPreview({
         );
         setCategoryIdByCandidateIndex(
           new Map(
-            nextPreview.candidates.map((candidate, candidateIndex) => [
-              candidateIndex,
-              candidate.draft.categoryId,
-            ]),
+            nextPreview.candidates.flatMap((candidate, candidateIndex) =>
+              candidate.draft.type === 'EXPENSE'
+                ? [[candidateIndex, candidate.draft.categoryId] as const]
+                : [],
+            ),
           ),
         );
         setDuplicateCheckFailed(didDuplicateCheckFail);
@@ -240,6 +286,7 @@ export function LegacyXlsImportPreview({
           const categoryId = categoryIdByCandidateIndex.get(candidateIndex);
 
           return selectedCandidateIndexes.has(candidateIndex) &&
+            candidate.draft.type === 'EXPENSE' &&
             categoryRuleCandidateIndexes.has(candidateIndex) &&
             categoryId !== undefined
             ? [
@@ -478,6 +525,7 @@ export function LegacyXlsImportPreview({
                 const selectedCategoryId = categoryIdByCandidateIndex.get(candidateIndex);
                 const isCategoryPickerOpen = openCategoryPickerIndex === candidateIndex;
                 const isCandidateSelected = selectedCandidateIndexes.has(candidateIndex);
+                const isExpenseCandidate = candidate.draft.type === 'EXPENSE';
 
                 return (
                 <li key={`${candidate.source}-${candidate.rowNumber}`}>
@@ -490,10 +538,17 @@ export function LegacyXlsImportPreview({
                       ? ''
                       : ` · ${candidate.draft.paymentInstrumentLabel}`}
                   </span>
+                  {candidate.accountTypeClassification === undefined ? null : (
+                    <small className="import-classification-meta">
+                      분류: {getClassificationLabel(candidate.accountTypeClassification)}
+                    </small>
+                  )}
                   <span className="import-candidate-amount">
                     {candidate.draft.direction === 'INFLOW' ? '+' : '−'}
                     {formatWon(candidate.draft.amountMinor)}
                   </span>
+                  {isExpenseCandidate ? (
+                    <>
                   <div className="import-category-picker">
                     <span>카테고리</span>
                     <button
@@ -579,6 +634,12 @@ export function LegacyXlsImportPreview({
                     />
                     <span>이 설명을 다음에도 기억</span>
                   </label>
+                    </>
+                  ) : (
+                    <small className="import-category-rule-help">
+                      카테고리는 지출 유형에서만 지정할 수 있어요.
+                    </small>
+                  )}
                   {!isCandidateSelected ? (
                     <small className="import-category-rule-help">
                       중복 가능 후보는 저장 대상으로 다시 선택해야 규칙을 기억할 수 있어요.
