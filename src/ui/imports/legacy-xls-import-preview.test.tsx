@@ -203,4 +203,65 @@ describe('LegacyXlsImportPreview', () => {
     await user.click(screen.getByTestId('import-confirm-action'));
     expect(confirmPreview).toHaveBeenCalledWith(accountPreview, { skippedCount: 0 });
   });
+
+  it('stores a changed category and a separately confirmed future rule', async () => {
+    const user = userEvent.setup();
+    const confirmPreview = vi.fn().mockResolvedValue({
+      isConfirmed: false,
+      code: 'nothing_to_save',
+    });
+    render(
+      <LegacyXlsImportPreview
+        previewFile={async () => accountPreview}
+        confirmPreview={confirmPreview}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+    await user.selectOptions(
+      await screen.findByLabelText('후보 1 카테고리'),
+      'FOOD_DINING',
+    );
+    await user.click(screen.getByLabelText('후보 1 카테고리 규칙 저장'));
+    await user.click(screen.getByTestId('import-confirm-action'));
+
+    const [selectedPreview, options] = confirmPreview.mock.calls[0] ?? [];
+    expect(selectedPreview.candidates[0].draft.categoryId).toBe('FOOD_DINING');
+    expect(options).toEqual({
+      skippedCount: 0,
+      categoryRuleRequests: [
+        expect.objectContaining({ categoryId: 'FOOD_DINING' }),
+      ],
+    });
+  });
+
+  it('does not allow an excluded possible duplicate to create a category rule', async () => {
+    const user = userEvent.setup();
+    render(
+      <LegacyXlsImportPreview
+        previewFile={async () => accountPreview}
+        findPotentialDuplicates={async () => [
+          {
+            candidateIndex: 0,
+            savedTransactionIds: ['550e8400-e29b-41d4-a716-446655440099'],
+            previewCandidateIndexes: [],
+          },
+        ]}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+    await user.selectOptions(
+      await screen.findByLabelText('후보 1 카테고리'),
+      'FOOD_DINING',
+    );
+
+    expect(screen.getByLabelText('후보 1 카테고리 규칙 저장')).toBeDisabled();
+  });
 });

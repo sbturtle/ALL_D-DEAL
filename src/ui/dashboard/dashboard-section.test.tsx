@@ -35,6 +35,7 @@ const ordinaryExpense: Transaction = {
   currency: 'KRW',
   direction: 'OUTFLOW',
   type: 'EXPENSE',
+  categoryId: 'TRANSPORT',
   descriptionOriginal: 'Fabricated ordinary expense',
   createdAt: '2026-08-04T00:00:00.000Z',
   updatedAt: '2026-08-04T00:00:00.000Z',
@@ -73,11 +74,13 @@ describe('DashboardSection', () => {
         previewLegacyXls={vi.fn()}
         confirmLegacyXlsImport={vi.fn()}
         findPotentialLegacyXlsImportDuplicates={vi.fn().mockResolvedValue([])}
+        applyCategoryRulesToLegacyXlsPreview={async (preview) => preview}
         ledgerRepository={repository}
       />,
     );
 
     expect(await screen.findByText('Fabricated group payment')).toBeVisible();
+    expect(screen.getByText('2026-08-04 · 지출 · 교통')).toBeVisible();
     expect(screen.getByText('50,000원')).toBeVisible();
     expect(screen.getByText('공동결제 순지출 1건 반영')).toBeVisible();
     expect(screen.getByRole('button', { name: '최근 1주' })).toBeVisible();

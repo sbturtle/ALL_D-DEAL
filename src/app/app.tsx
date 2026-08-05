@@ -8,6 +8,7 @@ import {
   type LegacyXlsImportConfirmationResult,
 } from '../application/imports/confirm-legacy-xls-import';
 import { findPotentialLegacyXlsImportDuplicates } from '../application/imports/find-legacy-xls-import-duplicates';
+import { applyCategoryRulesToLegacyXlsPreview } from '../application/imports/apply-category-rules-to-legacy-xls-preview';
 import type { ImportPreview } from '../domain/imports/legacy-xls-preview';
 import type { UtcIsoInstant } from '../domain/transactions/utc-iso-instant';
 import { previewLegacyXlsFile } from '../infrastructure/imports/legacy-xls-file-reader';
@@ -45,6 +46,10 @@ function findSelectedLegacyXlsImportDuplicates(preview: ImportPreview) {
   return findPotentialLegacyXlsImportDuplicates(preview, ledgerRepository);
 }
 
+function applySelectedCategoryRules(preview: ImportPreview) {
+  return applyCategoryRulesToLegacyXlsPreview(preview, ledgerRepository);
+}
+
 export function App() {
   return (
     <div className="app-shell" id="top">
@@ -60,7 +65,7 @@ export function App() {
           <a href="#import">XLS 가져오기</a>
         </nav>
 
-        <span className="phase-chip">PHASE 4 · LOCAL</span>
+        <span className="phase-chip">PHASE 5 · LOCAL</span>
       </header>
 
       <main>
@@ -104,6 +109,7 @@ export function App() {
           previewLegacyXls={previewSelectedLegacyXls}
           confirmLegacyXlsImport={confirmSelectedLegacyXlsImport}
           findPotentialLegacyXlsImportDuplicates={findSelectedLegacyXlsImportDuplicates}
+          applyCategoryRulesToLegacyXlsPreview={applySelectedCategoryRules}
           ledgerRepository={ledgerRepository}
         />
 

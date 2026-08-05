@@ -5,6 +5,7 @@ import type {
   LegacyXlsImportConfirmationResult,
 } from '../../application/imports/confirm-legacy-xls-import';
 import type { DuplicateCandidateMatch } from '../../domain/imports/duplicate-candidates';
+import type { CategoryId } from '../../domain/categories/category';
 import type { LegacyXlsPreviewReader } from '../../application/imports/prepare-legacy-xls-import';
 import { saveManualBudgetSettlement } from '../../application/ledger/save-manual-budget-settlement';
 import type { ImportPreview } from '../../domain/imports/legacy-xls-preview';
@@ -45,6 +46,9 @@ type DashboardSectionProps = Readonly<{
   findPotentialLegacyXlsImportDuplicates: (
     preview: ImportPreview,
   ) => Promise<readonly DuplicateCandidateMatch[]>;
+  applyCategoryRulesToLegacyXlsPreview: (
+    preview: ImportPreview,
+  ) => Promise<ImportPreview>;
   ledgerRepository: LocalLedgerRepository;
 }>;
 
@@ -89,6 +93,26 @@ function getTransactionTypeLabel(type: Transaction['type']): string {
   return labels[type];
 }
 
+function getCategoryLabel(categoryId: CategoryId | undefined): string {
+  if (categoryId === undefined) {
+    return '미분류';
+  }
+
+  const labels: Readonly<Record<CategoryId, string>> = {
+    FOOD_DINING: '식비·외식',
+    TRANSPORT: '교통',
+    HOUSING_UTILITIES: '주거·공과금',
+    SHOPPING: '쇼핑',
+    HEALTH: '건강',
+    EDUCATION: '교육',
+    LEISURE: '여가',
+    SUBSCRIPTION: '구독',
+    OTHER: '기타',
+  };
+
+  return labels[categoryId];
+}
+
 function getSettlementErrorMessage(code: Exclude<
   Awaited<ReturnType<typeof saveManualBudgetSettlement>>,
   { isSaved: true }
@@ -123,6 +147,7 @@ export function DashboardSection({
   previewLegacyXls,
   confirmLegacyXlsImport,
   findPotentialLegacyXlsImportDuplicates,
+  applyCategoryRulesToLegacyXlsPreview,
   ledgerRepository,
 }: DashboardSectionProps) {
   const [mode, setMode] = useState<DashboardMode>('LOCAL');
@@ -486,7 +511,8 @@ export function DashboardSection({
                     <span className="transaction-copy">
                       <strong>{transaction.descriptionOriginal}</strong>
                       <small>
-                        {transaction.occurredOn} · {getTransactionTypeLabel(transaction.type)}
+                        {transaction.occurredOn} · {getTransactionTypeLabel(transaction.type)} ·{' '}
+                        {getCategoryLabel(transaction.categoryId)}
                       </small>
                     </span>
                     <strong
@@ -621,6 +647,7 @@ export function DashboardSection({
         <aside className="import-card import-card--active" aria-labelledby="import-title">
           <LegacyXlsImportPreview
             previewFile={previewLegacyXls}
+            applyCategoryRules={applyCategoryRulesToLegacyXlsPreview}
             confirmPreview={confirmLegacyXlsImport}
             findPotentialDuplicates={findPotentialLegacyXlsImportDuplicates}
             onImportConfirmed={requestReload}

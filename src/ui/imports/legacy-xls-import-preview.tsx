@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 
 import type {
+  ImportCandidate,
   ImportIssue,
   ImportPreview,
   ImportSource,
@@ -11,6 +12,11 @@ import type {
   LegacyXlsImportConfirmationOptions,
 } from '../../application/imports/confirm-legacy-xls-import';
 import type { DuplicateCandidateMatch } from '../../domain/imports/duplicate-candidates';
+import {
+  CATEGORY_IDS,
+  isCategoryId,
+  type CategoryId,
+} from '../../domain/categories/category';
 import type { TransactionType } from '../../domain/transactions/transaction';
 import { formatWon } from '../../shared/format/currency';
 
@@ -18,6 +24,7 @@ type ImportStatus = 'IDLE' | 'READING' | 'PREVIEW' | 'SAVING' | 'SAVED';
 
 export type LegacyXlsImportPreviewProps = Readonly<{
   previewFile: LegacyXlsPreviewReader;
+  applyCategoryRules?: (preview: ImportPreview) => Promise<ImportPreview>;
   findPotentialDuplicates?: (
     preview: ImportPreview,
   ) => Promise<readonly DuplicateCandidateMatch[]>;
@@ -32,6 +39,34 @@ const SOURCE_LABELS: Readonly<Record<ImportSource, string>> = {
   ACCOUNT_LEDGER_XLS: '계좌 거래 XLS',
   CARD_USAGE_XLS: '카드 이용 XLS',
 };
+
+const CATEGORY_LABELS: Readonly<Record<CategoryId, string>> = {
+  FOOD_DINING: '식비·외식',
+  TRANSPORT: '교통',
+  HOUSING_UTILITIES: '주거·공과금',
+  SHOPPING: '쇼핑',
+  HEALTH: '건강',
+  EDUCATION: '교육',
+  LEISURE: '여가',
+  SUBSCRIPTION: '구독',
+  OTHER: '기타',
+};
+
+function withCategoryId(
+  candidate: ImportCandidate,
+  categoryId: CategoryId | undefined,
+): ImportCandidate {
+  const { categoryId: ignoredCategoryId, ...draftWithoutCategory } = candidate.draft;
+  void ignoredCategoryId;
+
+  return {
+    ...candidate,
+    draft:
+      categoryId === undefined
+        ? draftWithoutCategory
+        : { ...draftWithoutCategory, categoryId },
+  };
+}
 
 function getCandidateTypeLabel(type: TransactionType): string {
   return type === 'EXPENSE' ? '지출 후보' : '유형 확인 필요';
@@ -52,6 +87,7 @@ function getPreviewSummary(preview: ImportPreview): string {
 
 export function LegacyXlsImportPreview({
   previewFile,
+  applyCategoryRules,
   findPotentialDuplicates,
   confirmPreview,
   onImportConfirmed,
@@ -65,6 +101,12 @@ export function LegacyXlsImportPreview({
     ReadonlySet<number>
   >(new Set());
   const [duplicateCheckFailed, setDuplicateCheckFailed] = useState(false);
+  const [categoryIdByCandidateIndex, setCategoryIdByCandidateIndex] = useState<
+    ReadonlyMap<number, CategoryId | undefined>
+  >(new Map());
+  const [categoryRuleCandidateIndexes, setCategoryRuleCandidateIndexes] = useState<
+    ReadonlySet<number>
+  >(new Set());
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const requestIdRef = useRef(0);
 
@@ -75,6 +117,8 @@ export function LegacyXlsImportPreview({
     setDuplicateMatches([]);
     setSelectedCandidateIndexes(new Set());
     setDuplicateCheckFailed(false);
+    setCategoryIdByCandidateIndex(new Map());
+    setCategoryRuleCandidateIndexes(new Set());
     setSaveMessage(null);
   };
 
@@ -95,10 +139,16 @@ export function LegacyXlsImportPreview({
     setDuplicateMatches([]);
     setSelectedCandidateIndexes(new Set());
     setDuplicateCheckFailed(false);
+    setCategoryIdByCandidateIndex(new Map());
+    setCategoryRuleCandidateIndexes(new Set());
     setSaveMessage(null);
 
     try {
-      const nextPreview = await previewFile(file);
+      const parsedPreview = await previewFile(file);
+      const nextPreview =
+        applyCategoryRules === undefined
+          ? parsedPreview
+          : await applyCategoryRules(parsedPreview);
       let nextDuplicateMatches: readonly DuplicateCandidateMatch[] = [];
       let didDuplicateCheckFail = false;
 
@@ -122,6 +172,14 @@ export function LegacyXlsImportPreview({
             nextPreview.candidates.flatMap((_, candidateIndex) =>
               duplicateCandidateIndexes.has(candidateIndex) ? [] : [candidateIndex],
             ),
+          ),
+        );
+        setCategoryIdByCandidateIndex(
+          new Map(
+            nextPreview.candidates.map((candidate, candidateIndex) => [
+              candidateIndex,
+              candidate.draft.categoryId,
+            ]),
           ),
         );
         setDuplicateCheckFailed(didDuplicateCheckFail);
@@ -152,8 +210,16 @@ export function LegacyXlsImportPreview({
       return;
     }
 
-    const selectedCandidates = preview.candidates.filter((_, candidateIndex) =>
-      selectedCandidateIndexes.has(candidateIndex),
+    const selectedCandidates = preview.candidates.flatMap(
+      (candidate, candidateIndex) =>
+        selectedCandidateIndexes.has(candidateIndex)
+          ? [
+              withCategoryId(
+                candidate,
+                categoryIdByCandidateIndex.get(candidateIndex),
+              ),
+            ]
+          : [],
     );
 
     if (selectedCandidates.length === 0) {
@@ -165,9 +231,28 @@ export function LegacyXlsImportPreview({
     setSaveMessage(null);
     let result: LegacyXlsImportConfirmationResult;
     try {
+      const categoryRuleRequests = preview.candidates.flatMap(
+        (candidate, candidateIndex) => {
+          const categoryId = categoryIdByCandidateIndex.get(candidateIndex);
+
+          return selectedCandidateIndexes.has(candidateIndex) &&
+            categoryRuleCandidateIndexes.has(candidateIndex) &&
+            categoryId !== undefined
+            ? [
+                {
+                  descriptionOriginal: candidate.draft.descriptionOriginal,
+                  categoryId,
+                },
+              ]
+            : [];
+        },
+      );
       result = await confirmPreview(
         { ...preview, candidates: selectedCandidates },
-        { skippedCount: preview.candidates.length - selectedCandidates.length },
+        {
+          skippedCount: preview.candidates.length - selectedCandidates.length,
+          ...(categoryRuleRequests.length === 0 ? {} : { categoryRuleRequests }),
+        },
       );
     } catch {
       setStatus('PREVIEW');
@@ -179,6 +264,15 @@ export function LegacyXlsImportPreview({
       setStatus('SAVED');
       setSaveMessage(`${result.transactions.length}건을 이 기기에 저장했습니다.`);
       onImportConfirmed?.();
+      return;
+    }
+
+    if (
+      result.code === 'invalid_category_rule' ||
+      result.code === 'conflicting_category_rule'
+    ) {
+      setStatus('PREVIEW');
+      setSaveMessage('카테고리 규칙을 다시 확인해 주세요. 같은 거래 설명에는 한 가지 카테고리만 저장할 수 있습니다.');
       return;
     }
 
@@ -208,6 +302,44 @@ export function LegacyXlsImportPreview({
     setSelectedCandidateIndexes((currentIndexes) => {
       const nextIndexes = new Set(currentIndexes);
       duplicateMatches.forEach((match) => nextIndexes.add(match.candidateIndex));
+      return nextIndexes;
+    });
+  };
+
+  const updateCandidateCategory = (
+    candidateIndex: number,
+    value: string,
+  ) => {
+    const categoryId = isCategoryId(value) ? value : undefined;
+    setCategoryIdByCandidateIndex((currentCategories) => {
+      const nextCategories = new Map(currentCategories);
+      nextCategories.set(candidateIndex, categoryId);
+      return nextCategories;
+    });
+
+    if (categoryId === undefined) {
+      setCategoryRuleCandidateIndexes((currentIndexes) => {
+        const nextIndexes = new Set(currentIndexes);
+        nextIndexes.delete(candidateIndex);
+        return nextIndexes;
+      });
+    }
+  };
+
+  const toggleCategoryRule = (candidateIndex: number) => {
+    if (categoryIdByCandidateIndex.get(candidateIndex) === undefined) {
+      return;
+    }
+
+    setCategoryRuleCandidateIndexes((currentIndexes) => {
+      const nextIndexes = new Set(currentIndexes);
+
+      if (nextIndexes.has(candidateIndex)) {
+        nextIndexes.delete(candidateIndex);
+      } else {
+        nextIndexes.add(candidateIndex);
+      }
+
       return nextIndexes;
     });
   };
@@ -332,7 +464,7 @@ export function LegacyXlsImportPreview({
 
           {preview.candidates.length > 0 ? (
             <ul className="import-candidate-list" aria-label="가져오기 후보">
-              {preview.candidates.slice(0, 6).map((candidate) => (
+              {preview.candidates.map((candidate, candidateIndex) => (
                 <li key={`${candidate.source}-${candidate.rowNumber}`}>
                   <span className="import-candidate-date">{candidate.draft.occurredOn}</span>
                   <strong>{candidate.draft.descriptionOriginal}</strong>
@@ -347,16 +479,50 @@ export function LegacyXlsImportPreview({
                     {candidate.draft.direction === 'INFLOW' ? '+' : '−'}
                     {formatWon(candidate.draft.amountMinor)}
                   </span>
+                  <label className="import-category-select">
+                    <span>카테고리</span>
+                    <select
+                      aria-label={`후보 ${candidateIndex + 1} 카테고리`}
+                      value={categoryIdByCandidateIndex.get(candidateIndex) ?? ''}
+                      disabled={status === 'SAVING' || status === 'SAVED'}
+                      onChange={(event) =>
+                        updateCandidateCategory(
+                          candidateIndex,
+                          event.currentTarget.value,
+                        )
+                      }
+                    >
+                      <option value="">미분류</option>
+                      {CATEGORY_IDS.map((categoryId) => (
+                        <option key={categoryId} value={categoryId}>
+                          {CATEGORY_LABELS[categoryId]}
+                        </option>
+                      ))}
+                    </select>
+                    <small>
+                      {candidate.draft.categoryId === undefined
+                        ? '카테고리는 저장 전에 직접 선택할 수 있습니다.'
+                        : '저장된 규칙으로 채워졌으며 저장 전에 바꿀 수 있습니다.'}
+                    </small>
+                  </label>
+                  <label className="import-category-rule">
+                    <input
+                      type="checkbox"
+                      aria-label={`후보 ${candidateIndex + 1} 카테고리 규칙 저장`}
+                      checked={categoryRuleCandidateIndexes.has(candidateIndex)}
+                      disabled={
+                        status === 'SAVING' ||
+                        status === 'SAVED' ||
+                        !selectedCandidateIndexes.has(candidateIndex) ||
+                        categoryIdByCandidateIndex.get(candidateIndex) === undefined
+                      }
+                      onChange={() => toggleCategoryRule(candidateIndex)}
+                    />
+                    <span>이 거래 설명에 앞으로 적용</span>
+                  </label>
                 </li>
               ))}
             </ul>
-          ) : null}
-
-          {preview.candidates.length > 6 ? (
-            <p className="import-overflow-note">
-              후보 {preview.candidates.length - 6}건은 다음 저장 전 확인 단계에서 계속
-              보여드립니다.
-            </p>
           ) : null}
 
           {preview.issues.length > 0 ? (

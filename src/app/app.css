@@ -1438,7 +1438,10 @@ fieldset {
 .import-candidate-list {
   display: grid;
   gap: 0;
+  max-height: 460px;
   margin: 14px 0 0;
+  padding-right: 3px;
+  overflow-y: auto;
   border-top: 1px solid rgb(255 255 255 / 15%);
 }
 
@@ -1470,13 +1473,60 @@ fieldset {
 }
 
 .import-candidate-amount {
-  grid-row: span 2;
+  grid-row: 1 / span 4;
   grid-column: 3;
   color: var(--lime);
   font-size: 0.7rem;
   font-weight: 850;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.import-category-select {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-column: 2;
+  gap: 4px 8px;
+  align-items: center;
+  color: #aebbb4;
+  font-size: 0.6rem;
+  font-weight: 750;
+}
+
+.import-category-select select {
+  min-width: 0;
+  min-height: 29px;
+  padding: 4px 6px;
+  color: #e7eee8;
+  font-size: 0.62rem;
+  background: rgb(255 255 255 / 8%);
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 6px;
+}
+
+.import-category-select small {
+  grid-column: 1 / -1;
+  color: #aebbb4;
+  font-size: 0.56rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.import-category-rule {
+  display: flex;
+  grid-column: 2;
+  gap: 6px;
+  align-items: center;
+  color: #d3df86;
+  font-size: 0.61rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.import-category-rule input {
+  flex: 0 0 auto;
+  margin: 0;
+  accent-color: var(--lime);
 }
 
 .duplicate-check-error {
