@@ -8,10 +8,12 @@ export const TRANSACTION_TYPES = [
   'EXPENSE',
   'INCOME',
   'TRANSFER',
+  'SELF_TRANSFER',
   'CARD_PAYMENT',
   'SAVING',
   'INVESTMENT',
   'LOAN_PAYMENT',
+  'REWARD',
   'REFUND',
   'UNKNOWN',
 ] as const;
