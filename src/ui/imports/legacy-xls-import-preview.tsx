@@ -516,9 +516,23 @@ export function LegacyXlsImportPreview({
           (match) => preview.candidates[match.candidateIndex] !== undefined,
         );
   const selectedCandidateCount = selectedCandidateIndexes.size;
+  const kakaoAnalysisPendingCount = Array.from(
+    placeSearchByCandidateIndex.values(),
+  ).filter((placeSearchState) => placeSearchState.status === 'SEARCHING').length;
 
   return (
     <div className="legacy-import-preview" id="import">
+      {kakaoAnalysisPendingCount > 0 ? (
+        <div className="import-kakao-loading" role="status" aria-live="polite">
+          <span className="import-kakao-loading-spinner" aria-hidden="true" />
+          <span>
+            <strong>Kakao 장소를 분석하고 있어요</strong>
+            <small>
+              {kakaoAnalysisPendingCount}건을 처리 중입니다. 결과가 도착하면 자동으로 표시됩니다.
+            </small>
+          </span>
+        </div>
+      ) : null}
       <span className="status-pill">사용 가능 · Preview</span>
       <p className="panel-kicker">LOCAL XLS IMPORT</p>
       <h3 id="import-title">내 XLS 파일 미리보기</h3>

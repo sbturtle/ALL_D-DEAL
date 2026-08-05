@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { PlaceSearchResult } from '../../application/places/place-search';
 import type { ImportPreview } from '../../domain/imports/legacy-xls-preview';
 import { LegacyXlsImportPreview } from './legacy-xls-import-preview';
 
@@ -410,6 +411,40 @@ describe('LegacyXlsImportPreview', () => {
     expect(
       screen.getByText(/가짜 식료품점 · 음식점 > 카페 > 커피전문점 → 카페 · KAKAO_LOCAL · HIGH/),
     ).toBeVisible();
+  });
+
+  it('shows pending Kakao analysis progress until the place search completes', async () => {
+    const user = userEvent.setup();
+    let resolveSearch: (value: readonly PlaceSearchResult[]) => void = () => {};
+    const searchPlaces = vi.fn(
+      () =>
+        new Promise<readonly PlaceSearchResult[]>((resolve) => {
+          resolveSearch = resolve;
+        }),
+    );
+    render(
+      <LegacyXlsImportPreview
+        previewFile={async () => expensePreview}
+        searchPlaces={searchPlaces}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+
+    expect(await screen.findByText('Kakao 장소를 분석하고 있어요')).toBeVisible();
+    expect(
+      screen.getByText('1건을 처리 중입니다. 결과가 도착하면 자동으로 표시됩니다.'),
+    ).toBeVisible();
+
+    resolveSearch([]);
+
+    expect(
+      await screen.findByText('일치하는 장소가 없어요. 결과는 저장하지 않습니다.'),
+    ).toBeVisible();
+    expect(screen.queryByText('Kakao 장소를 분석하고 있어요')).not.toBeInTheDocument();
   });
 
   it('keeps a user-rule category ahead of Kakao and does not send it for lookup', async () => {

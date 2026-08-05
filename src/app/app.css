@@ -1473,6 +1473,52 @@ fieldset {
   line-height: 1.55;
 }
 
+.import-kakao-loading {
+  position: sticky;
+  top: 12px;
+  z-index: 2;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  color: #edf6e9;
+  background: rgb(25 43 34 / 96%);
+  border: 1px solid rgb(216 239 120 / 58%);
+  border-radius: 9px;
+  box-shadow: 0 8px 22px rgb(0 0 0 / 22%);
+}
+
+.import-kakao-loading > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.import-kakao-loading strong {
+  font-size: 0.74rem;
+}
+
+.import-kakao-loading small {
+  color: #c8d8cf;
+  font-size: 0.66rem;
+}
+
+.import-kakao-loading-spinner {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  border: 2px solid rgb(216 239 120 / 26%);
+  border-top-color: var(--lime);
+  border-radius: 50%;
+  animation: import-kakao-spinner 0.8s linear infinite;
+}
+
+@keyframes import-kakao-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .import-preview-result {
   margin-top: 18px;
   padding-top: 18px;
