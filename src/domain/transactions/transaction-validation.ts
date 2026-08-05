@@ -1,5 +1,6 @@
 import { isCalendarDate } from './calendar-date';
 import { isPositiveMinorAmount, isSupportedCurrency } from './money';
+import { isCategoryId, type CategoryId } from '../categories/category';
 import {
   isTransactionDirection,
   isTransactionImporterId,
@@ -50,6 +51,7 @@ const TRANSACTION_FIELDS = [
   'currency',
   'direction',
   'type',
+  'categoryId',
   'descriptionOriginal',
   'merchantOriginal',
   'merchantNormalized',
@@ -345,6 +347,27 @@ function readTransactionType(
   return candidate.type;
 }
 
+function readOptionalCategoryId(
+  candidate: CandidateRecord,
+  issues: TransactionValidationIssue[],
+): CategoryId | undefined {
+  if (!hasOwnField(candidate, 'categoryId') || candidate.categoryId === undefined) {
+    return undefined;
+  }
+
+  if (!isCategoryId(candidate.categoryId)) {
+    addIssue(
+      issues,
+      'categoryId',
+      'unsupported_type',
+      '지원하지 않는 카테고리입니다.',
+    );
+    return undefined;
+  }
+
+  return candidate.categoryId;
+}
+
 function readUtcIsoInstant(
   candidate: CandidateRecord,
   field: 'createdAt' | 'updatedAt',
@@ -411,6 +434,7 @@ export function validateTransaction(
   const currency = readCurrency(candidate, issues);
   const direction = readDirection(candidate, issues);
   const type = readTransactionType(candidate, issues);
+  const categoryId = readOptionalCategoryId(candidate, issues);
   const descriptionOriginal = readRequiredNonBlankText(
     candidate,
     'descriptionOriginal',
@@ -480,6 +504,7 @@ export function validateTransaction(
       currency,
       direction,
       type,
+      ...(categoryId === undefined ? {} : { categoryId }),
       descriptionOriginal,
       ...(merchantOriginal === undefined ? {} : { merchantOriginal }),
       ...(merchantNormalized === undefined ? {} : { merchantNormalized }),

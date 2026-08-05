@@ -1,6 +1,7 @@
 import type { CalendarDate } from './calendar-date';
 import type { Money } from './money';
 import type { UtcIsoInstant } from './utc-iso-instant';
+import type { CategoryId } from '../categories/category';
 
 export const TRANSACTION_DIRECTIONS = ['INFLOW', 'OUTFLOW'] as const;
 export const TRANSACTION_TYPES = [
@@ -26,6 +27,7 @@ export type Transaction = Readonly<
     occurredOn: CalendarDate;
     direction: TransactionDirection;
     type: TransactionType;
+    categoryId?: CategoryId;
     descriptionOriginal: string;
     merchantOriginal?: string;
     merchantNormalized?: string;

@@ -4,6 +4,7 @@ import {
   TRANSACTION_DIRECTIONS,
   TRANSACTION_TYPES,
 } from './transaction';
+import { CATEGORY_IDS } from '../categories/category';
 import { validateTransaction } from './transaction-validation';
 
 const validTransaction = {
@@ -313,5 +314,19 @@ describe('validateTransaction', () => {
       );
       expect(JSON.stringify(result.issues)).not.toContain(sensitiveLikeValue);
     }
+  });
+
+  it.each(CATEGORY_IDS)('%s 카테고리를 선택 값으로 허용한다', (categoryId) => {
+    expect(
+      validateTransaction({ ...validTransaction, categoryId }).isValid,
+    ).toBe(true);
+  });
+
+  it('지원하지 않는 카테고리를 거절한다', () => {
+    expectIssue(
+      { ...validTransaction, categoryId: 'UNCLASSIFIED' },
+      'categoryId',
+      'unsupported_type',
+    );
   });
 });

@@ -6,6 +6,7 @@ import type {
   TransactionDirection,
   TransactionType,
 } from '../transactions/transaction';
+import type { CategoryId } from '../categories/category';
 
 export const MAX_IMPORT_ROWS = 2_000;
 export const MAX_IMPORT_COLUMNS = 20;
@@ -24,6 +25,7 @@ export type TransactionDraft = Readonly<{
   currency: CurrencyCode;
   direction: TransactionDirection;
   type: TransactionType;
+  categoryId?: CategoryId;
   descriptionOriginal: string;
   paymentInstrumentLabel?: string;
 }>;
