@@ -61,4 +61,4 @@
 - 실제 금융기관명 노출, 기관 API·MyData 연동
 - CSV, XLSX, PDF, 다중 시트와 암호화된 파일 지원
 - 취소·환불의 원거래 연결과 자동 순액 처리
-- 중복 탐지, Category, Dashboard 집계, IndexedDB 저장
+- 사용자 정의 Category, Dashboard 카테고리 집계, 원본 파일·Blob 저장

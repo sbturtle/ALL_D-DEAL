@@ -100,6 +100,8 @@ fingerprint는 후보 검색을 돕는 값이다. 날짜·금액·거래 유형�
 
 Category와 CategoryRule은 실제 규칙 사용 사례가 생긴 뒤 별도 모델로 정의한다. 처음 보는 Merchant에 대한 사용자 확인과 규칙 생성 동의를 구분한다.
 
+> **Implemented decision (2026-08-05):** `Transaction.categoryId` is optional and `categoryRules` is a separate IndexedDB v2 store. The current importers use an exact normalized `descriptionOriginal` key because they do not provide a reliable merchant field. Rules only fill a new Preview and require explicit consent to create or replace. See [Confirmed Category Rule Contract](category-rule-contract.md) and [ADR-0007](../adr/ADR-0007-confirmed-description-category-rules.md).
+
 ## ImportBatch 후보
 
 확정된 Import 작업을 추적하기 위한 최소 후보는 다음과 같다.
@@ -139,7 +141,6 @@ Phase 2에서는 저장 포트, DB 스키마와 라이브러리를 구현하지 
 
 다음은 방향만 기록하며 현재 구현하거나 빈 인터페이스를 만들지 않는다.
 
-- Category, CategoryRule: Phase 5
 - 생활비 목표와 사용자 Settings: Phase 6 또는 별도 계획
 - 주거·결혼자금, 비상금, 청약, 투자, 대출: Phase 8
 - 환불 원거래 연결, 분할 거래, 다중 통화: 실제 요구 확인 후

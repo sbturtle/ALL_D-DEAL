@@ -1,5 +1,57 @@
 # Engineering Log
 
+## 2026-08-05 — Phase 5 Confirmed Category Rules
+
+### 작업 목적
+
+Legacy XLS Preview에서 거래별 카테고리를 사용자가 직접 확인·수정하고, 같은 정규화 설명에 대해서만 다음 Preview에 재사용할 수 있는 명시적 규칙을 로컬에 저장한다. 자동 분류는 저장 확정 전 항상 보이고 수정 가능해야 하며, 기존 원장은 바꾸지 않는다.
+
+### 변경 내용
+
+- `FOOD_DINING`부터 `OTHER`까지 9개 고정 카테고리와 선택적 `Transaction.categoryId`를 추가했다. 값이 없으면 기존 거래와 동일하게 미분류다.
+- 설명을 NFKC·소문자·기호 공백화·공백 정리로 정규화한 정확 일치 키의 `CategoryRule`을 추가했다. 300자를 넘거나 연속 숫자 5자리 이상을 포함한 설명은 새 규칙으로 저장하지 않는다.
+- IndexedDB v2의 `categoryRules` 저장소를 추가하고, 선택 거래·ImportBatch·확정 규칙을 하나의 read-write transaction으로 저장한다. 규칙 교체는 이전 Transaction을 수정하지 않는다.
+- 저장된 규칙은 새 Preview에만 미리 채우며, 사용자는 후보별 선택 상자에서 수정할 수 있다. 카테고리 저장과 “이 거래 설명에 앞으로 적용” 동의를 분리했고, 선택하지 않은 중복 후보는 규칙을 만들 수 없다.
+- Dashboard의 저장 거래 메타데이터에 카테고리(또는 미분류)를 표시했다.
+- 다른 탭의 스키마 업그레이드 차단 또는 종료 이벤트 없는 IndexedDB 열기 요청은 각각 안전하게 실패시켜 화면이 무한 로딩되지 않도록 했다. 후자는 5초 제한을 둔다.
+
+### 검증 방법과 결과
+
+| 검증 | 결과 | 비고 |
+| --- | --- | --- |
+| `npm run lint` | PASS | warning 0개 |
+| `npm run typecheck` | PASS | TypeScript project build 성공 |
+| `npm test` | PASS | 22 files, 274 tests |
+| `npm run build` | PASS | Vite production build 성공 |
+| Domain/Application/UI/저장소 테스트 | PASS | 정규화·민감 숫자 거부·규칙 재사용/교체·원자 rollback·v1→v2 마이그레이션·중복 제외·무응답 저장소 안전 실패 검증 |
+| 브라우저 수동 점검 | PASS | `PHASE 5 · LOCAL` 표시와 저장소 무응답 5초 뒤 안전 오류 상태 확인; 개인 XLS는 열거나 저장하지 않음 |
+| 개인정보 경계 | PASS | 실제 XLS·파일명·원본 행을 테스트·로그·커밋에 사용하지 않음 |
+| `git diff --check` | PASS | 최종 문서 커밋 전 재확인 예정 |
+
+프로덕션 빌드는 기존 SheetJS 포함 JavaScript 청크가 500 kB를 넘는다는 경고만 출력했다. 동작 실패는 없으며, 코드 분할은 별도 성능 작업으로 남긴다.
+
+### 리뷰에서 반영한 사항
+
+- 규칙 키가 계좌·카드 식별자를 새로 보관하는 경로가 되지 않도록 긴 연속 숫자를 거부했다.
+- 규칙이 자동 저장이나 과거 원장 재분류로 해석되지 않도록 Preview 전용 적용과 별도 동의를 계약에 명시했다.
+- IndexedDB의 `blocked` 이벤트만 신뢰하지 않고, 어떤 종료 이벤트도 오지 않는 경우까지 시간 제한으로 보호했다.
+
+### 기능 단위 커밋
+
+- `93810a6` `[Docs] : 카테고리 규칙 계약 추가`
+- `1bc353d` `[Feat] : 카테고리 규칙 도메인 추가`
+- `2326269` `[Feat] : 카테고리 규칙 로컬 저장 추가`
+- `57e2057` `[Feat] : Import 카테고리 규칙 적용 추가`
+- `dec1422` `[Feat] : Import 카테고리 검토 화면 추가`
+- `5f2d097` `[Fix] : 카테고리 규칙 식별자 저장 방지`
+- `8942b48` `[Test] : 카테고리 규칙 교체 원장 보존 검증`
+- `9457203` `[Fix] : IndexedDB 업그레이드 대기 방지`
+- `6166bb3` `[Fix] : IndexedDB 저장소 대기 제한 추가`
+
+### 상태
+
+`DONE`
+
 ## 2026-08-05 — Phase 4 Duplicate Candidate Review
 
 ### 작업 목적

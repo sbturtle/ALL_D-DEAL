@@ -1,6 +1,6 @@
 # Phase 5 — Confirmed Category Rules
 
-- Status: `IN_PROGRESS`
+- Status: `DONE`
 - Plan updated: 2026-08-05
 - Prerequisite: Phase 4 Duplicate Candidate Review `DONE`
 
@@ -17,6 +17,7 @@ Let the user assign a category while reviewing a Legacy XLS Preview. Reuse a pre
 - `Transaction.categoryId` is optional. Existing transactions remain valid and unclassified; creating or replacing a rule never rewrites them.
 - Category rules and selected import transactions are committed in the same IndexedDB transaction. A rule conflict for the same normalized description and different categories rejects confirmation safely.
 - Native IndexedDB moves from v1 to v2 only to add the `categoryRules` store. No source file, file name, original row, remote request, or private sample is stored.
+- If IndexedDB reports an upgrade block or does not finish opening within five seconds, the app stops loading and presents its existing safe local-storage error state.
 
 ## Out of scope
 
@@ -26,11 +27,11 @@ Let the user assign a category while reviewing a Legacy XLS Preview. Reuse a pre
 ## Tasks
 
 1. `DONE` Record Phase 5 requirements, initial taxonomy, description-key limitation, confirmation policy, and v2 migration decision.
-2. `IN_PROGRESS` Add and test CategoryId, category-rule normalization/validation, and optional transaction category validation.
-3. `TODO` Add IndexedDB v2 category-rule storage, atomic import/rule commit, and rule reading.
-4. `TODO` Apply stored rules to Preview and add editable category plus explicit rule-consent controls for every candidate.
-5. `TODO` Verify rule reuse, individual edits, rule conflicts, duplicate-candidate selection interaction, migration, privacy boundaries, and existing flows.
-6. `TODO` Run lint, typecheck, tests, build, browser smoke checks, documentation, review, and focused local commits.
+2. `DONE` Add and test CategoryId, category-rule normalization/validation, and optional transaction category validation.
+3. `DONE` Add IndexedDB v2 category-rule storage, atomic import/rule commit, and rule reading.
+4. `DONE` Apply stored rules to Preview and add editable category plus explicit rule-consent controls for every candidate.
+5. `DONE` Verify rule reuse, individual edits, rule conflicts, duplicate-candidate selection interaction, migration, privacy boundaries, and existing flows.
+6. `DONE` Run lint, typecheck, tests, build, browser smoke checks, documentation, review, and focused local commits.
 
 ## Acceptance criteria
 
