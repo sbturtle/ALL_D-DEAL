@@ -1504,6 +1504,234 @@ fieldset {
   line-height: 1.45;
 }
 
+.period-controls {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: end;
+  margin-top: 28px;
+  padding: 14px;
+  background: rgb(255 253 248 / 70%);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.period-preset-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.period-preset-buttons button,
+.settlement-save-action,
+.import-confirm-action {
+  min-height: 38px;
+  padding: 8px 11px;
+  color: var(--green-dark);
+  font-size: 0.71rem;
+  font-weight: 800;
+  background: #e8eee3;
+  border: 1px solid #bdcabf;
+  border-radius: 8px;
+}
+
+.period-preset-buttons button.is-active,
+.settlement-save-action,
+.import-confirm-action {
+  color: var(--white);
+  background: var(--green-dark);
+  border-color: var(--green-dark);
+}
+
+.period-date-inputs,
+.period-anchor-input {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  color: #56635c;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.period-date-inputs label,
+.period-anchor-input {
+  display: grid;
+  gap: 5px;
+}
+
+.period-controls input,
+.settlement-form select {
+  min-height: 36px;
+  padding: 6px 8px;
+  color: var(--ink);
+  background: var(--white);
+  border: 1px solid #bfc8c0;
+  border-radius: 7px;
+}
+
+.period-range-note,
+.period-range-error {
+  margin: 0;
+  color: #607069;
+  font-size: 0.65rem;
+  line-height: 1.5;
+}
+
+.period-range-error,
+.ledger-load-error,
+.settlement-notice--error {
+  color: #a23a2c;
+}
+
+.settlement-panel {
+  margin-top: 12px;
+  padding: 22px;
+  background: #f7f6ee;
+  border: 1px solid var(--ink);
+  border-radius: 18px;
+}
+
+.settlement-panel > p {
+  margin: 14px 0 0;
+  color: #627067;
+  font-size: 0.72rem;
+  line-height: 1.65;
+  word-break: keep-all;
+}
+
+.settlement-form {
+  display: grid;
+  gap: 13px;
+  margin-top: 18px;
+}
+
+.settlement-form > label,
+.settlement-form fieldset {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  color: #435048;
+  font-size: 0.69rem;
+  font-weight: 780;
+  border: 0;
+}
+
+.settlement-form fieldset {
+  padding-top: 12px;
+  border-top: 1px solid #d5d8cc;
+}
+
+.settlement-reimbursement-list {
+  display: grid;
+  gap: 6px;
+  max-height: 152px;
+  padding: 4px 2px 4px 0;
+  overflow-y: auto;
+}
+
+.settlement-reimbursement-list label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  color: #536059;
+  font-size: 0.67rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.settlement-reimbursement-list input {
+  flex: 0 0 auto;
+  margin: 2px 0 0;
+  accent-color: var(--green);
+}
+
+.settlement-empty,
+.settlement-notice {
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.settlement-notice {
+  margin-top: 12px;
+  padding: 9px 10px;
+  background: #edf2e9;
+  border: 1px solid #c5d0c2;
+  border-radius: 8px;
+}
+
+.settlement-notice--success {
+  color: var(--green-dark);
+}
+
+.settlement-notice--error {
+  background: #fff0eb;
+  border-color: #e7b7ab;
+}
+
+.settlement-list {
+  display: grid;
+  gap: 7px;
+  margin: 13px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settlement-list li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 0 0;
+  color: #516058;
+  font-size: 0.68rem;
+  border-top: 1px solid #d9ddd2;
+}
+
+.settlement-list button {
+  min-height: 30px;
+  padding: 5px 7px;
+  color: #775348;
+  font-size: 0.63rem;
+  font-weight: 750;
+  background: transparent;
+  border: 1px solid #cdb8ae;
+  border-radius: 7px;
+}
+
+.import-confirmation {
+  margin-top: 16px;
+  padding-top: 15px;
+  border-top: 1px solid rgb(255 255 255 / 18%);
+}
+
+.import-card .import-confirm-action {
+  width: 100%;
+  margin-top: 0;
+  color: var(--green-dark);
+  background: var(--lime);
+  border-color: var(--lime);
+}
+
+.import-card .import-confirm-action:disabled {
+  color: #b8c3bc;
+  background: rgb(255 255 255 / 9%);
+  border-color: rgb(255 255 255 / 15%);
+}
+
+.import-confirmation-note,
+.import-save-message {
+  margin: 8px 0 0;
+  color: #aabbb1;
+  font-size: 0.64rem;
+  line-height: 1.5;
+}
+
+.import-save-message {
+  color: var(--lime);
+}
+
 .local-manifesto {
   position: relative;
   display: grid;
@@ -1653,6 +1881,16 @@ summary:focus-visible {
 
   .ledger-grid {
     grid-template-columns: 1fr;
+  }
+
+  .period-controls {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .period-range-note,
+  .period-range-error {
+    grid-column: auto;
   }
 
   .import-card {

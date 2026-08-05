@@ -6,13 +6,20 @@ import type {
   ImportSource,
 } from '../../domain/imports/legacy-xls-preview';
 import type { LegacyXlsPreviewReader } from '../../application/imports/prepare-legacy-xls-import';
+import type {
+  LegacyXlsImportConfirmationResult,
+} from '../../application/imports/confirm-legacy-xls-import';
 import type { TransactionType } from '../../domain/transactions/transaction';
 import { formatWon } from '../../shared/format/currency';
 
-type ImportStatus = 'IDLE' | 'READING' | 'PREVIEW';
+type ImportStatus = 'IDLE' | 'READING' | 'PREVIEW' | 'SAVING' | 'SAVED';
 
 export type LegacyXlsImportPreviewProps = Readonly<{
   previewFile: LegacyXlsPreviewReader;
+  confirmPreview?: (
+    preview: ImportPreview,
+  ) => Promise<LegacyXlsImportConfirmationResult>;
+  onImportConfirmed?: () => void;
 }>;
 
 const SOURCE_LABELS: Readonly<Record<ImportSource, string>> = {
@@ -37,15 +44,21 @@ function getPreviewSummary(preview: ImportPreview): string {
   return `${sourceLabel} · 후보 ${preview.candidates.length}건 · 확인 필요 ${preview.issues.length}건`;
 }
 
-export function LegacyXlsImportPreview({ previewFile }: LegacyXlsImportPreviewProps) {
+export function LegacyXlsImportPreview({
+  previewFile,
+  confirmPreview,
+  onImportConfirmed,
+}: LegacyXlsImportPreviewProps) {
   const [status, setStatus] = useState<ImportStatus>('IDLE');
   const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const requestIdRef = useRef(0);
 
   const resetPreview = () => {
     requestIdRef.current += 1;
     setStatus('IDLE');
     setPreview(null);
+    setSaveMessage(null);
   };
 
   const handleFileChange = async (
@@ -62,6 +75,7 @@ export function LegacyXlsImportPreview({ previewFile }: LegacyXlsImportPreviewPr
     requestIdRef.current = requestId;
     setStatus('READING');
     setPreview(null);
+    setSaveMessage(null);
 
     try {
       const nextPreview = await previewFile(file);
@@ -86,14 +100,45 @@ export function LegacyXlsImportPreview({ previewFile }: LegacyXlsImportPreviewPr
     }
   };
 
+  const handleConfirm = async () => {
+    if (preview === null || confirmPreview === undefined) {
+      return;
+    }
+
+    setStatus('SAVING');
+    setSaveMessage(null);
+    let result: LegacyXlsImportConfirmationResult;
+    try {
+      result = await confirmPreview(preview);
+    } catch {
+      setStatus('PREVIEW');
+      setSaveMessage('로컬 저장에 실패했습니다. 기존 저장 거래는 변경되지 않았습니다.');
+      return;
+    }
+
+    if (result.isConfirmed) {
+      setStatus('SAVED');
+      setSaveMessage(`${result.transactions.length}건을 이 기기에 저장했습니다.`);
+      onImportConfirmed?.();
+      return;
+    }
+
+    setStatus('PREVIEW');
+    setSaveMessage(
+      result.code === 'nothing_to_save'
+        ? '저장할 수 있는 후보가 없습니다.'
+        : '로컬 저장에 실패했습니다. 기존 저장 거래는 변경되지 않았습니다.',
+    );
+  };
+
   return (
     <div className="legacy-import-preview" id="import">
       <span className="status-pill">사용 가능 · Preview</span>
       <p className="panel-kicker">LOCAL XLS IMPORT</p>
       <h3 id="import-title">내 XLS 파일 미리보기</h3>
       <p>
-        계좌 거래와 카드 이용내역을 브라우저 안에서 읽습니다. 이번 단계에서는
-        저장하지 않습니다.
+        계좌 거래와 카드 이용내역을 브라우저 안에서 읽습니다. Preview 후 사용자가
+        확인한 후보만 이 기기에 저장합니다.
       </p>
 
       <div className="import-flow" aria-label="현재 가져오기 흐름">
@@ -176,6 +221,32 @@ export function LegacyXlsImportPreview({ previewFile }: LegacyXlsImportPreviewPr
                 ))}
               </ul>
             </div>
+          ) : null}
+
+          {confirmPreview !== undefined && preview.candidates.length > 0 ? (
+            <div className="import-confirmation">
+              <button
+                type="button"
+                className="import-confirm-action"
+                onClick={handleConfirm}
+                disabled={status === 'SAVING' || status === 'SAVED'}
+              >
+                {status === 'SAVING'
+                  ? '이 기기에 저장하는 중'
+                  : status === 'SAVED'
+                    ? '저장 완료'
+                    : `후보 ${preview.candidates.length}건을 이 기기에 저장`}
+              </button>
+              <p className="import-confirmation-note">
+                원본 XLS와 파일명은 저장하지 않으며, 저장 후 기간별 장부에서 확인할 수 있습니다.
+              </p>
+            </div>
+          ) : null}
+
+          {saveMessage !== null ? (
+            <p className="import-save-message" role="status">
+              {saveMessage}
+            </p>
           ) : null}
 
           <small>

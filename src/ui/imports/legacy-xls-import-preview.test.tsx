@@ -79,6 +79,54 @@ describe('LegacyXlsImportPreview', () => {
     await user.click(screen.getByRole('button', { name: '지우기' }));
 
     expect(screen.queryByText('가져오기 검토')).not.toBeInTheDocument();
-    expect(screen.getByText(/이번 단계에서는 저장하지 않습니다/)).toBeVisible();
+    expect(
+      screen.getByText(/Preview 후 사용자가 확인한 후보만 이 기기에 저장합니다/),
+    ).toBeVisible();
+  });
+
+  it('사용자가 명시적으로 확인한 후보만 로컬 저장을 요청한다', async () => {
+    const user = userEvent.setup();
+    const confirmPreview = vi.fn().mockResolvedValue({
+      isConfirmed: true,
+      batch: {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        importerId: 'LEGACY_XLS',
+        importerVersion: 1,
+        sourceType: 'ACCOUNT_LEDGER_XLS',
+        committedAt: '2026-08-05T00:00:00.000Z',
+        newCount: 1,
+        skippedCount: 0,
+        reviewedCount: 1,
+      },
+      transactions: [
+        {
+          id: '550e8400-e29b-41d4-a716-446655440001',
+          ...accountPreview.candidates[0].draft,
+          importBatchId: '550e8400-e29b-41d4-a716-446655440000',
+          importerId: 'LEGACY_XLS',
+          createdAt: '2026-08-05T00:00:00.000Z',
+          updatedAt: '2026-08-05T00:00:00.000Z',
+        },
+      ],
+    });
+    render(
+      <LegacyXlsImportPreview
+        previewFile={async () => accountPreview}
+        confirmPreview={confirmPreview}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+    expect(confirmPreview).not.toHaveBeenCalled();
+
+    await user.click(
+      screen.getByRole('button', { name: '후보 1건을 이 기기에 저장' }),
+    );
+
+    expect(confirmPreview).toHaveBeenCalledWith(accountPreview);
+    expect(await screen.findByText('1건을 이 기기에 저장했습니다.')).toBeVisible();
   });
 });

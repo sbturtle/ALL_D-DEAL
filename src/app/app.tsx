@@ -2,13 +2,40 @@ import {
   prepareLegacyXlsImportPreview,
   type LegacyXlsImportFile,
 } from '../application/imports/prepare-legacy-xls-import';
+import {
+  confirmLegacyXlsImport,
+  type LegacyXlsImportConfirmationResult,
+} from '../application/imports/confirm-legacy-xls-import';
+import type { ImportPreview } from '../domain/imports/legacy-xls-preview';
+import type { UtcIsoInstant } from '../domain/transactions/utc-iso-instant';
 import { previewLegacyXlsFile } from '../infrastructure/imports/legacy-xls-file-reader';
+import { BrowserLedgerRepository } from '../infrastructure/storage/browser-ledger-repository';
 import { DashboardSection } from '../ui/dashboard/dashboard-section';
 import { PayrollEstimateCalculator } from '../ui/payroll-estimate/payroll-estimate-calculator';
 import './app.css';
 
 function previewSelectedLegacyXls(file: LegacyXlsImportFile) {
   return prepareLegacyXlsImportPreview(file, previewLegacyXlsFile);
+}
+
+const ledgerRepository = new BrowserLedgerRepository();
+
+function createLocalId(): string {
+  return crypto.randomUUID();
+}
+
+function currentUtcIsoInstant(): UtcIsoInstant {
+  return new Date().toISOString() as UtcIsoInstant;
+}
+
+function confirmSelectedLegacyXlsImport(
+  preview: ImportPreview,
+): Promise<LegacyXlsImportConfirmationResult> {
+  return confirmLegacyXlsImport(preview, {
+    committer: ledgerRepository,
+    createId: createLocalId,
+    now: currentUtcIsoInstant,
+  });
 }
 
 export function App() {
@@ -26,7 +53,7 @@ export function App() {
           <a href="#import">XLS 가져오기</a>
         </nav>
 
-        <span className="phase-chip">PHASE 3A · LOCAL</span>
+        <span className="phase-chip">PHASE 3B · LOCAL</span>
       </header>
 
       <main>
@@ -66,7 +93,11 @@ export function App() {
           <PayrollEstimateCalculator />
         </section>
 
-        <DashboardSection previewLegacyXls={previewSelectedLegacyXls} />
+        <DashboardSection
+          previewLegacyXls={previewSelectedLegacyXls}
+          confirmLegacyXlsImport={confirmSelectedLegacyXlsImport}
+          ledgerRepository={ledgerRepository}
+        />
 
         <section className="local-manifesto" aria-labelledby="local-title">
           <div>
@@ -74,9 +105,8 @@ export function App() {
             <h2 id="local-title">계산도, 앞으로의 장부도 로컬에서.</h2>
           </div>
           <p>
-            입력한 급여는 저장하지 않습니다. 이후 금융 파일도 브라우저 안에서
-            검토하고, 사용자가 확인한 거래만 로컬 장부에 반영하는 방향으로
-            확장합니다.
+            입력한 급여는 저장하지 않습니다. 금융 XLS는 브라우저 안에서 검토한 뒤,
+            사용자가 확인한 거래만 이 기기 장부에 저장합니다.
           </p>
           <span aria-hidden="true">↘</span>
         </section>
