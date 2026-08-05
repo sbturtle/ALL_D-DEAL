@@ -1,76 +1,62 @@
-# Phase 3 — Legacy XLS Import Preview
+# Phase 3B — Local Transaction Storage, Period View, and Shared-payment Settlement
 
-- 상태: `DONE`
-- 계획 갱신일: 2026-08-05
-- 선행 조건: Phase 2 Transaction Domain `DONE`
-- 근거: Git에서 제외된 `samples/private/`의 카드 이용내역·계좌 거래내역 XLS 구조
+- Status: `IN_PROGRESS`
+- Plan updated: 2026-08-05
+- Prerequisite: Phase 3A Legacy XLS Preview `DONE`
+- Evidence: Git-ignored `samples/private/` account-ledger and card-usage legacy XLS layouts
 
 ## Goal
 
-사용자가 직접 선택한 계좌 거래·카드 이용 legacy XLS를 브라우저 안에서 읽고, 어떤 거래가 후보가 되는지와 자동 반영하지 않는 행을 저장 전에 Preview한다.
+Confirm valid Legacy XLS preview candidates as local `Transaction` records. Let the user review the saved records by day, rolling week, calendar month, or an explicit inclusive date range. Let the user explicitly connect a group-payment outflow and its reimbursement inflows so the living-expense budget uses their net amount while the original ledger remains unchanged.
 
-## User Value
+## User value
 
-- 실제 사용하는 파일 형식에 맞춰 계좌 거래와 카드 매입을 한 화면에서 검토할 수 있다.
-- 카드 취소, 외화 후보, 날짜·금액 문제를 자동 반영하지 않고 이유와 함께 확인할 수 있다.
-- 원본 파일은 브라우저 메모리에서만 사용하며 이번 slice에서는 장부가 바뀌지 않는다.
+- A confirmed import remains on the current browser device and can be reviewed without uploading its source file.
+- The same records answer the user's immediate questions for one day, one week, one month, and a self-selected range.
+- A group payment no longer makes the living-expense progress look larger than the portion the user ultimately paid.
 
-## Current Vertical Slice — Phase 3A (완료)
+## Scope and rules
 
-- SheetJS `0.20.3`으로 브라우저 `File.arrayBuffer()`의 legacy XLS를 읽는다.
-- 계좌 거래 레이아웃은 날짜·설명·출금·입금의 명확한 행만 `UNKNOWN` TransactionDraft 후보로 만든다.
-- 카드 이용 레이아웃은 원화 매입 행만 `EXPENSE + OUTFLOW` TransactionDraft 후보로 만든다.
-- 카드 취소·역분개와 외화 금액 행은 issue로 Preview하고, 원본 값은 오류에 넣지 않는다.
-- 파일 선택, 처리 중 상태, 후보 수·확인 필요 수와 일부 후보 목록을 모바일 우선 UI로 제공한다.
-- 원본 파일, 파일명, 전체 원본 행과 Preview 상태를 저장하지 않는다.
+- Native IndexedDB v1 stores `transactions`, `importBatches`, and `budgetSettlements`; source files, file names, blobs, complete card/account numbers, and preview state are never stored.
+- Confirming a preview writes its `ImportBatch` and resulting transactions atomically. A failure leaves no partial import.
+- Every range is inclusive and based on `occurredOn` (`YYYY-MM-DD`, Asia/Seoul):
+  - `DAY`: the selected day.
+  - `WEEK`: the selected day plus the preceding six calendar days.
+  - `MONTH`: the calendar month containing the selected day.
+  - `CUSTOM`: user-selected start and end dates.
+- A shared-payment settlement is manual: one `OUTFLOW` payer transaction and one or more `INFLOW` reimbursement transactions. There is no automatic matching.
+- The living-expense contribution of a settlement is `max(payer outflow - linked reimbursements, 0)`. It is assigned to the payer transaction's date, even when a reimbursement is received later. General balance, transaction direction/type, and source records never change.
+- An unlinked living expense remains `EXPENSE + OUTFLOW`. A manually selected payer can be an `UNKNOWN + OUTFLOW` account record because the user explicitly identifies it as the group payment.
 
-## Next Vertical Slice — Phase 3B
+## Out of scope
 
-- 사용자가 선택한 유효 후보만 Transaction으로 완성한다.
-- Native IndexedDB schema v1의 `transactions`, `importBatches`에 하나의 transaction으로 저장한다.
-- 실패 시 부분 저장 없이 Preview로 돌아가고, 성공 후에만 날짜 범위 조회를 제공한다.
-
-## Import Contract
-
-지원 레이아웃, 처리 제한, 행 issue 코드와 개인정보 경계는 [Legacy XLS Import Contract](../architecture/import-xls-contract.md)를 따른다. 테스트는 명백한 가짜 XLS 행 배열만 사용하며 `samples/private/` 파일과 실제 값은 Git에 추가하지 않는다.
-
-## Out of Scope
-
-- 실제 금융기관명·계정·카드 식별정보의 코드·문서·테스트 노출
-- CSV, XLSX, PDF, 다중 시트, 암호화 파일과 금융기관 API
-- 취소·환불의 자동 처리, 중복 fingerprint, Category, Dashboard 집계
-- IndexedDB 저장과 급여 추정 결과 결합
+- Duplicate detection, source-file digesting, automatic settlement inference, split transactions, refunds, category rules, and automatic type classification.
+- A configurable living-expense target and target-setting UI; this slice supplies the net spending value that Phase 6 will compare to a target.
+- Cross-device sync, server storage, financial-provider APIs, and storage of original XLS files.
 
 ## Tasks
 
-1. `DONE` — private XLS 구조를 값·파일명 없이 분석하고 Import 계약에 기록했다.
-2. `DONE` — 브라우저 XLS 파서와 계좌·카드 TransactionDraft 정규화를 구현했다.
-3. `DONE` — 가짜 행 배열로 금액·날짜·취소·외화·식별정보 경계를 자동 테스트했다.
-4. `DONE` — 파일 선택과 메모리 Preview UI를 구현하고 접근성 흐름을 테스트했다.
-5. `DONE` — 실제 private XLS 두 종류를 로컬 브라우저 Preview로 확인했다.
-6. `DONE` — 독립 코드 리뷰, lint, typecheck, test, build와 개인정보·Git 검사를 수행했다.
-7. `DONE` — 계약·의존성·정규화·UI·검증 결과를 기능 단위 로컬 커밋으로 분리했다.
-8. `READY` — 다음 vertical slice에서 Phase 3B Native IndexedDB 저장을 시작한다.
+1. `IN_PROGRESS` Document the period semantics, local-storage schema, and manual settlement calculation contract.
+2. `TODO` Add pure domain rules for period ranges, shared-payment settlements, and net living-expense aggregation with boundary tests.
+3. `TODO` Create the IndexedDB repository and atomic import-confirm application service, including explicit error results.
+4. `TODO` Extend the import preview with an explicit local-save confirmation and success/failure state.
+5. `TODO` Replace the dashboard's saved-data placeholder with period controls, local transaction list, net living-expense summary, and manual settlement controls.
+6. `TODO` Run lint, typecheck, tests, production build, browser smoke checks without importing private samples, privacy scans, and focused code review.
+7. `TODO` Record verification evidence and commit each independent change locally with the required message title and body.
 
-## Acceptance Criteria
+## Acceptance criteria
 
-- private XLS의 실제 값·파일명·금융 식별정보가 Git, fixture, 로그, 오류 메시지에 없다.
-- 브라우저는 `.xls`만 최대 5 MiB로 읽고, 2,000행·20열·300자 셀 제한을 적용한다.
-- 계좌 입금·출금 한쪽만 양의 KRW 정수인 행이 방향을 가진 `UNKNOWN` 후보가 된다.
-- 카드 원화 매입 행만 `EXPENSE + OUTFLOW` 후보가 된다.
-- 카드 취소·외화 후보·날짜·금액 오류는 자동 반영하지 않고 안전한 issue로 보인다.
-- 카드 라벨은 별칭 또는 끝 4자리만 가지며 전체 식별정보를 보존하지 않는다.
-- 파일 선택은 어떤 영속 데이터도 변경하지 않는다.
-- lint, typecheck, test, build와 private XLS 두 종류의 로컬 브라우저 Preview가 통과했다.
-- 변경은 `[Type] : 커밋 제목`과 비어 있지 않은 본문을 가진 기능 단위 로컬 커밋으로 분리한다.
+- Confirmed valid preview candidates become complete validated `Transaction` records and an `ImportBatch` in one IndexedDB transaction; an unsuccessful confirmation writes neither.
+- On the same device, saved records can be shown for one selected day, the prior seven inclusive days, the selected calendar month, and an inclusive custom range. Invalid custom ranges are not queried.
+- The range list and counts contain only records whose `occurredOn` is in the requested range, ordered newest first.
+- A user can create and remove a manual settlement only from one saved outflow and at least one saved inflow; duplicate participant IDs and a payer also listed as reimbursement are rejected.
+- A manual settlement changes only the living-expense aggregate. It does not mutate the linked transactions or total inflow/outflow values.
+- The dashboard clearly says that its living-expense value is a net figure for linked group payments and does not pretend to be a configurable target yet.
+- Tests use fabricated transactions/candidates only; private samples, values, names, account identifiers, and original files are absent from tracked code, test fixtures, logs, and commits.
+- All new commits are local, independently reviewable, use `[Type] : title`, and contain a non-empty body. Nothing is pushed.
 
-## Risks
+## Risks and follow-up questions
 
-- legacy XLS는 겉보기 확장자와 실제 내용이 다를 수 있다. 파서가 성공하더라도 레이아웃 계약과 제한을 별도로 확인한다.
-- 계좌의 경제적 유형을 추측하면 카드대금·이체·저축이 생활비에 중복 집계될 수 있다. 초기 후보는 `UNKNOWN`으로 유지한다.
-- 카드 취소와 외화 거래를 EXPENSE로 자동 반영하면 실제 지출과 어긋날 수 있다. Preview 검토 대상으로 분리한다.
-- 실제 파일 행을 테스트에 복사하면 개인정보가 유출될 수 있다. 가짜 행 배열과 구조 테스트만 사용한다.
-
-## Questions / Blockers
-
-Phase 3A 시작을 막는 질문은 없다. 다음 Phase 3B는 사용자 확인 후보의 Native IndexedDB 원자 저장을 구현한다. 취소·환불의 원거래 연결과 외화 환산은 실제 사용 사례를 확인한 뒤 별도 Phase에서 결정한다.
+- Account-ledger transactions begin as `UNKNOWN`; manual settlement selection is deliberately the user confirmation that an outflow was a group payment. Type-editing will be a later classification slice.
+- Reimbursements may arrive after the payer date. Assigning the final net amount to the payer date makes the living-expense goal meaningful, but does not make this screen a cash-flow report.
+- Deleting imported transactions and bulk import selection/exclusion require separate data-integrity decisions and remain outside this small slice.
