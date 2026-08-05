@@ -1,0 +1,24 @@
+# Architecture Decision Records
+
+ADR은 기술 선택뿐 아니라 중요한 제품 요구가 왜 바뀌었는지를 기록한다. 새 결정은 다음 번호를 사용하고, 기존 결정을 대체하면 원 ADR의 상태를 `Superseded`로 바꾸고 후속 ADR을 연결한다.
+
+| ADR | 상태 | 결정 |
+| --- | --- | --- |
+| [ADR-0001](ADR-0001-file-import-over-financial-api.md) | Accepted | 금융 API 직접 연동보다 사용자 주도 파일 Import를 우선한다. |
+| [ADR-0002](ADR-0002-local-first-architecture.md) | Accepted | 초기 금융 데이터 처리와 저장을 브라우저 내부로 제한한다. |
+| [ADR-0003](ADR-0003-weekly-import-instead-of-realtime.md) | Accepted | 실시간 동기화보다 주 1회 검토 흐름을 최적화한다. |
+
+## 새 ADR 기본 구조
+
+```text
+상태
+최초 사용자 요구
+이후 대화에서 확인된 문제
+변경된 요구사항
+결정
+결정 이유
+고려한 대안
+장점
+단점
+향후 다시 검토할 조건
+```

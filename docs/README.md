@@ -7,6 +7,7 @@
 | 제품 | `product/product-context.md` | 프로젝트 배경, 사용자 가치, 장기 방향 |
 | 요구사항 | `product/requirements.md` | 현재 유효한 기능·비기능 요구사항 |
 | 요구 이력 | `product/requirements-history.md` | 요구사항이 바뀐 이유와 현재 결정 |
+| 향후 아이디어 | `product/future-ideas.md` | 현재 Scope 밖의 후보를 선행 구현 없이 보관 |
 | 아키텍처 | `architecture/architecture.md` | 경계, 의존성 방향, 단계별 기술 전략 |
 | 데이터 | `architecture/data-model.md` | Transaction 등 핵심 모델의 설계 근거 |
 | 결정 | `adr/` | 중요한 제품·기술 선택과 재검토 조건 |
