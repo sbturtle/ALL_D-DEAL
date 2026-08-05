@@ -184,6 +184,241 @@ a {
   padding-top: 18px;
 }
 
+.settings-page {
+  width: min(100% - 64px, 980px);
+  min-height: calc(100vh - 190px);
+  margin: 0 auto;
+  padding: clamp(52px, 7vw, 108px) 0;
+}
+
+.settings-page-intro {
+  max-width: 43rem;
+}
+
+.settings-page-intro h1 {
+  margin: 0;
+  font-size: clamp(2.85rem, 5.2vw, 5.25rem);
+  line-height: 0.99;
+  letter-spacing: -0.075em;
+  word-break: keep-all;
+}
+
+.settings-page-intro h1::first-line {
+  color: var(--green-dark);
+}
+
+.settings-page-intro > p:last-child {
+  max-width: 36rem;
+  margin: 24px 0 0;
+  color: #526058;
+  font-size: 0.86rem;
+  line-height: 1.75;
+  word-break: keep-all;
+}
+
+.settings-card {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.84fr) minmax(0, 1.16fr);
+  min-height: 350px;
+  margin-top: 42px;
+  overflow: hidden;
+  background: var(--white);
+  border: 1px solid var(--ink);
+  border-radius: 24px;
+  box-shadow: 8px 8px 0 var(--green-dark);
+}
+
+.settings-card-context {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(24px, 4vw, 40px);
+  color: #f4f3eb;
+  background:
+    radial-gradient(circle at 86% 5%, rgb(216 239 120 / 18%), transparent 10rem),
+    var(--green-dark);
+}
+
+.settings-card-context > span {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  color: var(--green-dark);
+  font-size: 1.15rem;
+  font-weight: 900;
+  background: var(--lime);
+  border-radius: 50%;
+  place-items: center;
+}
+
+.settings-card-context .panel-kicker {
+  margin-top: auto;
+  margin-bottom: 7px;
+  color: var(--lime);
+}
+
+.settings-card-context h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+  letter-spacing: -0.055em;
+}
+
+.settings-card-context > p:not(.panel-kicker) {
+  margin: 15px 0 0;
+  color: #c5d0ca;
+  font-size: 0.74rem;
+  line-height: 1.7;
+  word-break: keep-all;
+}
+
+.settings-card-context small {
+  margin-top: 20px;
+  padding-top: 14px;
+  color: #aebbb3;
+  font-size: 0.65rem;
+  line-height: 1.55;
+  border-top: 1px solid rgb(255 255 255 / 15%);
+  word-break: keep-all;
+}
+
+.settings-goal-form,
+.settings-loading,
+.settings-load-error {
+  align-self: center;
+  width: min(100%, 460px);
+  margin: 0 auto;
+  padding: clamp(28px, 5vw, 52px);
+}
+
+.settings-goal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.settings-goal-label {
+  display: grid;
+  gap: 6px;
+}
+
+.settings-goal-label label {
+  color: #36443d;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.settings-goal-label p {
+  margin: 0;
+  color: #77827b;
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.settings-money-input {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  padding: 0 16px;
+  background: #f5f4ed;
+  border: 1px solid #c6cbc3;
+  border-radius: 12px;
+}
+
+.settings-money-input:focus-within {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgb(45 155 102 / 16%);
+}
+
+.settings-money-input input {
+  width: 100%;
+  min-width: 0;
+  min-height: 58px;
+  color: var(--ink);
+  font: inherit;
+  font-size: clamp(1.1rem, 2.3vw, 1.48rem);
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  background: transparent;
+  border: 0;
+  outline: 0;
+}
+
+.settings-money-input > span {
+  color: #58655e;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.settings-notice {
+  margin: -4px 0 0;
+  padding: 10px 12px;
+  font-size: 0.7rem;
+  font-weight: 720;
+  line-height: 1.55;
+  border: 1px solid;
+  border-radius: 9px;
+  word-break: keep-all;
+}
+
+.settings-notice--success {
+  color: #24563d;
+  background: #e6f5e9;
+  border-color: #8bc39e;
+}
+
+.settings-notice--error,
+.settings-load-error {
+  color: #8a352f;
+  background: #fff0eb;
+  border-color: #e0a195;
+}
+
+.settings-goal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.settings-goal-actions button,
+.settings-load-error button {
+  min-height: 42px;
+  margin: 0;
+  padding: 9px 14px;
+  color: var(--green-dark);
+  font-size: 0.74rem;
+  font-weight: 850;
+  background: var(--lime);
+  border: 1px solid var(--green-dark);
+  border-radius: 8px;
+}
+
+.settings-goal-actions .settings-clear-action,
+.settings-load-error button {
+  color: #526058;
+  background: var(--white);
+  border-color: #aeb7af;
+}
+
+.settings-loading,
+.settings-load-error {
+  color: #526058;
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
+.settings-loading {
+  color: #65716a;
+}
+
+.settings-load-error p {
+  margin: 0;
+}
+
+.settings-load-error button {
+  margin-top: 16px;
+}
+
 .import-page {
   display: grid;
   grid-template-columns: minmax(280px, 0.78fr) minmax(440px, 1.22fr);
@@ -1130,7 +1365,7 @@ fieldset {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
 
@@ -1171,6 +1406,15 @@ fieldset {
   --card-accent: #9ed9ff;
 }
 
+.summary-card--goal {
+  --card-accent: #c9b7ff;
+}
+
+.summary-card--goal-exceeded {
+  --card-accent: #ff917b;
+  background: #fff7f3;
+}
+
 .summary-card > span {
   color: #68736d;
   font-size: 0.72rem;
@@ -1206,6 +1450,18 @@ fieldset {
 .summary-card.is-empty > strong {
   color: #999e9a;
   font-size: 2rem;
+}
+
+.monthly-goal-period-note {
+  margin: 12px 0 0;
+  padding: 10px 13px;
+  color: #536059;
+  font-size: 0.68rem;
+  line-height: 1.55;
+  background: #f0f2ec;
+  border: 1px solid #d3d9cf;
+  border-radius: 10px;
+  word-break: keep-all;
 }
 
 .transactions-panel,
@@ -2402,6 +2658,10 @@ summary:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .period-controls {
     grid-template-columns: 1fr;
     align-items: start;
@@ -2434,6 +2694,7 @@ summary:focus-visible {
   .hero-section,
   .ledger-section,
   .import-page,
+  .settings-page,
   .local-manifesto,
   footer {
     width: min(100% - 32px, 1440px);
@@ -2460,6 +2721,26 @@ summary:focus-visible {
     gap: 34px;
     min-height: 0;
     padding: 44px 0 78px;
+  }
+
+  .settings-page {
+    min-height: 0;
+    padding: 44px 0 78px;
+  }
+
+  .settings-card {
+    grid-template-columns: 1fr;
+    box-shadow: 6px 6px 0 var(--green-dark);
+  }
+
+  .settings-card-context {
+    min-height: 242px;
+  }
+
+  .settings-goal-form,
+  .settings-loading,
+  .settings-load-error {
+    width: 100%;
   }
 
   .import-page-intro {
@@ -2563,6 +2844,7 @@ summary:focus-visible {
   .hero-section,
   .ledger-section,
   .import-page,
+  .settings-page,
   .local-manifesto,
   footer {
     width: min(100% - 24px, 1440px);

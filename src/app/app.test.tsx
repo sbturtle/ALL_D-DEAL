@@ -93,4 +93,16 @@ describe('App', () => {
     fireEvent.popState(window);
     expect(screen.getByText('내 XLS 파일 미리보기')).toBeInTheDocument();
   });
+
+  it('navigates to the local settings page', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('link', { name: '설정' }));
+
+    expect(
+      screen.getByRole('heading', { name: /생활비 목표를/, level: 1 }),
+    ).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/settings');
+  });
 });

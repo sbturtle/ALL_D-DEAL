@@ -5,6 +5,8 @@ import {
   type CategoryId,
 } from '../../domain/categories/category';
 import { getCategoryPresentation } from '../../domain/categories/category-presentation';
+import { calculateMonthlyLivingExpenseGoalProgress } from '../../domain/settings/monthly-living-expense-goal-progress';
+import type { LocalUserSettings } from '../../domain/settings/local-user-settings';
 import { saveManualBudgetSettlement } from '../../application/ledger/save-manual-budget-settlement';
 import { updateTransactionDetails } from '../../application/ledger/update-transaction-details';
 import type { BudgetSettlement } from '../../domain/transactions/budget-settlement';
@@ -33,6 +35,7 @@ export type LocalLedgerRepository = Pick<
   | 'saveBudgetSettlement'
   | 'removeBudgetSettlement'
   | 'replaceTransaction'
+  | 'getLocalUserSettings'
 >;
 
 type DashboardSectionProps = Readonly<{
@@ -131,6 +134,9 @@ export function DashboardSection({
     [],
   );
   const [settlements, setSettlements] = useState<readonly BudgetSettlement[]>([]);
+  const [localUserSettings, setLocalUserSettings] = useState<
+    LocalUserSettings | undefined
+  >(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [reloadVersion, setReloadVersion] = useState(0);
@@ -175,15 +181,24 @@ export function DashboardSection({
       ledgerRepository.listTransactionsInRange(rangeResult.value),
       ledgerRepository.listAllTransactions(),
       ledgerRepository.listBudgetSettlements(),
+      ledgerRepository.getLocalUserSettings(),
     ])
-      .then(([rangeTransactions, nextAllTransactions, nextSettlements]) => {
-        if (!isCurrent) {
-          return;
-        }
-        setTransactions(rangeTransactions);
-        setAllTransactions(nextAllTransactions);
-        setSettlements(nextSettlements);
-      })
+      .then(
+        ([
+          rangeTransactions,
+          nextAllTransactions,
+          nextSettlements,
+          nextLocalUserSettings,
+        ]) => {
+          if (!isCurrent) {
+            return;
+          }
+          setTransactions(rangeTransactions);
+          setAllTransactions(nextAllTransactions);
+          setSettlements(nextSettlements);
+          setLocalUserSettings(nextLocalUserSettings);
+        },
+      )
       .catch(() => {
         if (!isCurrent) {
           return;
@@ -191,6 +206,7 @@ export function DashboardSection({
         setTransactions([]);
         setAllTransactions([]);
         setSettlements([]);
+        setLocalUserSettings(undefined);
         setLoadError(true);
       })
       .finally(() => {
@@ -217,6 +233,13 @@ export function DashboardSection({
           totalAmountMinor: 0,
           sharedPaymentCount: 0,
         };
+  const monthlyGoalProgress =
+    !isMock && preset === 'MONTH' && rangeResult.isValid
+      ? calculateMonthlyLivingExpenseGoalProgress(
+          localUserSettings,
+          livingExpenseSummary.totalAmountMinor,
+        )
+      : undefined;
   const totalIncome = transactions
     .filter((transaction) => transaction.direction === 'INFLOW')
     .reduce((total, transaction) => total + transaction.amountMinor, 0);
@@ -485,7 +508,43 @@ export function DashboardSection({
                       <small>확인한 거래 없음</small>
                     </article>
                   ))}
+            {!isMock && preset === 'MONTH' && !isLoading && !loadError ? (
+              monthlyGoalProgress === undefined ? (
+                <article className="summary-card summary-card--goal is-empty">
+                  <span>월 생활비 목표</span>
+                  <strong>설정 필요</strong>
+                  <small>설정 페이지에서 월 목표를 입력하세요</small>
+                </article>
+              ) : (
+                <article
+                  className={
+                    monthlyGoalProgress.status === 'EXCEEDED'
+                      ? 'summary-card summary-card--goal-exceeded'
+                      : 'summary-card summary-card--goal'
+                  }
+                >
+                  <span>
+                    {monthlyGoalProgress.status === 'EXCEEDED'
+                      ? '월 목표 초과'
+                      : '월 목표 잔액'}
+                  </span>
+                  <strong>{formatWon(monthlyGoalProgress.differenceAmountMinor)}</strong>
+                  <small>
+                    목표 {formatWon(monthlyGoalProgress.goalAmountMinor)} · 순생활비{' '}
+                    {formatWon(monthlyGoalProgress.usedAmountMinor)}
+                  </small>
+                </article>
+              )
+            ) : null}
           </div>
+
+          {!isMock &&
+          localUserSettings !== undefined &&
+          preset !== 'MONTH' ? (
+            <p className="monthly-goal-period-note" role="status">
+              월 생활비 목표는 월간 보기에서만 계산합니다. 현재 선택 기간에는 실제 사용액만 표시합니다.
+            </p>
+          ) : null}
 
           <article className="transactions-panel">
             <div className="panel-heading">

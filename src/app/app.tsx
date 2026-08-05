@@ -19,6 +19,7 @@ import { getKakaoMapPlaceSearch } from '../infrastructure/kakao/kakao-map-config
 import { DashboardSection } from '../ui/dashboard/dashboard-section';
 import { ImportPage } from '../ui/imports/import-page';
 import { PayrollPage } from '../ui/payroll-estimate/payroll-page';
+import { SettingsPage } from '../ui/settings/settings-page';
 
 import { getAppRoute, getAppRoutePath, type AppRoute } from './app-route';
 import './app.css';
@@ -30,6 +31,7 @@ const NAVIGATION_ITEMS: readonly Readonly<{
   { route: 'LEDGER', label: '장부' },
   { route: 'IMPORTS', label: 'XLS 가져오기' },
   { route: 'PAYROLL', label: '급여 계산' },
+  { route: 'SETTINGS', label: '설정' },
 ];
 
 const ledgerRepository = new BrowserLedgerRepository();
@@ -134,7 +136,7 @@ export function App() {
           ))}
         </nav>
 
-        <span className="phase-chip">PHASE 6A · LOCAL</span>
+        <span className="phase-chip">PHASE 8B · LOCAL</span>
       </header>
 
       <main className={`work-page work-page--${route.toLowerCase()}`}>
@@ -148,6 +150,9 @@ export function App() {
               applyCategoryRulesToLegacyXlsPreview={applySelectedCategoryRules}
               searchPlaces={kakaoMapPlaceSearch}
           />
+        ) : null}
+        {route === 'SETTINGS' ? (
+          <SettingsPage settingsRepository={ledgerRepository} />
         ) : null}
       </main>
 

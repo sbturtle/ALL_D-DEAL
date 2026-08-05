@@ -67,6 +67,7 @@ const repository: LocalLedgerRepository = {
   saveBudgetSettlement: vi.fn().mockResolvedValue(undefined),
   removeBudgetSettlement: vi.fn().mockResolvedValue(undefined),
   replaceTransaction: vi.fn().mockResolvedValue(undefined),
+  getLocalUserSettings: vi.fn().mockResolvedValue(undefined),
 };
 
 describe('DashboardSection', () => {
@@ -87,6 +88,33 @@ describe('DashboardSection', () => {
     await user.click(screen.getByRole('button', { name: '직접 선택' }));
     expect(screen.getByLabelText('기간 시작')).toBeVisible();
     expect(screen.getByLabelText('기간 종료')).toBeVisible();
+  });
+
+  it('shows the monthly goal remaining after shared-payment net spending', async () => {
+    const user = userEvent.setup();
+    const monthlyGoalRepository: LocalLedgerRepository = {
+      ...repository,
+      getLocalUserSettings: vi.fn().mockResolvedValue({
+        id: 'current',
+        monthlyLivingExpenseGoalMinor: 80_000,
+        updatedAt: '2026-08-05T00:00:00.000Z',
+      }),
+    };
+    render(<DashboardSection ledgerRepository={monthlyGoalRepository} />);
+
+    expect(await screen.findByText('월 목표 잔액')).toBeVisible();
+    expect(screen.getByText('30,000원')).toBeVisible();
+    expect(
+      screen.getByText('목표 80,000원 · 순생활비 50,000원'),
+    ).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: '최근 1주' }));
+    expect(
+      await screen.findByText(
+        '월 생활비 목표는 월간 보기에서만 계산합니다. 현재 선택 기간에는 실제 사용액만 표시합니다.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText('월 목표 잔액')).not.toBeInTheDocument();
   });
 
   it('updates one saved transaction category and memo from the ledger', async () => {

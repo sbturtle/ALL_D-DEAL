@@ -2,6 +2,7 @@ export const APP_ROUTE_PATHS = {
   LEDGER: '/ledger',
   IMPORTS: '/imports',
   PAYROLL: '/payroll',
+  SETTINGS: '/settings',
 } as const;
 
 export type AppRoute = keyof typeof APP_ROUTE_PATHS;
@@ -15,6 +16,10 @@ export function getAppRoute(pathname: string): AppRoute {
 
   if (normalizedPathname === APP_ROUTE_PATHS.PAYROLL) {
     return 'PAYROLL';
+  }
+
+  if (normalizedPathname === APP_ROUTE_PATHS.SETTINGS) {
+    return 'SETTINGS';
   }
 
   return 'LEDGER';
