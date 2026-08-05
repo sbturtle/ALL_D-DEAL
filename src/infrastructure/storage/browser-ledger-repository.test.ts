@@ -175,4 +175,34 @@ describe('BrowserLedgerRepository', () => {
     await expect(repository.listCategoryRules()).resolves.toEqual([]);
     await expect(repository.listAllTransactions()).resolves.toEqual([]);
   });
+
+  it('fails safely instead of waiting forever when another tab blocks a v1 upgrade', async () => {
+    const databaseName = `blocked-v1-ledger-${crypto.randomUUID()}`;
+    const databaseFactory = new IDBFactory();
+    const request = databaseFactory.open(databaseName, 1);
+    const v1Database = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.addEventListener(
+        'upgradeneeded',
+        () => {
+          const database = request.result;
+          database.createObjectStore('transactions', { keyPath: 'id' });
+          database.createObjectStore('importBatches', { keyPath: 'id' });
+          database.createObjectStore('budgetSettlements', { keyPath: 'id' });
+        },
+        { once: true },
+      );
+      request.addEventListener('success', () => resolve(request.result), { once: true });
+      request.addEventListener('error', () => reject(request.error), { once: true });
+    });
+    const repository = new BrowserLedgerRepository(
+      databaseName,
+      databaseFactory,
+      IDBKeyRange,
+    );
+
+    await expect(repository.listAllTransactions()).rejects.toThrow(
+      'IndexedDB upgrade is blocked',
+    );
+    v1Database.close();
+  });
 });

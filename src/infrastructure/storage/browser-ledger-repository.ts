@@ -292,6 +292,11 @@ export class BrowserLedgerRepository {
       request.addEventListener('error', () => reject(request.error ?? new Error('IndexedDB open failed.')), {
         once: true,
       });
+      request.addEventListener(
+        'blocked',
+        () => reject(new Error('IndexedDB upgrade is blocked by another open tab.')),
+        { once: true },
+      );
     });
   }
 }
