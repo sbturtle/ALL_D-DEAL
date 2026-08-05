@@ -1,5 +1,51 @@
 # Engineering Log
 
+## 2026-08-05 — Phase 6B Account Transaction Type Classification
+
+### 작업 목적
+
+카드 이용내역을 소비 지출의 우선 출처로 유지하고, 계좌 거래를 카테고리보다 먼저 현금흐름 유형으로 분류한다. 카드대금·저축·대출상환·투자·이체·수입·리워드를 일반 지출로 잘못 처리하지 않으며, 분류 근거를 저장 전 Preview에서만 설명한다.
+
+### 변경 내용
+
+- `SELF_TRANSFER`, `REWARD`를 Transaction 유형 어휘에 추가했다. `SELF_TRANSFER`는 본인 계좌 별칭이 없으므로 자동 분류하지 않는다.
+- 작은 순수 계좌 규칙 엔진이 거래 방향과 설명의 명시적 표식으로 `CARD_PAYMENT`, `SAVING`, `LOAN_PAYMENT`, `INVESTMENT`, `TRANSFER`, `INCOME`, `REWARD`를 분류한다. 방향과 맞지 않거나 일치하지 않으면 `UNKNOWN / REVIEW`로 둔다.
+- 계좌 XLS 후보는 `type`, `ACCOUNT_RULE_ENGINE`, 비식별 근거 코드, 확신 수준을 Preview 메타데이터로 받는다. 확정 저장에는 Transaction 유형만 남고 이 메타데이터는 저장하지 않는다.
+- 카드 사용 XLS는 기존 `EXPENSE + OUTFLOW`를 유지한다. 카테고리 규칙·빠른 선택·향후 규칙 저장은 새 지출 후보에만 제공하며, 계좌 카드대금은 생활비에서 제외된다.
+- Import 화면은 유형과 입출금, 계좌 규칙의 출처·확신·근거를 표시하고, 비지출 후보에는 카테고리 대신 제한 사유를 안내한다. Dashboard도 새 유형 라벨을 표시한다.
+
+### 검증 방법과 결과
+
+| 검증 | 결과 | 비고 |
+| --- | --- | --- |
+| `npm run lint` | PASS | warning 0개 |
+| `npm run typecheck` | PASS | TypeScript project build 성공 |
+| `npm test` | PASS | 24 files, 299 tests |
+| `npm run build` | PASS | Vite production build 성공 |
+| Domain/Application/UI 테스트 | PASS | 유형 규칙 우선순위·방향 제한·SELF_TRANSFER 보류·Preview 근거·확정 시 메타데이터 폐기·지출 전용 카테고리·카드대금 생활비 제외 검증 |
+| 개인정보 경계 | PASS | 실제 XLS·파일명·원본 행·개인 식별값을 테스트·문서·커밋에 사용하지 않음 |
+| 수동 브라우저 저장소 점검 | 미실행 | 기존 로컬 금융 데이터를 열지 않고 가짜 Preview 기반 UI 흐름 테스트로 대체 |
+
+프로덕션 빌드는 기존 SheetJS 포함 JavaScript 청크가 500 kB를 넘는다는 경고만 출력했다. 동작 실패는 없으며, 코드 분할은 별도 성능 작업으로 남긴다.
+
+### 리뷰에서 반영한 사항
+
+- 계좌 유형 규칙은 범용 DSL이나 퍼지 매칭 대신 코드로 읽고 테스트할 수 있는 명시적 키워드와 방향 조건으로 제한했다.
+- 분류 결과의 원문이나 식별자를 새 저장 필드로 만들지 않고, 비식별 근거 코드와 확신 수준만 Preview에 유지했다.
+- 기존에 저장된 카테고리 데이터는 마이그레이션하거나 무효화하지 않았다. 새 Preview부터만 지출 유형에 카테고리를 적용한다.
+- Kakao 등 외부 API, 브라우저 REST 인증, 계좌 별칭, 상호·브랜드 매핑, 확장 카테고리는 후속 계획으로 유지했다.
+
+### 기능 단위 커밋
+
+- `9e89603` `[Docs] : 계좌 거래 유형 분류 계약 추가`
+- `4601645` `[Feat] : 계좌 거래 유형 규칙 엔진 추가`
+- `a970967` `[Feat] : 계좌 XLS 유형 분류를 Preview에 반영`
+- `66e59e8` `[Feat] : Import 분류 근거와 지출 카테고리를 분리`
+
+### 상태
+
+`DONE`
+
 ## 2026-08-05 — Phase 6A Workflow Pages and Category Review UX
 
 ### 작업 목적

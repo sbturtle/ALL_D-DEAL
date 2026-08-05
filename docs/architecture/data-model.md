@@ -32,10 +32,12 @@
 EXPENSE
 INCOME
 TRANSFER
+SELF_TRANSFER
 CARD_PAYMENT
 SAVING
 INVESTMENT
 LOAN_PAYMENT
+REWARD
 REFUND
 UNKNOWN
 ```
@@ -49,6 +51,8 @@ UNKNOWN
 - `SAVING`, `INVESTMENT`, `LOAN_PAYMENT`는 생활비와 별도 집계한다. 대출 원금·이자 분리는 실제 데이터 요구가 생길 때 결정한다.
 - `REFUND`의 원거래 연결과 귀속 월은 Phase 6 전에 결정한다.
 - `UNKNOWN`도 유효한 임시 값이지만 Preview에서 확인 필요 대상으로 표시한다.
+- `SELF_TRANSFER`는 사용자가 관리하는 본인 계좌 별칭이 있어야 판별한다. Phase 6B의 계좌 Importer는 이 값을 자동 추론하지 않는다.
+- 계좌 유형 분류의 `source`, `reasonCode`, `confidence`는 확정 전 `ImportCandidate` 메타데이터다. 확정 Transaction에는 검증된 `type`만 저장한다.
 - `descriptionOriginal`과 `merchantOriginal`은 사용자 수정으로 덮어쓰지 않고, 정제 결과는 별도 필드에 둔다.
 
 ## Phase 2 런타임 검증 계약

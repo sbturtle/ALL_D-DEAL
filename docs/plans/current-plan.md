@@ -1,6 +1,6 @@
 # Phase 6B — Account Transaction Type Classification
 
-- Status: `IN_PROGRESS`
+- Status: `DONE`
 - Plan updated: 2026-08-05
 - Prerequisite: Phase 5 Confirmed Category Rules `DONE`, Phase 6A Workflow Pages and Category Review UX `DONE`
 
@@ -26,11 +26,11 @@ Classify account-ledger Import candidates into transaction types before category
 ## Tasks
 
 1. `DONE` Inspect completed Phase 5/6A work, current imports, domain tests, private-data boundaries, and Git state.
-2. `IN_PROGRESS` Record the card-as-expense/account-as-cash-flow contract, rule-engine boundary, and deferred data requirements in requirements history and an ADR.
-3. `PENDING` Add and test the pure account transaction-type classifier and safe Preview metadata.
-4. `PENDING` Apply the classifier to account XLS candidates and limit category reuse/selection to expense candidates.
-5. `PENDING` Show type, reason, and confidence clearly in the Import Preview without exposing source identifiers.
-6. `PENDING` Run lint, typecheck, tests, build, privacy/Git checks, review the diff, update implementation records, and create function-sized local commits.
+2. `DONE` Record the card-as-expense/account-as-cash-flow contract, rule-engine boundary, and deferred data requirements in requirements history and an ADR.
+3. `DONE` Add and test the pure account transaction-type classifier and safe Preview metadata.
+4. `DONE` Apply the classifier to account XLS candidates and limit category reuse/selection to expense candidates.
+5. `DONE` Show type, reason, and confidence clearly in the Import Preview without exposing source identifiers.
+6. `DONE` Run lint, typecheck, tests, build, privacy/Git checks, review the diff, update implementation records, and create function-sized local commits.
 
 ## Acceptance criteria
 
