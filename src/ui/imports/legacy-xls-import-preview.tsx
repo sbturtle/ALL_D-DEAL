@@ -18,8 +18,10 @@ import {
 } from '../../domain/categories/category';
 import type { TransactionType } from '../../domain/transactions/transaction';
 import type { PlaceSearch, PlaceSearchResult } from '../../application/places/place-search';
-import { mapKakaoCategoryName } from '../../domain/categories/kakao-category-mapper';
-import { normalizeCategoryRuleDescription } from '../../domain/categories/category-rule';
+import {
+  classifyKakaoPlaceCategory,
+  type KakaoPlaceCategoryClassification,
+} from '../../domain/categories/kakao-place-category-classifier';
 import type {
   AccountTransactionTypeClassification,
   AccountTransactionTypeClassificationReasonCode,
@@ -28,9 +30,10 @@ import { formatWon } from '../../shared/format/currency';
 
 type ImportStatus = 'IDLE' | 'READING' | 'PREVIEW' | 'SAVING' | 'SAVED';
 type PlaceSearchState = Readonly<{
-  status: 'SEARCHING' | 'COMPLETE' | 'FAILED';
+  status: 'SEARCHING' | 'COMPLETE' | 'FAILED' | 'SKIPPED';
   results: readonly PlaceSearchResult[];
-  mappedCategoryId?: CategoryId;
+  classification?: KakaoPlaceCategoryClassification;
+  userRuleCategoryId?: CategoryId;
 }>;
 
 export type LegacyXlsImportPreviewProps = Readonly<{
@@ -256,12 +259,27 @@ export function LegacyXlsImportPreview({
         setStatus('PREVIEW');
         if (searchPlaces !== undefined) {
           nextPreview.candidates.forEach((candidate, candidateIndex) => {
-            if (candidate.draft.type === 'EXPENSE') {
-              void searchCandidatePlace(
-                candidateIndex,
-                candidate.draft.descriptionOriginal,
-              );
+            if (candidate.draft.type !== 'EXPENSE') {
+              return;
             }
+
+            if (candidate.draft.categoryId !== undefined) {
+              setPlaceSearchByCandidateIndex((current) => {
+                const next = new Map(current);
+                next.set(candidateIndex, {
+                  status: 'SKIPPED',
+                  results: [],
+                  userRuleCategoryId: candidate.draft.categoryId,
+                });
+                return next;
+              });
+              return;
+            }
+
+            void searchCandidatePlace(
+              candidateIndex,
+              candidate.draft.descriptionOriginal,
+            );
           });
         }
       }
@@ -439,6 +457,24 @@ export function LegacyXlsImportPreview({
       return;
     }
 
+    const excludedClassification = classifyKakaoPlaceCategory(
+      descriptionOriginal,
+      [],
+    );
+
+    if (excludedClassification.source === 'NOT_QUERIED') {
+      setPlaceSearchByCandidateIndex((current) => {
+        const next = new Map(current);
+        next.set(candidateIndex, {
+          status: 'SKIPPED',
+          results: [],
+          classification: excludedClassification,
+        });
+        return next;
+      });
+      return;
+    }
+
     setPlaceSearchByCandidateIndex((current) => {
       const next = new Map(current);
       next.set(candidateIndex, { status: 'SEARCHING', results: [] });
@@ -447,31 +483,20 @@ export function LegacyXlsImportPreview({
 
     try {
       const results = await searchPlaces(descriptionOriginal);
-      const exactPlace = results.find(
-        (place) =>
-          normalizeCategoryRuleDescription(place.name) ===
-          normalizeCategoryRuleDescription(descriptionOriginal),
+      const classification = classifyKakaoPlaceCategory(
+        descriptionOriginal,
+        results,
       );
-      const mappedCategoryId =
-        exactPlace === undefined ? undefined : mapKakaoCategoryName(exactPlace.category);
       setPlaceSearchByCandidateIndex((current) => {
         const next = new Map(current);
-        next.set(candidateIndex, { status: 'COMPLETE', results, ...(mappedCategoryId === undefined ? {} : { mappedCategoryId }) });
+        next.set(candidateIndex, { status: 'COMPLETE', results, classification });
         return next;
       });
-      if (mappedCategoryId !== undefined) {
-        setPreview((current) => current === null ? current : {
-          ...current,
-          candidates: current.candidates.map((candidate, index) =>
-            index !== candidateIndex || candidate.draft.categoryId !== undefined
-              ? candidate
-              : { ...candidate, draft: { ...candidate.draft, categoryId: mappedCategoryId } },
-          ),
-        });
+      if (classification.status === 'CLASSIFIED') {
         setCategoryIdByCandidateIndex((current) => {
           if (current.get(candidateIndex) !== undefined) return current;
           const next = new Map(current);
-          next.set(candidateIndex, mappedCategoryId);
+          next.set(candidateIndex, classification.categoryId);
           return next;
         });
       }
@@ -668,14 +693,46 @@ export function LegacyXlsImportPreview({
                         ) : (
                           <ul aria-label={`후보 ${candidateIndex + 1} Kakao 장소 검색 결과`}>
                             {placeSearchState.results.map((place) => (
-                              <li key={place.id}>{place.name} · {place.category} · {place.address}</li>
+                              <li key={place.id}>
+                                {place.placeName} · {place.categoryName} ·{' '}
+                                {place.roadAddressName.length > 0
+                                  ? place.roadAddressName
+                                  : place.addressName}
+                                <small>
+                                  그룹: {place.categoryGroupName || place.categoryGroupCode || '없음'} ·
+                                  지번: {place.addressName || '없음'} · 도로명:{' '}
+                                  {place.roadAddressName || '없음'}
+                                </small>
+                              </li>
                             ))}
                           </ul>
                         )
                       ) : null}
-                      {placeSearchState?.mappedCategoryId === undefined ? null : (
-                        <small>Kakao Category → {CATEGORY_LABELS[placeSearchState.mappedCategoryId]} · KAKAO_LOCAL · HIGH</small>
+                      {placeSearchState?.userRuleCategoryId === undefined ? null : (
+                        <small>
+                          사용자 규칙 → {CATEGORY_LABELS[placeSearchState.userRuleCategoryId]} · USER_RULE · HIGH
+                        </small>
                       )}
+                      {placeSearchState?.classification?.status === 'CLASSIFIED' ? (
+                        <small>
+                          {placeSearchState.classification.place.placeName} ·{' '}
+                          {placeSearchState.classification.place.categoryName} →{' '}
+                          {CATEGORY_LABELS[placeSearchState.classification.categoryId]} ·{' '}
+                          {placeSearchState.classification.source} ·{' '}
+                          {placeSearchState.classification.confidence}
+                        </small>
+                      ) : null}
+                      {placeSearchState?.classification?.status === 'NEEDS_REVIEW' ? (
+                        <small>
+                          {placeSearchState.classification.reason === 'PAYMENT_INTERMEDIARY'
+                            ? '결제 중개자 표식이라 Kakao 자동 분석에서 제외했습니다. 검토가 필요합니다.'
+                            : placeSearchState.classification.reason === 'NO_EXACT_MERCHANT_MATCH'
+                              ? 'Kakao 결과와 거래처명이 정확히 일치하지 않아 검토가 필요합니다.'
+                              : 'Kakao 카테고리를 내부 분류로 안전하게 매핑할 수 없어 검토가 필요합니다.'}{' '}
+                          · {placeSearchState.classification.source} ·{' '}
+                          {placeSearchState.classification.confidence}
+                        </small>
+                      ) : null}
                     </div>
                   )}
                   <div className="import-category-picker">

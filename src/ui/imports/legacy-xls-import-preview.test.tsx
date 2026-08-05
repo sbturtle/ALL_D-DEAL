@@ -75,6 +75,22 @@ const multipleExpensePreview: ImportPreview = {
   ],
 };
 
+const userRuleExpensePreview: ImportPreview = {
+  ...expensePreview,
+  candidates: expensePreview.candidates.map((candidate) => ({
+    ...candidate,
+    draft: { ...candidate.draft, categoryId: 'FOOD_DINING' },
+  })),
+};
+
+const paymentIntermediaryPreview: ImportPreview = {
+  ...expensePreview,
+  candidates: expensePreview.candidates.map((candidate) => ({
+    ...candidate,
+    draft: { ...candidate.draft, descriptionOriginal: '네이버페이 주문' },
+  })),
+};
+
 describe('LegacyXlsImportPreview', () => {
   it('선택한 XLS의 후보와 원본 값 없는 확인 필요 사유를 미리보기로 보여준다', async () => {
     const user = userEvent.setup();
@@ -361,9 +377,14 @@ describe('LegacyXlsImportPreview', () => {
     const searchPlaces = vi.fn().mockResolvedValue([
       {
         id: 'place-1',
-        name: 'Fabricated Cafe',
-        address: 'Fabricated address',
-        category: 'Food',
+        placeName: '가짜 식료품점',
+        categoryName: '음식점 > 카페 > 커피전문점',
+        categoryGroupCode: '',
+        categoryGroupName: '',
+        addressName: 'Fabricated parcel address',
+        roadAddressName: 'Fabricated road address',
+        x: '127.0000',
+        y: '37.0000',
       },
     ]);
     render(
@@ -381,6 +402,55 @@ describe('LegacyXlsImportPreview', () => {
       screen.getByText('파일 업로드 시 이 거래 설명을 Kakao로 자동 분석하며, 결과는 저장하지 않아요.'),
     ).toBeVisible();
     expect(searchPlaces).toHaveBeenCalledWith('가짜 식료품점');
-    expect(await screen.findByText('Fabricated Cafe · Food · Fabricated address')).toBeVisible();
+    expect(
+      await screen.findByText(
+        '가짜 식료품점 · 음식점 > 카페 > 커피전문점 · Fabricated road address',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/가짜 식료품점 · 음식점 > 카페 > 커피전문점 → 카페 · KAKAO_LOCAL · HIGH/),
+    ).toBeVisible();
+  });
+
+  it('keeps a user-rule category ahead of Kakao and does not send it for lookup', async () => {
+    const user = userEvent.setup();
+    const searchPlaces = vi.fn();
+    render(
+      <LegacyXlsImportPreview
+        previewFile={async () => userRuleExpensePreview}
+        searchPlaces={searchPlaces}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+
+    expect(searchPlaces).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText('사용자 규칙 → 식비·외식 · USER_RULE · HIGH'),
+    ).toBeVisible();
+  });
+
+  it('does not send known payment intermediaries to Kakao and keeps them in review', async () => {
+    const user = userEvent.setup();
+    const searchPlaces = vi.fn();
+    render(
+      <LegacyXlsImportPreview
+        previewFile={async () => paymentIntermediaryPreview}
+        searchPlaces={searchPlaces}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+
+    expect(searchPlaces).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText(/결제 중개자 표식이라 Kakao 자동 분석에서 제외했습니다/),
+    ).toBeVisible();
   });
 });
