@@ -228,3 +228,15 @@ Phase 3A는 두 private XLS 구조를 참고한 브라우저 전용 Preview로 �
 ### 후속으로 미룬 사항
 
 사용자 계좌 별칭 설정, 이체 상대 검증, 상호·브랜드 정규화, 확장 카테고리, 사용자 규칙 관리, 외부 제공자 API는 별도 단계에서 설계한다. 원본 파일, 계좌·카드 번호, 개인 이름, 실제 거래 문구·금액은 문서와 테스트에 기록하지 않는다. 상세 결정은 [ADR-0009](../adr/ADR-0009-card-expense-and-account-cashflow-classification.md)를 따른다.
+
+## 2026-08-05 Kakao Map Web SDK 설정 경계 추가
+
+### 결정
+
+Kakao 장소 검색은 브라우저에 노출되는 JavaScript 키와 등록된 JavaScript SDK 도메인을 사용하는 Web SDK로만 준비한다. `.env.example`에는 `VITE_KAKAO_MAP_JAVASCRIPT_KEY`의 빈 값만 제공하고 REST API key, Admin key, client secret, access token은 포함하지 않는다.
+
+실제 거래 설명을 외부로 보내는 검색은 자동 실행하지 않는다. 이후 한 후보씩 사용자가 명시적으로 요청하고 전송 사실을 확인하는 Preview 전용 흐름으로만 추가한다. 결과는 자동 저장·자동 카테고리화·백그라운드 동기화에 사용하지 않는다.
+
+### 이유
+
+상호 확인 보조 기능의 편의성과 local-first 금융 데이터 경계를 함께 지키기 위해서다. 키 없는 개발·검증 환경도 기존 기능이 모두 동작해야 한다. 상세 결정은 [ADR-0010](../adr/ADR-0010-kakao-map-web-sdk-opt-in-boundary.md)을 따른다.
