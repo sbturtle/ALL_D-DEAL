@@ -1,5 +1,11 @@
 # Engineering Log
 
+## 2026-08-05 — Phase 7C Kakao Analysis Progress Feedback
+
+- Import Preview now counts candidates whose Kakao place lookup is `SEARCHING` and shows a sticky spinner with the pending count.
+- The notice is announced with `role="status"`, does not block Preview review, and disappears once all pending lookups settle.
+- Verified with a deferred fabricated lookup fixture, `npm run lint`, `npm run typecheck`, `npm test` (27 files, 316 tests), and `npm run build`.
+
 ## 2026-08-05 — Phase 7B Kakao Category Enrichment
 
 ### 문제와 원인
