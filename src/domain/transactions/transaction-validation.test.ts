@@ -59,6 +59,30 @@ describe('validateTransaction', () => {
     expect(result).toEqual({ isValid: true, value: candidate });
   });
 
+  it('Import 출처는 batch와 importer를 함께 보존한다', () => {
+    const candidate = {
+      ...validTransaction,
+      importBatchId: '550e8400-e29b-41d4-a716-446655440001',
+      importerId: 'LEGACY_XLS',
+    } as const;
+
+    expect(validateTransaction(candidate)).toEqual({
+      isValid: true,
+      value: candidate,
+    });
+  });
+
+  it('Import 출처의 한쪽만 있으면 거절한다', () => {
+    expectIssue(
+      {
+        ...validTransaction,
+        importBatchId: '550e8400-e29b-41d4-a716-446655440001',
+      },
+      'importerId',
+      'required',
+    );
+  });
+
   it.each(TRANSACTION_TYPES)('%s 유형을 허용한다', (type) => {
     expect(validateTransaction({ ...validTransaction, type }).isValid).toBe(
       true,

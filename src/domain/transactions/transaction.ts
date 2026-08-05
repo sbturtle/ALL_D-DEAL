@@ -14,9 +14,11 @@ export const TRANSACTION_TYPES = [
   'REFUND',
   'UNKNOWN',
 ] as const;
+export const TRANSACTION_IMPORTER_IDS = ['LEGACY_XLS'] as const;
 
 export type TransactionDirection = (typeof TRANSACTION_DIRECTIONS)[number];
 export type TransactionType = (typeof TRANSACTION_TYPES)[number];
+export type TransactionImporterId = (typeof TRANSACTION_IMPORTER_IDS)[number];
 
 export type Transaction = Readonly<
   Money & {
@@ -29,6 +31,8 @@ export type Transaction = Readonly<
     merchantNormalized?: string;
     paymentInstrumentLabel?: string;
     memo?: string;
+    importBatchId?: string;
+    importerId?: TransactionImporterId;
     createdAt: UtcIsoInstant;
     updatedAt: UtcIsoInstant;
   }
@@ -38,6 +42,9 @@ const transactionDirectionSet: ReadonlySet<unknown> = new Set(
   TRANSACTION_DIRECTIONS,
 );
 const transactionTypeSet: ReadonlySet<unknown> = new Set(TRANSACTION_TYPES);
+const transactionImporterIdSet: ReadonlySet<unknown> = new Set(
+  TRANSACTION_IMPORTER_IDS,
+);
 
 export function isTransactionDirection(
   value: unknown,
@@ -47,4 +54,10 @@ export function isTransactionDirection(
 
 export function isTransactionType(value: unknown): value is TransactionType {
   return transactionTypeSet.has(value);
+}
+
+export function isTransactionImporterId(
+  value: unknown,
+): value is TransactionImporterId {
+  return transactionImporterIdSet.has(value);
 }

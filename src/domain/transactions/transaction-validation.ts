@@ -2,11 +2,13 @@ import { isCalendarDate } from './calendar-date';
 import { isPositiveMinorAmount, isSupportedCurrency } from './money';
 import {
   isTransactionDirection,
+  isTransactionImporterId,
   isTransactionType,
 } from './transaction';
 import type {
   Transaction,
   TransactionDirection,
+  TransactionImporterId,
   TransactionType,
 } from './transaction';
 import { isUtcIsoInstant } from './utc-iso-instant';
@@ -53,6 +55,8 @@ const TRANSACTION_FIELDS = [
   'merchantNormalized',
   'paymentInstrumentLabel',
   'memo',
+  'importBatchId',
+  'importerId',
   'createdAt',
   'updatedAt',
 ] as const;
@@ -191,6 +195,44 @@ function readUuid(
   }
 
   return value;
+}
+
+function readOptionalUuid(
+  candidate: CandidateRecord,
+  field: 'importBatchId',
+  issues: TransactionValidationIssue[],
+): string | undefined {
+  if (!hasOwnField(candidate, field) || candidate[field] === undefined) {
+    return undefined;
+  }
+
+  const value = candidate[field];
+  if (
+    typeof value !== 'string' ||
+    !UUID_PATTERN.test(value) ||
+    value.toLowerCase() === NIL_UUID
+  ) {
+    addIssue(issues, field, 'invalid_uuid', 'Import batch ID는 유효한 UUID여야 합니다.');
+    return undefined;
+  }
+
+  return value;
+}
+
+function readOptionalImporterId(
+  candidate: CandidateRecord,
+  issues: TransactionValidationIssue[],
+): TransactionImporterId | undefined {
+  if (!hasOwnField(candidate, 'importerId') || candidate.importerId === undefined) {
+    return undefined;
+  }
+
+  if (!isTransactionImporterId(candidate.importerId)) {
+    addIssue(issues, 'importerId', 'unsupported_type', '지원하지 않는 Importer입니다.');
+    return undefined;
+  }
+
+  return candidate.importerId;
 }
 
 function readCalendarDate(
@@ -386,10 +428,20 @@ export function validateTransaction(
   );
   const paymentInstrumentLabel = readPaymentInstrumentLabel(candidate, issues);
   const memo = readOptionalNonBlankText(candidate, 'memo', issues);
+  const importBatchId = readOptionalUuid(candidate, 'importBatchId', issues);
+  const importerId = readOptionalImporterId(candidate, issues);
   const createdAt = readUtcIsoInstant(candidate, 'createdAt', issues);
   const updatedAt = readUtcIsoInstant(candidate, 'updatedAt', issues);
 
   findUnexpectedFields(candidate, issues);
+
+  if (importBatchId === undefined && importerId !== undefined) {
+    addIssue(issues, 'importBatchId', 'required', 'Importer가 있으면 Import batch ID가 필요합니다.');
+  }
+
+  if (importBatchId !== undefined && importerId === undefined) {
+    addIssue(issues, 'importerId', 'required', 'Import batch ID가 있으면 Importer가 필요합니다.');
+  }
 
   if (
     createdAt !== null &&
@@ -435,6 +487,8 @@ export function validateTransaction(
         ? {}
         : { paymentInstrumentLabel }),
       ...(memo === undefined ? {} : { memo }),
+      ...(importBatchId === undefined ? {} : { importBatchId }),
+      ...(importerId === undefined ? {} : { importerId }),
       createdAt,
       updatedAt,
     },
