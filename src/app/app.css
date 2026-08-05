@@ -1479,6 +1479,111 @@ fieldset {
   white-space: nowrap;
 }
 
+.duplicate-check-error {
+  margin: 12px 0 0;
+  padding: 10px 11px;
+  color: #ffd8cd;
+  font-size: 0.67rem;
+  font-weight: 750;
+  line-height: 1.5;
+  background: rgb(255 114 86 / 12%);
+  border: 1px solid rgb(255 114 86 / 40%);
+  border-radius: 9px;
+}
+
+.duplicate-candidate-review {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  background: rgb(216 239 120 / 10%);
+  border: 1px solid rgb(216 239 120 / 38%);
+  border-radius: 10px;
+}
+
+.duplicate-candidate-review > div {
+  display: grid;
+  gap: 5px;
+}
+
+.duplicate-candidate-review strong {
+  color: var(--lime);
+  font-size: 0.7rem;
+}
+
+.duplicate-candidate-review p {
+  margin: 0;
+  color: #c1cec6;
+  font-size: 0.64rem;
+  line-height: 1.55;
+  word-break: keep-all;
+}
+
+.duplicate-include-all-action {
+  width: 100%;
+  min-height: 34px !important;
+  margin-top: 0 !important;
+  padding: 6px 9px;
+  color: var(--green-dark) !important;
+  font-size: 0.66rem !important;
+  background: var(--lime) !important;
+  border-color: var(--lime) !important;
+}
+
+.duplicate-include-all-action:disabled {
+  color: #b8c3bc !important;
+  background: rgb(255 255 255 / 9%) !important;
+  border-color: rgb(255 255 255 / 15%) !important;
+}
+
+.duplicate-candidate-review ul {
+  display: grid;
+  gap: 7px;
+  max-height: 248px;
+  margin: 0;
+  padding: 0 3px 0 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.duplicate-candidate-review li {
+  padding-top: 7px;
+  border-top: 1px solid rgb(255 255 255 / 13%);
+}
+
+.duplicate-candidate-review label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.duplicate-candidate-review input {
+  flex: 0 0 auto;
+  margin: 3px 0 0;
+  accent-color: var(--lime);
+}
+
+.duplicate-candidate-review label span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.duplicate-candidate-review label strong {
+  overflow: hidden;
+  color: #f5f8f2;
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.duplicate-candidate-review small {
+  color: #abbab1;
+  font-size: 0.6rem;
+  line-height: 1.45;
+}
+
 .import-issue-list {
   margin-top: 14px;
   padding: 11px;
@@ -1721,7 +1826,8 @@ fieldset {
 }
 
 .import-confirmation-note,
-.import-save-message {
+.import-save-message,
+.import-selection-note {
   margin: 8px 0 0;
   color: #aabbb1;
   font-size: 0.64rem;
@@ -1730,6 +1836,10 @@ fieldset {
 
 .import-save-message {
   color: var(--lime);
+}
+
+.import-selection-note {
+  color: #d3df86;
 }
 
 .local-manifesto {

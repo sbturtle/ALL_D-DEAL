@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { LegacyXlsImportConfirmationResult } from '../../application/imports/confirm-legacy-xls-import';
+import type {
+  LegacyXlsImportConfirmationOptions,
+  LegacyXlsImportConfirmationResult,
+} from '../../application/imports/confirm-legacy-xls-import';
+import type { DuplicateCandidateMatch } from '../../domain/imports/duplicate-candidates';
 import type { LegacyXlsPreviewReader } from '../../application/imports/prepare-legacy-xls-import';
 import { saveManualBudgetSettlement } from '../../application/ledger/save-manual-budget-settlement';
 import type { ImportPreview } from '../../domain/imports/legacy-xls-preview';
@@ -36,7 +40,11 @@ type DashboardSectionProps = Readonly<{
   previewLegacyXls: LegacyXlsPreviewReader;
   confirmLegacyXlsImport: (
     preview: ImportPreview,
+    options?: LegacyXlsImportConfirmationOptions,
   ) => Promise<LegacyXlsImportConfirmationResult>;
+  findPotentialLegacyXlsImportDuplicates: (
+    preview: ImportPreview,
+  ) => Promise<readonly DuplicateCandidateMatch[]>;
   ledgerRepository: LocalLedgerRepository;
 }>;
 
@@ -114,6 +122,7 @@ function getSettlementSummary(
 export function DashboardSection({
   previewLegacyXls,
   confirmLegacyXlsImport,
+  findPotentialLegacyXlsImportDuplicates,
   ledgerRepository,
 }: DashboardSectionProps) {
   const [mode, setMode] = useState<DashboardMode>('LOCAL');
@@ -613,6 +622,7 @@ export function DashboardSection({
           <LegacyXlsImportPreview
             previewFile={previewLegacyXls}
             confirmPreview={confirmLegacyXlsImport}
+            findPotentialDuplicates={findPotentialLegacyXlsImportDuplicates}
             onImportConfirmed={requestReload}
           />
         </aside>

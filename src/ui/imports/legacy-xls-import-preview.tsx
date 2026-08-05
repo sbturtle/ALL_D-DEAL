@@ -8,7 +8,9 @@ import type {
 import type { LegacyXlsPreviewReader } from '../../application/imports/prepare-legacy-xls-import';
 import type {
   LegacyXlsImportConfirmationResult,
+  LegacyXlsImportConfirmationOptions,
 } from '../../application/imports/confirm-legacy-xls-import';
+import type { DuplicateCandidateMatch } from '../../domain/imports/duplicate-candidates';
 import type { TransactionType } from '../../domain/transactions/transaction';
 import { formatWon } from '../../shared/format/currency';
 
@@ -16,8 +18,12 @@ type ImportStatus = 'IDLE' | 'READING' | 'PREVIEW' | 'SAVING' | 'SAVED';
 
 export type LegacyXlsImportPreviewProps = Readonly<{
   previewFile: LegacyXlsPreviewReader;
+  findPotentialDuplicates?: (
+    preview: ImportPreview,
+  ) => Promise<readonly DuplicateCandidateMatch[]>;
   confirmPreview?: (
     preview: ImportPreview,
+    options?: LegacyXlsImportConfirmationOptions,
   ) => Promise<LegacyXlsImportConfirmationResult>;
   onImportConfirmed?: () => void;
 }>;
@@ -46,11 +52,19 @@ function getPreviewSummary(preview: ImportPreview): string {
 
 export function LegacyXlsImportPreview({
   previewFile,
+  findPotentialDuplicates,
   confirmPreview,
   onImportConfirmed,
 }: LegacyXlsImportPreviewProps) {
   const [status, setStatus] = useState<ImportStatus>('IDLE');
   const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [duplicateMatches, setDuplicateMatches] = useState<
+    readonly DuplicateCandidateMatch[]
+  >([]);
+  const [selectedCandidateIndexes, setSelectedCandidateIndexes] = useState<
+    ReadonlySet<number>
+  >(new Set());
+  const [duplicateCheckFailed, setDuplicateCheckFailed] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const requestIdRef = useRef(0);
 
@@ -58,6 +72,9 @@ export function LegacyXlsImportPreview({
     requestIdRef.current += 1;
     setStatus('IDLE');
     setPreview(null);
+    setDuplicateMatches([]);
+    setSelectedCandidateIndexes(new Set());
+    setDuplicateCheckFailed(false);
     setSaveMessage(null);
   };
 
@@ -75,13 +92,39 @@ export function LegacyXlsImportPreview({
     requestIdRef.current = requestId;
     setStatus('READING');
     setPreview(null);
+    setDuplicateMatches([]);
+    setSelectedCandidateIndexes(new Set());
+    setDuplicateCheckFailed(false);
     setSaveMessage(null);
 
     try {
       const nextPreview = await previewFile(file);
+      let nextDuplicateMatches: readonly DuplicateCandidateMatch[] = [];
+      let didDuplicateCheckFail = false;
+
+      try {
+        nextDuplicateMatches =
+          findPotentialDuplicates === undefined
+            ? []
+            : await findPotentialDuplicates(nextPreview);
+      } catch {
+        didDuplicateCheckFail = true;
+      }
 
       if (requestId === requestIdRef.current) {
+        const duplicateCandidateIndexes = new Set(
+          nextDuplicateMatches.map((match) => match.candidateIndex),
+        );
         setPreview(nextPreview);
+        setDuplicateMatches(nextDuplicateMatches);
+        setSelectedCandidateIndexes(
+          new Set(
+            nextPreview.candidates.flatMap((_, candidateIndex) =>
+              duplicateCandidateIndexes.has(candidateIndex) ? [] : [candidateIndex],
+            ),
+          ),
+        );
+        setDuplicateCheckFailed(didDuplicateCheckFail);
         setStatus('PREVIEW');
       }
     } catch {
@@ -101,7 +144,20 @@ export function LegacyXlsImportPreview({
   };
 
   const handleConfirm = async () => {
-    if (preview === null || confirmPreview === undefined) {
+    if (
+      preview === null ||
+      confirmPreview === undefined ||
+      duplicateCheckFailed
+    ) {
+      return;
+    }
+
+    const selectedCandidates = preview.candidates.filter((_, candidateIndex) =>
+      selectedCandidateIndexes.has(candidateIndex),
+    );
+
+    if (selectedCandidates.length === 0) {
+      setSaveMessage('저장할 후보를 하나 이상 선택해 주세요.');
       return;
     }
 
@@ -109,7 +165,10 @@ export function LegacyXlsImportPreview({
     setSaveMessage(null);
     let result: LegacyXlsImportConfirmationResult;
     try {
-      result = await confirmPreview(preview);
+      result = await confirmPreview(
+        { ...preview, candidates: selectedCandidates },
+        { skippedCount: preview.candidates.length - selectedCandidates.length },
+      );
     } catch {
       setStatus('PREVIEW');
       setSaveMessage('로컬 저장에 실패했습니다. 기존 저장 거래는 변경되지 않았습니다.');
@@ -130,6 +189,36 @@ export function LegacyXlsImportPreview({
         : '로컬 저장에 실패했습니다. 기존 저장 거래는 변경되지 않았습니다.',
     );
   };
+
+  const toggleCandidateSelection = (candidateIndex: number) => {
+    setSelectedCandidateIndexes((currentIndexes) => {
+      const nextIndexes = new Set(currentIndexes);
+
+      if (nextIndexes.has(candidateIndex)) {
+        nextIndexes.delete(candidateIndex);
+      } else {
+        nextIndexes.add(candidateIndex);
+      }
+
+      return nextIndexes;
+    });
+  };
+
+  const includeAllPotentialDuplicates = () => {
+    setSelectedCandidateIndexes((currentIndexes) => {
+      const nextIndexes = new Set(currentIndexes);
+      duplicateMatches.forEach((match) => nextIndexes.add(match.candidateIndex));
+      return nextIndexes;
+    });
+  };
+
+  const duplicateCandidateMatches =
+    preview === null
+      ? []
+      : duplicateMatches.filter(
+          (match) => preview.candidates[match.candidateIndex] !== undefined,
+        );
+  const selectedCandidateCount = selectedCandidateIndexes.size;
 
   return (
     <div className="legacy-import-preview" id="import">
@@ -181,6 +270,66 @@ export function LegacyXlsImportPreview({
             {getPreviewSummary(preview)}
           </p>
 
+          {duplicateCheckFailed ? (
+            <p className="duplicate-check-error" role="alert">
+              저장된 거래와 중복 가능성을 비교하지 못했습니다. 파일을 다시 선택한 뒤 확인해 주세요.
+            </p>
+          ) : null}
+
+          {duplicateCandidateMatches.length > 0 ? (
+            <section className="duplicate-candidate-review" aria-labelledby="duplicate-review-title">
+              <div>
+                <strong id="duplicate-review-title">중복 가능 후보 {duplicateCandidateMatches.length}건</strong>
+                <p>
+                  저장 거래 또는 이 파일의 앞선 후보와 정확한 비교 키가 같습니다. 실제 별도 거래일 수 있어 기본 저장에서만 제외했습니다.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="duplicate-include-all-action"
+                onClick={includeAllPotentialDuplicates}
+                disabled={
+                  status === 'SAVING' ||
+                  status === 'SAVED' ||
+                  duplicateCandidateMatches.every((match) =>
+                    selectedCandidateIndexes.has(match.candidateIndex),
+                  )
+                }
+              >
+                중복 가능 후보 모두 저장에 포함
+              </button>
+              <ul aria-label="중복 가능 Import 후보">
+                {duplicateCandidateMatches.map((match) => {
+                  const candidate = preview.candidates[match.candidateIndex];
+
+                  if (candidate === undefined) {
+                    return null;
+                  }
+
+                  return (
+                    <li key={`${candidate.source}-${candidate.rowNumber}`}>
+                      <label>
+                        <input
+                          type="checkbox"
+                          aria-label={`중복 가능 후보 ${match.candidateIndex + 1} 저장`}
+                          checked={selectedCandidateIndexes.has(match.candidateIndex)}
+                          disabled={status === 'SAVING' || status === 'SAVED'}
+                          onChange={() => toggleCandidateSelection(match.candidateIndex)}
+                        />
+                        <span>
+                          <strong>{candidate.draft.descriptionOriginal}</strong>
+                          <small>
+                            {candidate.draft.occurredOn} · {formatWon(candidate.draft.amountMinor)} · 저장 전 사용자 확인 필요
+                          </small>
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
+
           {preview.candidates.length > 0 ? (
             <ul className="import-candidate-list" aria-label="가져오기 후보">
               {preview.candidates.slice(0, 6).map((candidate) => (
@@ -228,8 +377,14 @@ export function LegacyXlsImportPreview({
               <button
                 type="button"
                 className="import-confirm-action"
+                data-testid="import-confirm-action"
                 onClick={handleConfirm}
-                disabled={status === 'SAVING' || status === 'SAVED'}
+                disabled={
+                  status === 'SAVING' ||
+                  status === 'SAVED' ||
+                  duplicateCheckFailed ||
+                  selectedCandidateCount === 0
+                }
               >
                 {status === 'SAVING'
                   ? '이 기기에 저장하는 중'
@@ -237,6 +392,9 @@ export function LegacyXlsImportPreview({
                     ? '저장 완료'
                     : `후보 ${preview.candidates.length}건을 이 기기에 저장`}
               </button>
+              <p className="import-selection-note">
+                현재 {selectedCandidateCount}건만 저장 대상으로 선택되었습니다. 중복 가능 후보는 체크하거나 전체 포함을 눌러야 저장됩니다.
+              </p>
               <p className="import-confirmation-note">
                 원본 XLS와 파일명은 저장하지 않으며, 저장 후 기간별 장부에서 확인할 수 있습니다.
               </p>

@@ -126,7 +126,81 @@ describe('LegacyXlsImportPreview', () => {
       screen.getByRole('button', { name: '후보 1건을 이 기기에 저장' }),
     );
 
-    expect(confirmPreview).toHaveBeenCalledWith(accountPreview);
+    expect(confirmPreview).toHaveBeenCalledWith(accountPreview, { skippedCount: 0 });
     expect(await screen.findByText('1건을 이 기기에 저장했습니다.')).toBeVisible();
+  });
+
+  it('defaults a possible duplicate to excluded and allows an individual re-include', async () => {
+    const user = userEvent.setup();
+    const confirmPreview = vi.fn().mockResolvedValue({
+      isConfirmed: true,
+      batch: {},
+      transactions: [],
+    });
+    const findPotentialDuplicates = vi.fn().mockResolvedValue([
+      {
+        candidateIndex: 0,
+        savedTransactionIds: ['550e8400-e29b-41d4-a716-446655440099'],
+        previewCandidateIndexes: [],
+      },
+    ]);
+    render(
+      <LegacyXlsImportPreview
+        previewFile={async () => accountPreview}
+        findPotentialDuplicates={findPotentialDuplicates}
+        confirmPreview={confirmPreview}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+
+    const candidateCheckbox = await screen.findByRole('checkbox', {
+      name: '중복 가능 후보 1 저장',
+    });
+    expect(candidateCheckbox).not.toBeChecked();
+    expect(screen.getByTestId('import-confirm-action')).toBeDisabled();
+
+    await user.click(candidateCheckbox);
+    await user.click(screen.getByTestId('import-confirm-action'));
+
+    expect(confirmPreview).toHaveBeenCalledWith(accountPreview, { skippedCount: 0 });
+  });
+
+  it('can include all possible duplicates before confirmation', async () => {
+    const user = userEvent.setup();
+    const confirmPreview = vi.fn().mockResolvedValue({
+      isConfirmed: false,
+      code: 'nothing_to_save',
+    });
+    render(
+      <LegacyXlsImportPreview
+        previewFile={async () => accountPreview}
+        findPotentialDuplicates={async () => [
+          {
+            candidateIndex: 0,
+            savedTransactionIds: [],
+            previewCandidateIndexes: [],
+          },
+        ]}
+        confirmPreview={confirmPreview}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+    await user.click(
+      await screen.findByRole('button', {
+        name: '중복 가능 후보 모두 저장에 포함',
+      }),
+    );
+
+    expect(screen.getByRole('checkbox', { name: '중복 가능 후보 1 저장' })).toBeChecked();
+    await user.click(screen.getByTestId('import-confirm-action'));
+    expect(confirmPreview).toHaveBeenCalledWith(accountPreview, { skippedCount: 0 });
   });
 });

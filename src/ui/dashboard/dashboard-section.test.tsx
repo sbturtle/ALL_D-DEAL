@@ -72,6 +72,7 @@ describe('DashboardSection', () => {
       <DashboardSection
         previewLegacyXls={vi.fn()}
         confirmLegacyXlsImport={vi.fn()}
+        findPotentialLegacyXlsImportDuplicates={vi.fn().mockResolvedValue([])}
         ledgerRepository={repository}
       />,
     );

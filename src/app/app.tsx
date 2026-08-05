@@ -4,8 +4,10 @@ import {
 } from '../application/imports/prepare-legacy-xls-import';
 import {
   confirmLegacyXlsImport,
+  type LegacyXlsImportConfirmationOptions,
   type LegacyXlsImportConfirmationResult,
 } from '../application/imports/confirm-legacy-xls-import';
+import { findPotentialLegacyXlsImportDuplicates } from '../application/imports/find-legacy-xls-import-duplicates';
 import type { ImportPreview } from '../domain/imports/legacy-xls-preview';
 import type { UtcIsoInstant } from '../domain/transactions/utc-iso-instant';
 import { previewLegacyXlsFile } from '../infrastructure/imports/legacy-xls-file-reader';
@@ -30,12 +32,17 @@ function currentUtcIsoInstant(): UtcIsoInstant {
 
 function confirmSelectedLegacyXlsImport(
   preview: ImportPreview,
+  options?: LegacyXlsImportConfirmationOptions,
 ): Promise<LegacyXlsImportConfirmationResult> {
   return confirmLegacyXlsImport(preview, {
     committer: ledgerRepository,
     createId: createLocalId,
     now: currentUtcIsoInstant,
-  });
+  }, options);
+}
+
+function findSelectedLegacyXlsImportDuplicates(preview: ImportPreview) {
+  return findPotentialLegacyXlsImportDuplicates(preview, ledgerRepository);
 }
 
 export function App() {
@@ -96,6 +103,7 @@ export function App() {
         <DashboardSection
           previewLegacyXls={previewSelectedLegacyXls}
           confirmLegacyXlsImport={confirmSelectedLegacyXlsImport}
+          findPotentialLegacyXlsImportDuplicates={findSelectedLegacyXlsImportDuplicates}
           ledgerRepository={ledgerRepository}
         />
 
