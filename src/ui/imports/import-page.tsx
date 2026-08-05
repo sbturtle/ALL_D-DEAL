@@ -45,6 +45,7 @@ export function ImportPage({
           <li>원본 파일과 파일명은 저장하지 않음</li>
           <li>중복 가능 거래는 저장 전 직접 확인</li>
           <li>카테고리 규칙은 원할 때만 기억</li>
+          <li>Kakao 설정 시 지출 후보 설명을 자동 분석하며 결과는 저장하지 않음</li>
         </ul>
       </div>
 

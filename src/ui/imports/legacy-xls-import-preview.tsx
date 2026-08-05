@@ -246,6 +246,16 @@ export function LegacyXlsImportPreview({
         );
         setDuplicateCheckFailed(didDuplicateCheckFail);
         setStatus('PREVIEW');
+        if (searchPlaces !== undefined) {
+          nextPreview.candidates.forEach((candidate, candidateIndex) => {
+            if (candidate.draft.type === 'EXPENSE') {
+              void searchCandidatePlace(
+                candidateIndex,
+                candidate.draft.descriptionOriginal,
+              );
+            }
+          });
+        }
       }
     } catch {
       if (requestId === requestIdRef.current) {
@@ -599,24 +609,27 @@ export function LegacyXlsImportPreview({
                   ) : (
                     <div className="import-place-search">
                       <small>
-                        검색을 누르면 이 거래 설명이 Kakao에 전송되며, 결과는 저장하지 않아요.
+                        파일 업로드 시 이 거래 설명을 Kakao로 자동 분석하며, 결과는 저장하지 않아요.
                       </small>
-                      <button
-                        type="button"
-                        disabled={placeSearchState?.status === 'SEARCHING'}
-                        onClick={() =>
-                          void searchCandidatePlace(
-                            candidateIndex,
-                            candidate.draft.descriptionOriginal,
-                          )
-                        }
-                      >
-                        {placeSearchState?.status === 'SEARCHING'
-                          ? 'Kakao 검색 중'
-                          : 'Kakao 장소 검색'}
-                      </button>
+                      {placeSearchState === undefined ||
+                      placeSearchState.status === 'SEARCHING' ? (
+                        <small>Kakao 장소 분석 중</small>
+                      ) : null}
                       {placeSearchState?.status === 'FAILED' ? (
-                        <small role="alert">장소 검색을 불러오지 못했어요. 설정과 네트워크를 확인해 주세요.</small>
+                        <>
+                          <small role="alert">장소 검색을 불러오지 못했어요. 설정과 네트워크를 확인해 주세요.</small>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void searchCandidatePlace(
+                                candidateIndex,
+                                candidate.draft.descriptionOriginal,
+                              )
+                            }
+                          >
+                            Kakao 장소 분석 다시 시도
+                          </button>
+                        </>
                       ) : null}
                       {placeSearchState?.status === 'COMPLETE' ? (
                         placeSearchState.results.length === 0 ? (
