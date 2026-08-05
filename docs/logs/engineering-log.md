@@ -1,5 +1,12 @@
 # Engineering Log
 
+## 2026-08-05 — Phase 8A Saved Transaction Notes and Categories
+
+- Added a validated single-Transaction update flow that preserves amount, date, type, and Import trace fields while replacing only category, memo, and `updatedAt` in local IndexedDB.
+- Added inline ledger controls to edit or clear a category and optional memo, with local error feedback and immediate list refresh after a successful write.
+- Added fixed Unicode emoji presentations for every internal category; no external icon asset or network request is used.
+- Verified with fabricated application, IndexedDB, category-presentation, and UI fixtures plus lint, typecheck, tests, and production build.
+
 ## 2026-08-05 — Phase 7C Kakao Analysis Progress Feedback
 
 - Import Preview now counts candidates whose Kakao place lookup is `SEARCHING` and shows a sticky spinner with the pending count.
