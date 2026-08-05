@@ -108,6 +108,67 @@ describe('confirmLegacyXlsImport', () => {
     );
   });
 
+  it('commits a user-confirmed category rule with the selected import', async () => {
+    const commitImport = vi.fn().mockResolvedValue(undefined);
+    const createId = (() => {
+      let index = 0;
+      return () => ids[index++] ?? '550e8400-e29b-41d4-a716-446655440002';
+    })();
+
+    const result = await confirmLegacyXlsImport(
+      preview,
+      {
+        committer: { commitImport },
+        createId,
+        now: () => '2026-08-05T00:00:00.000Z',
+      },
+      {
+        categoryRuleRequests: [
+          {
+            descriptionOriginal: 'Fabricated account transaction',
+            categoryId: 'OTHER',
+          },
+        ],
+      },
+    );
+
+    expect(result.isConfirmed).toBe(true);
+    expect(commitImport).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      [
+        {
+          matchDescriptionNormalized: 'fabricated account transaction',
+          categoryId: 'OTHER',
+          createdAt: '2026-08-05T00:00:00.000Z',
+          updatedAt: '2026-08-05T00:00:00.000Z',
+        },
+      ],
+    );
+  });
+
+  it('does not commit conflicting categories for the same normalized description', async () => {
+    const commitImport = vi.fn();
+
+    await expect(
+      confirmLegacyXlsImport(
+        preview,
+        {
+          committer: { commitImport },
+          createId: () => ids[0],
+          now: () => '2026-08-05T00:00:00.000Z',
+        },
+        {
+          categoryRuleRequests: [
+            { descriptionOriginal: 'Fabricated cafe', categoryId: 'FOOD_DINING' },
+            { descriptionOriginal: 'fabricated cafe!', categoryId: 'LEISURE' },
+          ],
+        },
+      ),
+    ).resolves.toEqual({ isConfirmed: false, code: 'conflicting_category_rule' });
+    expect(commitImport).not.toHaveBeenCalled();
+  });
+
   it('returns a safe failure when the local committer fails', async () => {
     const result = await confirmLegacyXlsImport(preview, {
       committer: { commitImport: vi.fn().mockRejectedValue(new Error('private detail')) },
