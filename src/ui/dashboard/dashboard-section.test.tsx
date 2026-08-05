@@ -71,10 +71,6 @@ describe('DashboardSection', () => {
     const user = userEvent.setup();
     render(
       <DashboardSection
-        previewLegacyXls={vi.fn()}
-        confirmLegacyXlsImport={vi.fn()}
-        findPotentialLegacyXlsImportDuplicates={vi.fn().mockResolvedValue([])}
-        applyCategoryRulesToLegacyXlsPreview={async (preview) => preview}
         ledgerRepository={repository}
       />,
     );

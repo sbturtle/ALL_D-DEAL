@@ -1,27 +1,41 @@
-import {
-  prepareLegacyXlsImportPreview,
-  type LegacyXlsImportFile,
-} from '../application/imports/prepare-legacy-xls-import';
+import { useEffect, useState, type MouseEvent } from 'react';
+
+import { applyCategoryRulesToLegacyXlsPreview } from '../application/imports/apply-category-rules-to-legacy-xls-preview';
 import {
   confirmLegacyXlsImport,
   type LegacyXlsImportConfirmationOptions,
   type LegacyXlsImportConfirmationResult,
 } from '../application/imports/confirm-legacy-xls-import';
 import { findPotentialLegacyXlsImportDuplicates } from '../application/imports/find-legacy-xls-import-duplicates';
-import { applyCategoryRulesToLegacyXlsPreview } from '../application/imports/apply-category-rules-to-legacy-xls-preview';
+import {
+  prepareLegacyXlsImportPreview,
+  type LegacyXlsImportFile,
+} from '../application/imports/prepare-legacy-xls-import';
 import type { ImportPreview } from '../domain/imports/legacy-xls-preview';
 import type { UtcIsoInstant } from '../domain/transactions/utc-iso-instant';
 import { previewLegacyXlsFile } from '../infrastructure/imports/legacy-xls-file-reader';
 import { BrowserLedgerRepository } from '../infrastructure/storage/browser-ledger-repository';
 import { DashboardSection } from '../ui/dashboard/dashboard-section';
-import { PayrollEstimateCalculator } from '../ui/payroll-estimate/payroll-estimate-calculator';
+import { ImportPage } from '../ui/imports/import-page';
+import { PayrollPage } from '../ui/payroll-estimate/payroll-page';
+
+import { getAppRoute, getAppRoutePath, type AppRoute } from './app-route';
 import './app.css';
+
+const NAVIGATION_ITEMS: readonly Readonly<{
+  route: AppRoute;
+  label: string;
+}>[] = [
+  { route: 'LEDGER', label: '장부' },
+  { route: 'IMPORTS', label: 'XLS 가져오기' },
+  { route: 'PAYROLL', label: '급여 계산' },
+];
+
+const ledgerRepository = new BrowserLedgerRepository();
 
 function previewSelectedLegacyXls(file: LegacyXlsImportFile) {
   return prepareLegacyXlsImportPreview(file, previewLegacyXlsFile);
 }
-
-const ledgerRepository = new BrowserLedgerRepository();
 
 function createLocalId(): string {
   return crypto.randomUUID();
@@ -35,11 +49,15 @@ function confirmSelectedLegacyXlsImport(
   preview: ImportPreview,
   options?: LegacyXlsImportConfirmationOptions,
 ): Promise<LegacyXlsImportConfirmationResult> {
-  return confirmLegacyXlsImport(preview, {
-    committer: ledgerRepository,
-    createId: createLocalId,
-    now: currentUtcIsoInstant,
-  }, options);
+  return confirmLegacyXlsImport(
+    preview,
+    {
+      committer: ledgerRepository,
+      createId: createLocalId,
+      now: currentUtcIsoInstant,
+    },
+    options,
+  );
 }
 
 function findSelectedLegacyXlsImportDuplicates(preview: ImportPreview) {
@@ -50,89 +68,102 @@ function applySelectedCategoryRules(preview: ImportPreview) {
   return applyCategoryRulesToLegacyXlsPreview(preview, ledgerRepository);
 }
 
+function isModifiedNavigation(event: MouseEvent<HTMLAnchorElement>): boolean {
+  return (
+    event.button !== 0 ||
+    event.metaKey ||
+    event.altKey ||
+    event.ctrlKey ||
+    event.shiftKey
+  );
+}
+
 export function App() {
+  const [route, setRoute] = useState<AppRoute>(() =>
+    getAppRoute(window.location.pathname),
+  );
+
+  useEffect(() => {
+    const handlePopState = () => setRoute(getAppRoute(window.location.pathname));
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleNavigation = (
+    event: MouseEvent<HTMLAnchorElement>,
+    nextRoute: AppRoute,
+  ) => {
+    if (isModifiedNavigation(event)) {
+      return;
+    }
+
+    event.preventDefault();
+    const nextPath = getAppRoutePath(nextRoute);
+    if (window.location.pathname !== nextPath) {
+      window.history.pushState(null, '', nextPath);
+    }
+    setRoute(nextRoute);
+  };
+
   return (
     <div className="app-shell" id="top">
       <header className="site-header">
-        <a className="brand" href="#top" aria-label="가계부 홈으로">
+        <a
+          className="brand"
+          href={getAppRoutePath('LEDGER')}
+          aria-label="가계부 장부로"
+          onClick={(event) => handleNavigation(event, 'LEDGER')}
+        >
           <span aria-hidden="true">ㄱ</span>
           <strong>가계부</strong>
         </a>
 
         <nav aria-label="주요 메뉴">
-          <a href="#calculator">급여 계산</a>
-          <a href="#ledger">장부 미리보기</a>
-          <a href="#import">XLS 가져오기</a>
+          {NAVIGATION_ITEMS.map((item) => (
+            <a
+              href={getAppRoutePath(item.route)}
+              aria-current={route === item.route ? 'page' : undefined}
+              key={item.route}
+              onClick={(event) => handleNavigation(event, item.route)}
+            >
+              {item.label}
+            </a>
+          ))}
         </nav>
 
-        <span className="phase-chip">PHASE 5 · LOCAL</span>
+        <span className="phase-chip">PHASE 6A · LOCAL</span>
       </header>
 
-      <main>
-        <section className="hero-section" aria-labelledby="page-title">
-          <div className="hero-intro">
-            <p className="eyebrow">PAYCHECK, DECODED</p>
-            <h1 id="page-title">
-              이번 연봉,
-              <br />
-              <em>실제로 남는 돈은?</em>
-            </h1>
-            <p className="hero-description">
-              월급과 상여를 함께 넣으면 2026년 기준 예상 실수령액과 공제 내역을
-              한눈에 풀어드립니다.
-            </p>
-
-            <div className="trust-list" aria-label="계산기 특징">
-              <span>
-                <i aria-hidden="true">01</i>
-                외부 전송 없음
-              </span>
-              <span>
-                <i aria-hidden="true">02</i>
-                공식 세액표 반영
-              </span>
-              <span>
-                <i aria-hidden="true">03</i>
-                상여 월평균 포함
-              </span>
-            </div>
-
-            <p className="hero-footnote">
-              정확한 급여명세서가 아닌 일반 직장근로자용 간편 추정입니다.
-            </p>
-          </div>
-
-          <PayrollEstimateCalculator />
-        </section>
-
-        <DashboardSection
-          previewLegacyXls={previewSelectedLegacyXls}
-          confirmLegacyXlsImport={confirmSelectedLegacyXlsImport}
-          findPotentialLegacyXlsImportDuplicates={findSelectedLegacyXlsImportDuplicates}
-          applyCategoryRulesToLegacyXlsPreview={applySelectedCategoryRules}
-          ledgerRepository={ledgerRepository}
-        />
-
-        <section className="local-manifesto" aria-labelledby="local-title">
-          <div>
-            <p className="eyebrow">YOUR DATA, YOUR DEVICE</p>
-            <h2 id="local-title">계산도, 앞으로의 장부도 로컬에서.</h2>
-          </div>
-          <p>
-            입력한 급여는 저장하지 않습니다. 금융 XLS는 브라우저 안에서 검토한 뒤,
-            사용자가 확인한 거래만 이 기기 장부에 저장합니다.
-          </p>
-          <span aria-hidden="true">↘</span>
-        </section>
+      <main className={`work-page work-page--${route.toLowerCase()}`}>
+        {route === 'PAYROLL' ? <PayrollPage /> : null}
+        {route === 'LEDGER' ? <DashboardSection ledgerRepository={ledgerRepository} /> : null}
+        {route === 'IMPORTS' ? (
+          <ImportPage
+            previewLegacyXls={previewSelectedLegacyXls}
+            confirmLegacyXlsImport={confirmSelectedLegacyXlsImport}
+            findPotentialLegacyXlsImportDuplicates={findSelectedLegacyXlsImportDuplicates}
+            applyCategoryRulesToLegacyXlsPreview={applySelectedCategoryRules}
+          />
+        ) : null}
       </main>
 
       <footer>
-        <a className="brand brand--footer" href="#top">
+        <a
+          className="brand brand--footer"
+          href={getAppRoutePath('LEDGER')}
+          onClick={(event) => handleNavigation(event, 'LEDGER')}
+        >
           <span aria-hidden="true">ㄱ</span>
           <strong>가계부</strong>
         </a>
         <p>개인 자산을 내 손으로 이해하는 local-first 프로젝트</p>
-        <a href="#top">맨 위로 ↑</a>
+        <a
+          href={getAppRoutePath('IMPORTS')}
+          onClick={(event) => handleNavigation(event, 'IMPORTS')}
+        >
+          XLS 가져오기 →
+        </a>
       </footer>
     </div>
   );

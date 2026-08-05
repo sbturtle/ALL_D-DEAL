@@ -1,14 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type {
-  LegacyXlsImportConfirmationOptions,
-  LegacyXlsImportConfirmationResult,
-} from '../../application/imports/confirm-legacy-xls-import';
-import type { DuplicateCandidateMatch } from '../../domain/imports/duplicate-candidates';
 import type { CategoryId } from '../../domain/categories/category';
-import type { LegacyXlsPreviewReader } from '../../application/imports/prepare-legacy-xls-import';
 import { saveManualBudgetSettlement } from '../../application/ledger/save-manual-budget-settlement';
-import type { ImportPreview } from '../../domain/imports/legacy-xls-preview';
 import type { BudgetSettlement } from '../../domain/transactions/budget-settlement';
 import { calculateLivingExpenseSummary } from '../../domain/transactions/living-expense';
 import {
@@ -23,7 +16,6 @@ import {
   dashboardMockSummary,
   dashboardMockTransactions,
 } from './dashboard-fixtures';
-import { LegacyXlsImportPreview } from '../imports/legacy-xls-import-preview';
 
 type DashboardMode = 'LOCAL' | 'MOCK';
 
@@ -38,17 +30,6 @@ export type LocalLedgerRepository = Pick<
 >;
 
 type DashboardSectionProps = Readonly<{
-  previewLegacyXls: LegacyXlsPreviewReader;
-  confirmLegacyXlsImport: (
-    preview: ImportPreview,
-    options?: LegacyXlsImportConfirmationOptions,
-  ) => Promise<LegacyXlsImportConfirmationResult>;
-  findPotentialLegacyXlsImportDuplicates: (
-    preview: ImportPreview,
-  ) => Promise<readonly DuplicateCandidateMatch[]>;
-  applyCategoryRulesToLegacyXlsPreview: (
-    preview: ImportPreview,
-  ) => Promise<ImportPreview>;
   ledgerRepository: LocalLedgerRepository;
 }>;
 
@@ -144,10 +125,6 @@ function getSettlementSummary(
 }
 
 export function DashboardSection({
-  previewLegacyXls,
-  confirmLegacyXlsImport,
-  findPotentialLegacyXlsImportDuplicates,
-  applyCategoryRulesToLegacyXlsPreview,
   ledgerRepository,
 }: DashboardSectionProps) {
   const [mode, setMode] = useState<DashboardMode>('LOCAL');
@@ -409,8 +386,7 @@ export function DashboardSection({
         </section>
       ) : null}
 
-      <div className="ledger-grid">
-        <div className="ledger-main">
+      <div className="ledger-main">
           <div className="summary-grid" aria-label="기간 요약">
             {isMock
               ? dashboardMockSummary.map((item) => (
@@ -642,17 +618,6 @@ export function DashboardSection({
               ) : null}
             </article>
           ) : null}
-        </div>
-
-        <aside className="import-card import-card--active" aria-labelledby="import-title">
-          <LegacyXlsImportPreview
-            previewFile={previewLegacyXls}
-            applyCategoryRules={applyCategoryRulesToLegacyXlsPreview}
-            confirmPreview={confirmLegacyXlsImport}
-            findPotentialDuplicates={findPotentialLegacyXlsImportDuplicates}
-            onImportConfirmed={requestReload}
-          />
-        </aside>
       </div>
     </section>
   );

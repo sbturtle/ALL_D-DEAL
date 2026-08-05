@@ -1,0 +1,58 @@
+import type { LegacyXlsImportConfirmationOptions, LegacyXlsImportConfirmationResult } from '../../application/imports/confirm-legacy-xls-import';
+import type { LegacyXlsPreviewReader } from '../../application/imports/prepare-legacy-xls-import';
+import type { DuplicateCandidateMatch } from '../../domain/imports/duplicate-candidates';
+import type { ImportPreview } from '../../domain/imports/legacy-xls-preview';
+
+import { LegacyXlsImportPreview } from './legacy-xls-import-preview';
+
+type ImportPageProps = Readonly<{
+  previewLegacyXls: LegacyXlsPreviewReader;
+  confirmLegacyXlsImport: (
+    preview: ImportPreview,
+    options?: LegacyXlsImportConfirmationOptions,
+  ) => Promise<LegacyXlsImportConfirmationResult>;
+  findPotentialLegacyXlsImportDuplicates: (
+    preview: ImportPreview,
+  ) => Promise<readonly DuplicateCandidateMatch[]>;
+  applyCategoryRulesToLegacyXlsPreview: (
+    preview: ImportPreview,
+  ) => Promise<ImportPreview>;
+}>;
+
+export function ImportPage({
+  previewLegacyXls,
+  confirmLegacyXlsImport,
+  findPotentialLegacyXlsImportDuplicates,
+  applyCategoryRulesToLegacyXlsPreview,
+}: ImportPageProps) {
+  return (
+    <section className="import-page" aria-labelledby="import-page-title">
+      <div className="import-page-intro">
+        <p className="eyebrow">WEEKLY IMPORT</p>
+        <h1 id="import-page-title">
+          이번 주 거래,
+          <br />
+          <em>확인하고 장부에 넣기.</em>
+        </h1>
+        <p>
+          파일을 선택하면 이 기기 안에서만 거래 후보를 정리합니다. 카테고리와
+          중복 가능성을 확인한 뒤 선택한 거래만 저장하세요.
+        </p>
+        <ul aria-label="XLS 가져오기 원칙">
+          <li>원본 파일과 파일명은 저장하지 않음</li>
+          <li>중복 가능 거래는 저장 전 직접 확인</li>
+          <li>카테고리 규칙은 원할 때만 기억</li>
+        </ul>
+      </div>
+
+      <div className="import-card import-card--active import-page-card">
+        <LegacyXlsImportPreview
+          previewFile={previewLegacyXls}
+          applyCategoryRules={applyCategoryRulesToLegacyXlsPreview}
+          confirmPreview={confirmLegacyXlsImport}
+          findPotentialDuplicates={findPotentialLegacyXlsImportDuplicates}
+        />
+      </div>
+    </section>
+  );
+}
