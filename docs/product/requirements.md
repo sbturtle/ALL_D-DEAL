@@ -6,7 +6,7 @@
 
 ## 현재 개발 범위
 
-Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기, Phase 2 Transaction Domain Foundation, Phase 3A Legacy XLS Import Preview는 완료되었다. Git에서 제외한 private 카드 이용내역·계좌 거래내역은 실제 로컬 브라우저 Preview로 호환성을 확인했다. 확정 저장은 다음 Phase 3B vertical slice로 분리하며, 중복 탐지는 Phase 4, 실제 거래 집계와 급여 추정 비교는 Phase 6 전까지 구현하지 않는다.
+Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기, Phase 2 Transaction Domain Foundation, Phase 3A/3B Legacy XLS Preview·확정 저장, Phase 4 중복 후보 검토, Phase 5 확정 카테고리 규칙은 완료되었다. Git에서 제외한 private 카드 이용내역·계좌 거래내역은 실제 로컬 브라우저 Preview로 호환성을 확인했다. Phase 6은 기능별 페이지 분리와 저장 거래 분석을 작은 Vertical Slice로 진행한다.
 
 ## 기능 요구사항
 
@@ -40,6 +40,8 @@ Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 �
 | FR-024 | MUST | 새 Import 후보가 저장 거래 또는 같은 Preview의 앞선 후보와 정확한 중복 가능성을 가지면 저장 전에 표시하고 기본 저장 대상에서 제외해야 한다. 사용자는 후보별 또는 전체 재포함 여부를 직접 결정할 수 있어야 하며, 애플리케이션은 기존 거래를 자동 삭제·병합·수정하지 않는다. | 4 |
 | FR-025 | MUST | Import Preview에서 사용자는 거래 카테고리를 확인·수정할 수 있어야 한다. 이전에 사용자가 명시적으로 동의한 동일 정규화 거래 설명 규칙은 Preview에만 적용하며, 사용자는 저장 전에 결과를 변경할 수 있어야 한다. | 5 |
 | FR-026 | MUST | 카테고리 규칙의 생성 또는 교체는 카테고리가 지정된 저장 후보에 대해 사용자가 별도로 동의한 경우에만 수행해야 하며, 기존 거래의 카테고리를 소급 변경하지 않아야 한다. | 5 |
+| FR-027 | MUST | 사용자는 급여 계산, 장부, XLS 가져오기를 각각 고유한 브라우저 경로의 독립 화면에서 열고, 상단 탐색과 브라우저 뒤로/앞으로로 화면을 오갈 수 있어야 한다. | 6A |
+| FR-028 | MUST | Import Preview의 거래별 카테고리는 모바일에서 한 번의 선택으로 빠르게 바꿀 수 있어야 하며, 현재 선택·미분류·향후 규칙 저장 동의 상태를 서로 혼동하지 않게 보여야 한다. | 6A |
 
 ## Import 요구사항
 

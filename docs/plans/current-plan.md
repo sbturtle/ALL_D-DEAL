@@ -1,44 +1,41 @@
-# Phase 5 — Confirmed Category Rules
+# Phase 6A — Workflow Pages and Category Review UX
 
-- Status: `DONE`
+- Status: `IN_PROGRESS`
 - Plan updated: 2026-08-05
-- Prerequisite: Phase 4 Duplicate Candidate Review `DONE`
+- Prerequisite: Phase 5 Confirmed Category Rules `DONE`
 
 ## Goal
 
-Let the user assign a category while reviewing a Legacy XLS Preview. Reuse a previously confirmed rule for the same normalized transaction description, but keep every automatic category visible and editable before local storage.
+Split the long single-page application into focused Ledger, Import, and Payroll pages. Make individual Import category choices fast and easy to inspect while preserving Phase 5's explicit rule-consent and local-only boundaries.
 
 ## Scope and rules
 
-- Phase 5 uses a fixed initial category set: `FOOD_DINING`, `TRANSPORT`, `HOUSING_UTILITIES`, `SHOPPING`, `HEALTH`, `EDUCATION`, `LEISURE`, `SUBSCRIPTION`, and `OTHER`. No category means unclassified.
-- The current importers do not provide a separate merchant field. Rules therefore use an exact, normalized `descriptionOriginal` key. When a reliable merchant field arrives, its matching policy requires a new decision.
-- Stored rules apply their category only to a new Preview. The category remains visible in the selector and is never stored automatically without the existing Preview confirmation action.
-- The user may change a category for any Preview candidate. A rule is created or replaced only when the user explicitly checks “apply to this description in the future” and that candidate is selected for storage.
-- `Transaction.categoryId` is optional. Existing transactions remain valid and unclassified; creating or replacing a rule never rewrites them.
-- Category rules and selected import transactions are committed in the same IndexedDB transaction. A rule conflict for the same normalized description and different categories rejects confirmation safely.
-- Native IndexedDB moves from v1 to v2 only to add the `categoryRules` store. No source file, file name, original row, remote request, or private sample is stored.
-- If IndexedDB reports an upgrade block or does not finish opening within five seconds, the app stops loading and presents its existing safe local-storage error state.
+- Client routes are `/ledger`, `/imports`, and `/payroll`; `/` resolves to `/ledger`. Navigation updates browser history and reacts to back/forward without adding a routing dependency.
+- Only the active work page renders: Ledger contains period summaries and manual settlement; Import contains file selection and Preview confirmation; Payroll contains its existing memory-only calculator.
+- Category quick selection uses the fixed Phase 5 set and makes the selected category or 미분류 visible on every candidate. A candidate opens one compact category button grid at a time.
+- Category selection and future-rule consent remain separate. A rule still requires a selected candidate, a category, and explicit consent; excluded duplicate candidates cannot create rules.
+- No source file, file name, original row, remote request, or private sample is stored or shown by the routing or category UI.
 
 ## Out of scope
 
-- Custom category creation, category hierarchy, a rule list/editor, bulk reclassification of saved transactions, and Dashboard-by-category analytics.
-- Fuzzy merchant matching, AI classification, category suggestions without a confirmed rule, and cross-device sync.
+- 생활비 목표·잔액, 저축 가능액, 급여 예상과 실제 수입 비교, 사용자 Settings와 Dashboard-by-category analytics.
+- Custom category creation, category hierarchy, a rule list/editor, bulk reclassification, fuzzy/AI classification, and cross-device sync.
 
 ## Tasks
 
-1. `DONE` Record Phase 5 requirements, initial taxonomy, description-key limitation, confirmation policy, and v2 migration decision.
-2. `DONE` Add and test CategoryId, category-rule normalization/validation, and optional transaction category validation.
-3. `DONE` Add IndexedDB v2 category-rule storage, atomic import/rule commit, and rule reading.
-4. `DONE` Apply stored rules to Preview and add editable category plus explicit rule-consent controls for every candidate.
-5. `DONE` Verify rule reuse, individual edits, rule conflicts, duplicate-candidate selection interaction, migration, privacy boundaries, and existing flows.
-6. `DONE` Run lint, typecheck, tests, build, browser smoke checks, documentation, review, and focused local commits.
+1. `DONE` Record page-navigation and category-review UX requirements, constraints, and routing decision.
+2. `TODO` Add and test the minimal History API route model, accessible navigation, and separate Ledger, Import, and Payroll page composition.
+3. `TODO` Move Import Preview out of the Ledger page without changing its file, duplicate, confirmation, or local-storage boundaries.
+4. `TODO` Replace per-candidate select controls with accessible compact category quick selection and clearly separate rule consent.
+5. `TODO` Verify direct paths, history navigation, category edits/rule consent/duplicate exclusion, existing local flows, privacy, and small-screen layout.
+6. `TODO` Run lint, typecheck, tests, build, browser checks, review, documentation, and focused local commits.
 
 ## Acceptance criteria
 
-- A saved exact normalized description rule supplies a visible, editable category to a later Preview.
-- An unclassified candidate can be categorized without creating a rule; a rule requires an additional explicit user choice.
-- Only selected candidates can create rules; a duplicate candidate excluded from storage cannot create one.
-- A confirmation that stores a rule commits it atomically with its selected transaction batch, while prior transactions remain unchanged.
-- Existing v1 local data upgrades safely to v2 and remains readable.
+- Each major task has a unique URL, accessible current-page navigation, and working browser back/forward handling.
+- Loading a work page renders only its intended calculator, ledger, or Import interaction; local storage and file behavior are unchanged.
+- A user can open one candidate's category picker, choose or clear a category with touch-friendly buttons, and see whether a prior rule filled it.
+- An unclassified candidate can be categorized without a rule, while a selected categorized candidate can independently opt into a future rule.
+- Duplicate exclusion, atomic confirmation, existing rule reuse, and prior transaction preservation continue to work.
 - Tests use fabricated descriptions and values only; private XLS data remains outside Git, logs, fixtures, and commits.
 - All changes are verified and committed locally by function using `[Type] : title` plus a non-empty body; nothing is pushed.
