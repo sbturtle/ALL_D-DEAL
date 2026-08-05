@@ -1,94 +1,76 @@
-# Phase 3 — Generic CSV Import
+# Phase 3 — Legacy XLS Import Preview
 
-- 상태: `READY`
-- 계획일: 2026-08-05
+- 상태: `IN_PROGRESS`
+- 계획 갱신일: 2026-08-05
 - 선행 조건: Phase 2 Transaction Domain `DONE`
+- 근거: Git에서 제외된 `samples/private/`의 카드 이용내역·계좌 거래내역 XLS 구조
 
 ## Goal
 
-실제 금융기관 형식이 아닌 명시적인 `Generic Test Format` CSV를 브라우저 안에서 읽고, 행 단위 문제를 Preview한 뒤 사용자가 확인한 유효 거래만 Native IndexedDB에 원자적으로 저장한다.
+사용자가 직접 선택한 계좌 거래·카드 이용 legacy XLS를 브라우저 안에서 읽고, 어떤 거래가 후보가 되는지와 자동 반영하지 않는 행을 저장 전에 Preview한다.
 
 ## User Value
 
-- 파일을 선택한 즉시 저장하지 않고 어떤 거래가 들어갈지 먼저 확인할 수 있다.
-- 잘못된 행은 행 번호와 안전한 이유를 보고 수정하거나 제외할 수 있다.
-- 확인한 거래만 로컬 장부에 반영되고 원본 파일과 전체 원본 행은 남지 않는다.
+- 실제 사용하는 파일 형식에 맞춰 계좌 거래와 카드 매입을 한 화면에서 검토할 수 있다.
+- 카드 취소, 외화 후보, 날짜·금액 문제를 자동 반영하지 않고 이유와 함께 확인할 수 있다.
+- 원본 파일은 브라우저 메모리에서만 사용하며 이번 slice에서는 장부가 바뀌지 않는다.
 
-## Scope
+## Current Vertical Slice — Phase 3A
 
-### Phase 3A — Parse, Normalize, Preview
+- SheetJS `0.20.3`으로 브라우저 `File.arrayBuffer()`의 legacy XLS를 읽는다.
+- 계좌 거래 레이아웃은 날짜·설명·출금·입금의 명확한 행만 `UNKNOWN` TransactionDraft 후보로 만든다.
+- 카드 이용 레이아웃은 원화 매입 행만 `EXPENSE + OUTFLOW` TransactionDraft 후보로 만든다.
+- 카드 취소·역분개와 외화 금액 행은 issue로 Preview하고, 원본 값은 오류에 넣지 않는다.
+- 파일 선택, 처리 중 상태, 후보 수·확인 필요 수와 일부 후보 목록을 모바일 우선 UI로 제공한다.
+- 원본 파일, 파일명, 전체 원본 행과 Preview 상태를 저장하지 않는다.
 
-- 문서화된 Generic Test Format CSV 계약과 명백한 가짜 fixture
-- 브라우저 파일 선택, 크기·헤더·행 수·문자열 길이 제한
-- CSV 파싱과 행 단위 Source Record 문제 수집
-- Phase 2 Transaction 후보 정규화와 런타임 검증
-- 메모리 기반 Preview, 유효·오류 상태와 사용자 제외
-- 원본 값과 금융 식별정보를 오류·로그에 노출하지 않는 경계
+## Next Vertical Slice — Phase 3B
 
-### Phase 3B — Confirm and Persist
+- 사용자가 선택한 유효 후보만 Transaction으로 완성한다.
+- Native IndexedDB schema v1의 `transactions`, `importBatches`에 하나의 transaction으로 저장한다.
+- 실패 시 부분 저장 없이 Preview로 돌아가고, 성공 후에만 날짜 범위 조회를 제공한다.
 
-- 실제 `confirmImport` 흐름에 필요한 최소 Application 계약
-- Native IndexedDB schema v1의 `transactions`, `importBatches` 저장소
-- `ImportBatch + Transaction[]` 단일 IndexedDB transaction commit
-- 날짜 범위 기반 Transaction 조회와 저장 성공·실패 피드백
-- 확정 후 Preview 메모리 정리
+## Import Contract
 
-## Generic Test Format 초안
-
-첫 구현 전에 헤더 이름, 날짜·금액·방향·유형 표현, 선택 필드와 UTF-8/따옴표 규칙을 문서와 테스트로 확정한다. fixture는 실제 사람, 상호, 계좌, 카드번호를 닮지 않은 가짜 데이터만 사용한다.
-
-Phase 2에서 이미 완성된 Transaction을 파서 중간 상태로 억지 사용하지 않는다. 행의 출처와 오류를 유지하는 `ImportCandidate`를 메모리에 두고, 검증과 사용자 확인이 끝난 뒤 ID·시각·Import 출처를 완성한다.
-
-## 저장 계약
-
-- Native IndexedDB로 시작하고 별도 라이브러리를 우선 설치하지 않는다.
-- 원본 CSV Blob, 파일명, 전체 원본 행과 확정 전 후보는 저장하지 않는다.
-- 확정 작업은 ImportBatch와 모든 선택 Transaction이 함께 성공하거나 함께 실패해야 한다.
-- DB 연결·트랜잭션 오류는 재시도 가능한 상태로 보고하되 원본 데이터를 메시지에 포함하지 않는다.
-- 복합 쿼리, 페이지네이션, 반응형 조회나 다단계 마이그레이션이 실제 요구가 되면 Dexie를 재평가한다.
+지원 레이아웃, 처리 제한, 행 issue 코드와 개인정보 경계는 [Legacy XLS Import Contract](../architecture/import-xls-contract.md)를 따른다. 테스트는 명백한 가짜 XLS 행 배열만 사용하며 `samples/private/` 파일과 실제 값은 Git에 추가하지 않는다.
 
 ## Out of Scope
 
-- 실제 은행·카드사 CSV/PDF/XLSX와 MyData 연동
-- 실제 개인 금융 fixture
-- 중복 fingerprint와 자동 삭제
-- Merchant 정규화 규칙, Category와 CategoryRule
-- 전체 Dashboard 집계와 급여 추정 비교
-- 백업·복원, 암호화, PWA와 배포
+- 실제 금융기관명·계정·카드 식별정보의 코드·문서·테스트 노출
+- CSV, XLSX, PDF, 다중 시트, 암호화 파일과 금융기관 API
+- 취소·환불의 자동 처리, 중복 fingerprint, Category, Dashboard 집계
+- IndexedDB 저장과 급여 추정 결과 결합
 
 ## Tasks
 
-1. Generic Test Format과 안전 제한을 문서·테스트로 확정한다.
-2. CSV Parser를 선택하거나 작은 범위에서 직접 구현할지 요구와 번들 크기를 비교한다.
-3. Parser·Normalizer·Preview 후보 계약을 최소 형태로 구현한다.
-4. 유효·오류·제외 행을 보여 주는 접근 가능한 모바일 우선 UI를 구현한다.
-5. Native IndexedDB schema v1과 확정 저장 Application 흐름을 구현한다.
-6. 파싱 오류, 부분 실패, transaction rollback과 날짜 조회를 자동 테스트한다.
-7. 독립 Domain·보안·UI 리뷰를 반영한다.
-8. lint, typecheck, test, build와 실제 브라우저 핵심 흐름을 검증한다.
-9. 문서·Parser·Preview·영속화처럼 기능 단위로 로컬 커밋한다.
+1. private XLS 구조를 값·파일명 없이 분석하고 Import 계약에 기록한다.
+2. 브라우저 XLS 파서와 계좌·카드 TransactionDraft 정규화를 구현한다.
+3. 가짜 행 배열로 금액·날짜·취소·외화·식별정보 경계를 자동 테스트한다.
+4. 파일 선택과 메모리 Preview UI를 구현하고 접근성 흐름을 테스트한다.
+5. 실제 private XLS 두 종류를 로컬에서 수동 Preview 검증한다.
+6. 독립 코드 리뷰, lint, typecheck, test, build와 개인정보·Git 검사를 수행한다.
+7. 계약·의존성·정규화·UI·검증 결과를 기능 단위 로컬 커밋으로 분리한다.
+8. Phase 3A 완료 뒤에만 Phase 3B Native IndexedDB 저장을 시작한다.
 
 ## Acceptance Criteria
 
-- 지원 CSV 계약과 제한이 코드보다 먼저 문서와 테스트에 명시된다.
-- 파일 선택만으로 영속 데이터가 변경되지 않는다.
-- 유효·오류·제외 행을 Preview에서 구분하고 오류가 여러 개면 모두 안전하게 표시한다.
-- 확인한 유효 거래만 Transaction이 된다.
-- ImportBatch와 선택 Transaction은 하나의 IndexedDB transaction으로 저장된다.
-- 실패한 확정 작업은 부분 저장을 남기지 않고 사용자가 다시 시도할 수 있다.
-- 원본 파일, 파일명, 전체 원본 행, 전체 금융 식별정보를 저장·로그·오류에 남기지 않는다.
-- Phase 1 급여 추정 결과를 Import 거래와 합치거나 저장하지 않는다.
-- 실제 금융 fixture, 중복 탐지, Category와 실제 Dashboard를 추가하지 않는다.
-- lint, typecheck, test, build와 핵심 브라우저 흐름이 통과한다.
+- private XLS의 실제 값·파일명·금융 식별정보가 Git, fixture, 로그, 오류 메시지에 없다.
+- 브라우저는 `.xls`만 최대 5 MiB로 읽고, 2,000행·20열·300자 셀 제한을 적용한다.
+- 계좌 입금·출금 한쪽만 양의 KRW 정수인 행이 방향을 가진 `UNKNOWN` 후보가 된다.
+- 카드 원화 매입 행만 `EXPENSE + OUTFLOW` 후보가 된다.
+- 카드 취소·외화 후보·날짜·금액 오류는 자동 반영하지 않고 안전한 issue로 보인다.
+- 카드 라벨은 별칭 또는 끝 4자리만 가지며 전체 식별정보를 보존하지 않는다.
+- 파일 선택은 어떤 영속 데이터도 변경하지 않는다.
+- lint, typecheck, test, build와 private XLS 두 종류의 수동 Preview가 통과한다.
 - 변경은 `[Type] : 커밋 제목`과 비어 있지 않은 본문을 가진 기능 단위 로컬 커밋으로 분리한다.
 
 ## Risks
 
-- CSV 규칙을 너무 넓게 잡으면 실제 금융기관 Adapter와 범용 Parser가 섞인다. 첫 형식은 의도적으로 작고 명시적으로 유지한다.
-- 브라우저 파일 API와 IndexedDB 테스트가 구현 세부사항에 묶일 수 있다. Domain·Application 계약을 먼저 검증하고 브라우저 adapter 테스트를 분리한다.
-- 파일 내용을 오류나 테스트 출력에 넣으면 개인정보가 노출될 수 있다. 행 번호와 일반화된 오류 코드만 경계를 넘긴다.
-- Preview와 저장 모델을 같은 객체로 공유하면 확정 전 데이터가 새어 나갈 수 있다. 메모리 후보와 저장 Transaction을 구분한다.
+- legacy XLS는 겉보기 확장자와 실제 내용이 다를 수 있다. 파서가 성공하더라도 레이아웃 계약과 제한을 별도로 확인한다.
+- 계좌의 경제적 유형을 추측하면 카드대금·이체·저축이 생활비에 중복 집계될 수 있다. 초기 후보는 `UNKNOWN`으로 유지한다.
+- 카드 취소와 외화 거래를 EXPENSE로 자동 반영하면 실제 지출과 어긋날 수 있다. Preview 검토 대상으로 분리한다.
+- 실제 파일 행을 테스트에 복사하면 개인정보가 유출될 수 있다. 가짜 행 배열과 구조 테스트만 사용한다.
 
 ## Questions / Blockers
 
-현재 구현 시작을 막는 질문은 없다. Generic Test Format을 실제 금융기관 형식과 혼동되지 않도록 이름·fixture·화면 안내에 명시한다.
+Phase 3A 시작을 막는 질문은 없다. 취소·환불의 원거래 연결과 외화 환산은 실제 사용 사례를 확인한 뒤 별도 Phase에서 결정한다.

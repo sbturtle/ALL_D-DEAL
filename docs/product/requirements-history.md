@@ -111,3 +111,30 @@ Phase 1을 Web Skeleton `1A`와 급여 실수령 추정기 `1B`로 나눈다. �
 - 개인별 기본값 저장, 연말정산, 상여 지급월별 법정 원천징수와 여러 연도 비교는 별도 후속 요구가 확인된 뒤 계획한다.
 
 자세한 계산 경계와 정책 갱신 방식은 [ADR-0004](../adr/ADR-0004-versioned-local-payroll-estimation.md)를 따른다.
+
+## 2026-08-05 — Generic CSV에서 private 샘플 기반 Legacy XLS Preview로 변경
+
+### 최초 요구
+
+Phase 3은 명시적인 가짜 CSV 형식부터 시작한다.
+
+### 확인된 정보
+
+사용자가 Git에서 제외된 `samples/private/`에 계좌 거래내역과 카드 이용내역 legacy XLS를 제공했다. 두 파일은 날짜·금액·거래 상태 표현이 다른 별도 레이아웃이며, 실제 처리 가능 범위를 확인할 수 있다.
+
+### 변경
+
+Phase 3A는 두 private XLS 구조를 참고한 브라우저 전용 Preview로 시작한다. 계좌 행은 경제적 유형을 `UNKNOWN`으로 유지하고, 카드 취소·외화 후보는 자동 반영하지 않는다. 확정 저장은 별도 Phase 3B vertical slice다.
+
+### 변경 이유
+
+실제 사용 파일 구조를 바탕으로 Import를 검증하되, 원본 파일과 개인 금융 데이터를 Git·테스트·오류·로그에 남기지 않기 위해서다.
+
+### 현재 결정
+
+- `.xls` 파일은 사용자가 선택한 브라우저 File API 바이트로만 읽는다.
+- private 샘플의 값·파일명·기관 식별자는 코드와 문서에 기록하지 않는다.
+- 테스트는 같은 구조를 가진 명백한 가짜 행 배열만 사용한다.
+- Native IndexedDB 저장은 Preview 검증 이후의 다음 vertical slice에서 구현한다.
+
+자세한 계약은 [Legacy XLS Import Contract](../architecture/import-xls-contract.md)를 따른다.

@@ -6,13 +6,13 @@
 
 ## 현재 개발 범위
 
-Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기, Phase 2 Transaction Domain Foundation은 완료되었다. 공통 Transaction 타입·금액·날짜·거래 유형 불변식은 구현되었으며, 현재 다음 범위는 Phase 3 Generic CSV Import다. Phase 3에서 명시적인 가짜 형식의 Parser·Preview·확정 저장을 구현한다. 중복 탐지는 Phase 4, 실제 거래 집계와 급여 추정 비교는 Phase 6 전까지 구현하지 않는다.
+Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기, Phase 2 Transaction Domain Foundation은 완료되었다. 공통 Transaction 타입·금액·날짜·거래 유형 불변식은 구현되었으며, 현재 다음 범위는 Phase 3 Legacy XLS Import Preview다. Git에서 제외한 private 카드 이용내역·계좌 거래내역 구조를 참고해 브라우저 Parser·Preview를 먼저 구현하고, 확정 저장은 다음 vertical slice로 분리한다. 중복 탐지는 Phase 4, 실제 거래 집계와 급여 추정 비교는 Phase 6 전까지 구현하지 않는다.
 
 ## 기능 요구사항
 
 | ID | 우선순위 | 요구사항 | 예정 Phase |
 | --- | --- | --- | --- |
-| FR-001 | MUST | 사용자는 명시적인 Generic Test Format CSV를 선택해 수동 Import 흐름을 시작할 수 있어야 한다. | 3 |
+| FR-001 | MUST | 사용자는 지원되는 계좌 거래·카드 이용 legacy XLS를 선택해 수동 Import Preview 흐름을 시작할 수 있어야 한다. | 3 |
 | FR-002 | MUST | 파일 내용은 공통 Transaction 모델로 정규화되어야 한다. | 2, 3 |
 | FR-003 | MUST | 저장 전에 파싱된 신규 거래와 검증 문제를 Preview하고 수정 또는 제외할 수 있어야 한다. | 3 |
 | FR-004 | MUST | 명시적 확인을 거친 거래만 로컬 저장소에 반영되어야 한다. | 3 |
@@ -36,7 +36,7 @@ Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 �
 ## Import 요구사항
 
 - 목표 입력 종류는 PDF, CSV, XLSX이지만 각 형식은 실제 필요와 샘플이 확인된 뒤 하나씩 지원한다.
-- 첫 파이프라인은 실제 금융기관 형식이 아닌 명시적인 `Generic Test Format` CSV로 검증한다.
+- 첫 파이프라인은 Git에서 제외한 private XLS 구조를 참고한 계좌 거래·카드 이용 legacy XLS Preview로 검증한다. 테스트에는 명백한 가짜 행 배열만 사용한다.
 - 금융기관별 Parser/Adapter는 공통 Domain Transaction과 분리한다.
 - Adapter의 기본 책임은 해당 파일 처리 가능 여부 확인, 원본 파싱, 공통 모델 정규화다.
 - 실제 MyPDS·카드사·은행 형식은 마스킹된 샘플 없이 추측해 구현하지 않는다.

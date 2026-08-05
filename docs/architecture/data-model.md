@@ -73,9 +73,9 @@ UNKNOWN
 
 ## Phase별 확장
 
-### Phase 3 — Generic CSV Import
+### Phase 3 — Legacy XLS Import
 
-Transaction에 다음 출처 필드를 추가한다.
+계좌 거래·카드 이용 legacy XLS를 Preview하고 사용자가 확정할 때 Transaction에 다음 출처 필드를 추가한다.
 
 | 필드 | 목적 |
 | --- | --- |
