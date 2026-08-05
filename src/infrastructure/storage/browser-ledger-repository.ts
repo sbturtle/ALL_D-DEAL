@@ -1,4 +1,6 @@
 import type { ImportBatch } from '../../domain/imports/import-batch';
+import type { CategoryRule } from '../../domain/categories/category-rule';
+import { validateCategoryRule } from '../../domain/categories/category-rule';
 import type { BudgetSettlement } from '../../domain/transactions/budget-settlement';
 import { validateBudgetSettlement } from '../../domain/transactions/budget-settlement';
 import type { TransactionDateRange } from '../../domain/transactions/transaction-period';
@@ -6,10 +8,11 @@ import type { Transaction } from '../../domain/transactions/transaction';
 import { validateTransaction } from '../../domain/transactions/transaction-validation';
 
 export const LOCAL_LEDGER_DATABASE_NAME = 'household-ledger';
-const LOCAL_LEDGER_DATABASE_VERSION = 1;
+const LOCAL_LEDGER_DATABASE_VERSION = 2;
 const TRANSACTIONS_STORE = 'transactions';
 const IMPORT_BATCHES_STORE = 'importBatches';
 const BUDGET_SETTLEMENTS_STORE = 'budgetSettlements';
+const CATEGORY_RULES_STORE = 'categoryRules';
 
 type KeyRangeFactory = Readonly<{
   bound: (lower: string, upper: string) => IDBKeyRange;
@@ -62,6 +65,15 @@ function validateStoredSettlement(value: unknown): BudgetSettlement {
   return validation.value;
 }
 
+function validateStoredCategoryRule(value: unknown): CategoryRule {
+  const validation = validateCategoryRule(value);
+  if (!validation.isValid) {
+    throw new Error('Stored category rule is invalid.');
+  }
+
+  return validation.value;
+}
+
 function sortTransactionsNewestFirst(
   transactions: readonly Transaction[],
 ): readonly Transaction[] {
@@ -85,18 +97,27 @@ export class BrowserLedgerRepository {
   async commitImport(
     batch: ImportBatch,
     transactions: readonly Transaction[],
+    categoryRules: readonly CategoryRule[] = [],
   ): Promise<void> {
+    for (const categoryRule of categoryRules) {
+      validateStoredCategoryRule(categoryRule);
+    }
+
     const database = await this.getDatabase();
     const transaction = database.transaction(
-      [IMPORT_BATCHES_STORE, TRANSACTIONS_STORE],
+      [IMPORT_BATCHES_STORE, TRANSACTIONS_STORE, CATEGORY_RULES_STORE],
       'readwrite',
     );
     const importBatches = transaction.objectStore(IMPORT_BATCHES_STORE);
     const transactionStore = transaction.objectStore(TRANSACTIONS_STORE);
+    const categoryRuleStore = transaction.objectStore(CATEGORY_RULES_STORE);
 
     importBatches.add(batch);
     for (const item of transactions) {
       transactionStore.add(item);
+    }
+    for (const categoryRule of categoryRules) {
+      categoryRuleStore.put(categoryRule);
     }
 
     await transactionAsPromise(transaction);
@@ -161,6 +182,21 @@ export class BrowserLedgerRepository {
     await transactionAsPromise(transaction);
 
     return values as ImportBatch[];
+  }
+
+  async listCategoryRules(): Promise<readonly CategoryRule[]> {
+    const database = await this.getDatabase();
+    const transaction = database.transaction(CATEGORY_RULES_STORE, 'readonly');
+    const values = await requestAsPromise(
+      transaction.objectStore(CATEGORY_RULES_STORE).getAll(),
+    );
+    await transactionAsPromise(transaction);
+
+    return values
+      .map(validateStoredCategoryRule)
+      .sort((left, right) =>
+        left.matchDescriptionNormalized.localeCompare(right.matchDescriptionNormalized),
+      );
   }
 
   async listBudgetSettlements(): Promise<readonly BudgetSettlement[]> {
@@ -243,6 +279,11 @@ export class BrowserLedgerRepository {
               'payerOutflowTransactionId',
               { unique: false },
             );
+          }
+          if (!database.objectStoreNames.contains(CATEGORY_RULES_STORE)) {
+            database.createObjectStore(CATEGORY_RULES_STORE, {
+              keyPath: 'matchDescriptionNormalized',
+            });
           }
         },
         { once: true },
