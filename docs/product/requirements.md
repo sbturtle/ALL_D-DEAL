@@ -17,7 +17,7 @@ Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 �
 | FR-003 | MUST | 저장 전에 파싱된 신규 거래와 검증 문제를 Preview하고 수정 또는 제외할 수 있어야 한다. | 3 |
 | FR-004 | MUST | 명시적 확인을 거친 거래만 로컬 저장소에 반영되어야 한다. | 3 |
 | FR-005 | MUST | 동일하거나 유사한 거래를 탐지하되 자동 삭제만으로 확정하지 않아야 한다. | 4 |
-| FR-006 | MUST | 거래를 `EXPENSE`, `INCOME`, `TRANSFER`, `CARD_PAYMENT`, `SAVING`, `INVESTMENT`, `LOAN_PAYMENT`, `REFUND`, `UNKNOWN`으로 구분할 수 있어야 한다. | 2 |
+| FR-006 | MUST | 거래를 `EXPENSE`, `INCOME`, `TRANSFER`, `SELF_TRANSFER`, `CARD_PAYMENT`, `SAVING`, `INVESTMENT`, `LOAN_PAYMENT`, `REWARD`, `REFUND`, `UNKNOWN`으로 구분할 수 있어야 한다. | 2, 6B |
 | FR-007 | MUST | `CARD_PAYMENT`와 이미 집계된 카드 사용 거래가 소비로 이중 계산되지 않아야 한다. | 2, 6 |
 | FR-008 | SHOULD | 처음 보는 Merchant는 카테고리 확인을 요청하고, 사용자 동의 후 규칙을 만들며, 이후 동일 Merchant에는 기존 규칙을 재사용해야 한다. | 5 |
 | FR-009 | MUST | 빈 상태와 명시적인 Mock Data 모드를 갖춘 모바일 우선 Dashboard shell을 제공해야 한다. | 1 |
@@ -42,6 +42,8 @@ Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 �
 | FR-026 | MUST | 카테고리 규칙의 생성 또는 교체는 카테고리가 지정된 저장 후보에 대해 사용자가 별도로 동의한 경우에만 수행해야 하며, 기존 거래의 카테고리를 소급 변경하지 않아야 한다. | 5 |
 | FR-027 | MUST | 사용자는 급여 계산, 장부, XLS 가져오기를 각각 고유한 브라우저 경로의 독립 화면에서 열고, 상단 탐색과 브라우저 뒤로/앞으로로 화면을 오갈 수 있어야 한다. | 6A |
 | FR-028 | MUST | Import Preview의 거래별 카테고리는 모바일에서 한 번의 선택으로 빠르게 바꿀 수 있어야 하며, 현재 선택·미분류·향후 규칙 저장 동의 상태를 서로 혼동하지 않게 보여야 한다. | 6A |
+| FR-029 | MUST | 계좌 거래 Import 후보는 카테고리보다 먼저 설명 가능한 규칙으로 거래 유형을 판별하고, 규칙 출처·근거 코드·확신 수준을 Preview에서 확인할 수 있어야 한다. 불확실한 후보는 자동 확정하지 않는다. | 6B |
+| FR-030 | MUST | 카드 이용내역은 소비 지출의 우선 출처로 유지하고, 계좌의 `CARD_PAYMENT`는 현금흐름으로만 분류하여 생활비·소비에 이중 집계하지 않아야 한다. 카테고리는 새 `EXPENSE` Preview 후보에만 적용한다. | 6B |
 
 ## Import 요구사항
 
