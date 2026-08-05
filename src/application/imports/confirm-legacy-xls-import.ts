@@ -21,6 +21,10 @@ export type LegacyXlsImportConfirmationDependencies = Readonly<{
   now: () => UtcIsoInstant;
 }>;
 
+export type LegacyXlsImportConfirmationOptions = Readonly<{
+  skippedCount?: number;
+}>;
+
 export type LegacyXlsImportConfirmationResult =
   | Readonly<{
       isConfirmed: true;
@@ -35,6 +39,7 @@ export type LegacyXlsImportConfirmationResult =
 export async function confirmLegacyXlsImport(
   preview: ImportPreview,
   dependencies: LegacyXlsImportConfirmationDependencies,
+  options: LegacyXlsImportConfirmationOptions = {},
 ): Promise<LegacyXlsImportConfirmationResult> {
   if (preview.source === undefined || preview.candidates.length === 0) {
     return { isConfirmed: false, code: 'nothing_to_save' };
@@ -68,8 +73,8 @@ export async function confirmLegacyXlsImport(
     sourceType: preview.source,
     committedAt,
     newCount: transactions.length,
-    skippedCount: 0,
-    reviewedCount: transactions.length,
+    skippedCount: getSkippedCount(options.skippedCount),
+    reviewedCount: transactions.length + getSkippedCount(options.skippedCount),
   };
 
   try {
@@ -79,4 +84,10 @@ export async function confirmLegacyXlsImport(
   }
 
   return { isConfirmed: true, batch, transactions };
+}
+
+function getSkippedCount(value: number | undefined): number {
+  return value !== undefined && Number.isSafeInteger(value) && value >= 0
+    ? value
+    : 0;
 }

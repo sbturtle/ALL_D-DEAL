@@ -75,6 +75,39 @@ describe('confirmLegacyXlsImport', () => {
     expect(commitImport).not.toHaveBeenCalled();
   });
 
+  it('records deliberately excluded candidates without changing selected transactions', async () => {
+    const commitImport = vi.fn().mockResolvedValue(undefined);
+    const createId = (() => {
+      let index = 0;
+      return () => ids[index++] ?? '550e8400-e29b-41d4-a716-446655440002';
+    })();
+
+    const result = await confirmLegacyXlsImport(
+      preview,
+      {
+        committer: { commitImport },
+        createId,
+        now: () => '2026-08-05T00:00:00.000Z',
+      },
+      { skippedCount: 2 },
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        isConfirmed: true,
+        batch: expect.objectContaining({
+          newCount: 1,
+          skippedCount: 2,
+          reviewedCount: 3,
+        }),
+      }),
+    );
+    expect(commitImport).toHaveBeenCalledWith(
+      expect.objectContaining({ skippedCount: 2, reviewedCount: 3 }),
+      [expect.objectContaining({ descriptionOriginal: 'Fabricated account transaction' })],
+    );
+  });
+
   it('returns a safe failure when the local committer fails', async () => {
     const result = await confirmLegacyXlsImport(preview, {
       committer: { commitImport: vi.fn().mockRejectedValue(new Error('private detail')) },
