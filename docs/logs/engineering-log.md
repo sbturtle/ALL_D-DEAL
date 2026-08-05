@@ -1,5 +1,41 @@
 # Engineering Log
 
+## 2026-08-05 — Phase 7A Explicit Kakao Place Search
+
+### 작업 목적
+
+지출 후보의 상호·장소 확인을 보조하되, 거래 설명이 외부 Kakao로 자동 전송되거나 장소 검색 결과가 로컬 장부에 저장되지 않도록 한다.
+
+### 변경 내용
+
+- 빈 `VITE_KAKAO_MAP_JAVASCRIPT_KEY`만 담은 `.env.example`을 추가했다. REST/Admin 키, client secret, 토큰은 브라우저 환경변수에 넣지 않는다.
+- Kakao Map Web SDK는 환경변수에 JavaScript 키가 있을 때만 준비하고, 사용자가 검색 버튼을 누른 시점에만 `services` 라이브러리를 지연 로드한다.
+- Import Preview의 `EXPENSE` 후보마다 외부 전송 안내와 `Kakao 장소 검색` 버튼을 제공한다. 검색 전에는 SDK와 장소 검색을 호출하지 않는다.
+- 결과는 후보별 Preview 메모리에만 표시하며, IndexedDB·Transaction·CategoryRule·URL·로그에 저장하지 않는다. 키가 없거나 SDK 요청이 실패하면 기존 Import 흐름은 계속 사용할 수 있다.
+
+### 검증 방법과 결과
+
+| 검증 | 결과 | 비고 |
+| --- | --- | --- |
+| `npm run lint` | PASS | warning 0개 |
+| `npm run typecheck` | PASS | TypeScript project build 성공 |
+| `npm test` | PASS | 25 files, 302 tests |
+| `npm run build` | PASS | Vite production build 성공 |
+| SDK/UI 테스트 | PASS | 빈 검색어는 SDK 미호출, 지출 후보의 명시적 클릭 전 검색 미호출, 결과 Preview 전용 표시 검증 |
+| 개인정보 경계 | PASS | `.env`를 읽거나 출력하지 않았고, 실제 거래 설명·키·검색 결과를 테스트·문서·커밋에 사용하지 않음 |
+
+프로덕션 빌드는 기존 SheetJS 포함 JavaScript 청크가 500 kB를 넘는다는 경고만 출력했다. Kakao SDK는 런타임 사용자 요청 시에만 외부에서 로드한다.
+
+### 기능 단위 커밋
+
+- `6fb4095` `[Docs] : Kakao Map Web SDK 환경 설정 추가`
+- `93f3541` `[Feat] : Kakao 장소 검색 어댑터 추가`
+- `9a4cf2e` `[Feat] : Import 후보별 Kakao 장소 검색 추가`
+
+### 상태
+
+`DONE`
+
 ## 2026-08-05 — Phase 6B Account Transaction Type Classification
 
 ### 작업 목적

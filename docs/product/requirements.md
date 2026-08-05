@@ -6,7 +6,7 @@
 
 ## 현재 개발 범위
 
-Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기, Phase 2 Transaction Domain Foundation, Phase 3A/3B Legacy XLS Preview·확정 저장, Phase 4 중복 후보 검토, Phase 5 확정 카테고리 규칙, Phase 6A 기능별 페이지 분리, Phase 6B 계좌 거래 유형 분류는 완료되었다. Git에서 제외한 private 카드 이용내역·계좌 거래내역은 실제 로컬 브라우저 Preview로 호환성을 확인했다. 후속 Phase 6 Slice는 저장 거래 분석과 사용자 설정을 작은 단위로 진행한다.
+Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기, Phase 2 Transaction Domain Foundation, Phase 3A/3B Legacy XLS Preview·확정 저장, Phase 4 중복 후보 검토, Phase 5 확정 카테고리 규칙, Phase 6A 기능별 페이지 분리, Phase 6B 계좌 거래 유형 분류, Phase 7A 명시적 Kakao 장소 검색은 완료되었다. Git에서 제외한 private 카드 이용내역·계좌 거래내역은 실제 로컬 브라우저 Preview로 호환성을 확인했다. 후속 Phase는 저장 거래 분석과 사용자 설정을 작은 단위로 진행한다.
 
 ## 기능 요구사항
 

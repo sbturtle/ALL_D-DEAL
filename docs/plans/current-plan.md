@@ -1,6 +1,6 @@
 # Phase 7A — Explicit Kakao Place Search Boundary
 
-- Status: `IN_PROGRESS`
+- Status: `DONE`
 - Plan updated: 2026-08-05
 - Prerequisite: Phase 6B Account Transaction Type Classification `DONE`
 
@@ -26,10 +26,10 @@ Prepare a safe, opt-in Kakao Map Web SDK boundary for future merchant/place look
 ## Tasks
 
 1. `DONE` Record the Web SDK-only decision and add a non-secret `.env.example` template.
-2. `PENDING` Add a lazily loaded Kakao Map SDK place-search adapter that fails safely when configuration, consent, SDK loading, or search availability is missing.
-3. `PENDING` Add a per-candidate Import Preview control with a clear external-transmission notice and no automatic request.
-4. `PENDING` Test disabled, unavailable, explicit-search, cancellation, and no-persistence behavior with fabricated descriptions only.
-5. `PENDING` Verify lint, typecheck, tests, build, private-data/Git boundaries, documentation, and function-sized local commits.
+2. `DONE` Add a lazily loaded Kakao Map SDK place-search adapter that fails safely when configuration, consent, SDK loading, or search availability is missing.
+3. `DONE` Add a per-candidate Import Preview control with a clear external-transmission notice and no automatic request.
+4. `DONE` Test disabled, unavailable, explicit-search, cancellation, and no-persistence behavior with fabricated descriptions only.
+5. `DONE` Verify lint, typecheck, tests, build, private-data/Git boundaries, documentation, and function-sized local commits.
 
 ## Acceptance criteria
 
