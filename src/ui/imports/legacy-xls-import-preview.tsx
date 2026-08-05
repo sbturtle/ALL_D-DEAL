@@ -18,6 +18,8 @@ import {
 } from '../../domain/categories/category';
 import type { TransactionType } from '../../domain/transactions/transaction';
 import type { PlaceSearch, PlaceSearchResult } from '../../application/places/place-search';
+import { mapKakaoCategoryName } from '../../domain/categories/kakao-category-mapper';
+import { normalizeCategoryRuleDescription } from '../../domain/categories/category-rule';
 import type {
   AccountTransactionTypeClassification,
   AccountTransactionTypeClassificationReasonCode,
@@ -28,6 +30,7 @@ type ImportStatus = 'IDLE' | 'READING' | 'PREVIEW' | 'SAVING' | 'SAVED';
 type PlaceSearchState = Readonly<{
   status: 'SEARCHING' | 'COMPLETE' | 'FAILED';
   results: readonly PlaceSearchResult[];
+  mappedCategoryId?: CategoryId;
 }>;
 
 export type LegacyXlsImportPreviewProps = Readonly<{
@@ -51,12 +54,17 @@ const SOURCE_LABELS: Readonly<Record<ImportSource, string>> = {
 
 const CATEGORY_LABELS: Readonly<Record<CategoryId, string>> = {
   FOOD_DINING: '식비·외식',
+  CAFE: '카페',
+  CONVENIENCE: '편의점',
   TRANSPORT: '교통',
   HOUSING_UTILITIES: '주거·공과금',
   SHOPPING: '쇼핑',
   HEALTH: '건강',
   EDUCATION: '교육',
   LEISURE: '여가',
+  CULTURE: '문화',
+  MEDICAL: '의료',
+  DATE: '데이트',
   SUBSCRIPTION: '구독',
   OTHER: '기타',
 };
@@ -439,11 +447,34 @@ export function LegacyXlsImportPreview({
 
     try {
       const results = await searchPlaces(descriptionOriginal);
+      const exactPlace = results.find(
+        (place) =>
+          normalizeCategoryRuleDescription(place.name) ===
+          normalizeCategoryRuleDescription(descriptionOriginal),
+      );
+      const mappedCategoryId =
+        exactPlace === undefined ? undefined : mapKakaoCategoryName(exactPlace.category);
       setPlaceSearchByCandidateIndex((current) => {
         const next = new Map(current);
-        next.set(candidateIndex, { status: 'COMPLETE', results });
+        next.set(candidateIndex, { status: 'COMPLETE', results, ...(mappedCategoryId === undefined ? {} : { mappedCategoryId }) });
         return next;
       });
+      if (mappedCategoryId !== undefined) {
+        setPreview((current) => current === null ? current : {
+          ...current,
+          candidates: current.candidates.map((candidate, index) =>
+            index !== candidateIndex || candidate.draft.categoryId !== undefined
+              ? candidate
+              : { ...candidate, draft: { ...candidate.draft, categoryId: mappedCategoryId } },
+          ),
+        });
+        setCategoryIdByCandidateIndex((current) => {
+          if (current.get(candidateIndex) !== undefined) return current;
+          const next = new Map(current);
+          next.set(candidateIndex, mappedCategoryId);
+          return next;
+        });
+      }
     } catch {
       setPlaceSearchByCandidateIndex((current) => {
         const next = new Map(current);
@@ -637,11 +668,14 @@ export function LegacyXlsImportPreview({
                         ) : (
                           <ul aria-label={`후보 ${candidateIndex + 1} Kakao 장소 검색 결과`}>
                             {placeSearchState.results.map((place) => (
-                              <li key={place.id}>{place.name} · {place.address}</li>
+                              <li key={place.id}>{place.name} · {place.category} · {place.address}</li>
                             ))}
                           </ul>
                         )
                       ) : null}
+                      {placeSearchState?.mappedCategoryId === undefined ? null : (
+                        <small>Kakao Category → {CATEGORY_LABELS[placeSearchState.mappedCategoryId]} · KAKAO_LOCAL · HIGH</small>
+                      )}
                     </div>
                   )}
                   <div className="import-category-picker">

@@ -381,6 +381,6 @@ describe('LegacyXlsImportPreview', () => {
       screen.getByText('파일 업로드 시 이 거래 설명을 Kakao로 자동 분석하며, 결과는 저장하지 않아요.'),
     ).toBeVisible();
     expect(searchPlaces).toHaveBeenCalledWith('가짜 식료품점');
-    expect(await screen.findByText('Fabricated Cafe · Fabricated address')).toBeVisible();
+    expect(await screen.findByText('Fabricated Cafe · Food · Fabricated address')).toBeVisible();
   });
 });

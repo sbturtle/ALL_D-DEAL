@@ -83,12 +83,17 @@ function getCategoryLabel(categoryId: CategoryId | undefined): string {
 
   const labels: Readonly<Record<CategoryId, string>> = {
     FOOD_DINING: '식비·외식',
+    CAFE: '카페',
+    CONVENIENCE: '편의점',
     TRANSPORT: '교통',
     HOUSING_UTILITIES: '주거·공과금',
     SHOPPING: '쇼핑',
     HEALTH: '건강',
     EDUCATION: '교육',
     LEISURE: '여가',
+    CULTURE: '문화',
+    MEDICAL: '의료',
+    DATE: '데이트',
     SUBSCRIPTION: '구독',
     OTHER: '기타',
   };
