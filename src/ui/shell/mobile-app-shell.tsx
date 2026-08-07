@@ -185,7 +185,7 @@ export function MobileAppShell({
         {children}
       </main>
 
-      {currentRoute === 'IMPORTS' ? null : (
+      {currentRoute === 'HOME' || currentRoute === 'TRANSACTIONS' ? (
         <button
           aria-controls="quick-action-sheet"
           aria-expanded={isQuickActionOpen}
@@ -202,7 +202,7 @@ export function MobileAppShell({
         >
           <AppIcon name={isQuickActionOpen ? 'close' : 'plus'} size={28} />
         </button>
-      )}
+      ) : null}
 
       <nav className="bottom-navigation" aria-label="하단 주요 메뉴">
         <div className="bottom-navigation__inner">

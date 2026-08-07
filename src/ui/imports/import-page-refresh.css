@@ -13,9 +13,19 @@
 .import-page .import-page-intro {
   position: static;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-2, 8px);
+  align-items: start;
   padding: 0;
   text-align: center;
+}
+
+.import-page .import-page-intro .eyebrow,
+.import-page .import-page-intro h1,
+.import-page .import-page-intro > p:not(.eyebrow) {
+  grid-row: auto;
+  grid-column: auto;
+  align-self: auto;
 }
 
 .import-page .import-page-intro .eyebrow {

@@ -79,8 +79,8 @@ describe('MobileAppShell', () => {
     const onNavigate = createNavigationHandler();
 
     render(
-      <MobileAppShell currentRoute="SETTINGS" onNavigate={onNavigate}>
-        <h1>설정</h1>
+      <MobileAppShell currentRoute="TRANSACTIONS" onNavigate={onNavigate}>
+        <h1>거래 내역</h1>
       </MobileAppShell>,
     );
 
@@ -97,8 +97,8 @@ describe('MobileAppShell', () => {
     const user = userEvent.setup();
 
     render(
-      <MobileAppShell currentRoute="PAYROLL" onNavigate={createNavigationHandler()}>
-        <h1>급여 계산</h1>
+      <MobileAppShell currentRoute="HOME" onNavigate={createNavigationHandler()}>
+        <h1>홈</h1>
       </MobileAppShell>,
     );
 
@@ -110,6 +110,37 @@ describe('MobileAppShell', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(fab).toHaveFocus();
+  });
+
+  it('keeps the FAB away from focused payroll, import, and settings workflows', () => {
+    const onNavigate = createNavigationHandler();
+    const { rerender } = render(
+      <MobileAppShell currentRoute="PAYROLL" onNavigate={onNavigate}>
+        <h1>급여 계산</h1>
+      </MobileAppShell>,
+    );
+
+    expect(
+      screen.queryByRole('button', { name: '빠른 작업 열기' }),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <MobileAppShell currentRoute="IMPORTS" onNavigate={onNavigate}>
+        <h1>소비 불러오기</h1>
+      </MobileAppShell>,
+    );
+    expect(
+      screen.queryByRole('button', { name: '빠른 작업 열기' }),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <MobileAppShell currentRoute="SETTINGS" onNavigate={onNavigate}>
+        <h1>설정</h1>
+      </MobileAppShell>,
+    );
+    expect(
+      screen.queryByRole('button', { name: '빠른 작업 열기' }),
+    ).not.toBeInTheDocument();
   });
 
   it('moves focus to the new screen content after route changes', () => {
