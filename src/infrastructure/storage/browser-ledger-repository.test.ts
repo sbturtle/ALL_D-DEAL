@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { ImportBatch } from '../../domain/imports/import-batch';
 import type { CategoryRule } from '../../domain/categories/category-rule';
+import type { KeywordCategoryRule } from '../../domain/categories/keyword-category-rule';
 import type { LocalUserSettings } from '../../domain/settings/local-user-settings';
 import type { Transaction } from '../../domain/transactions/transaction';
 import {
@@ -26,6 +27,13 @@ const categoryRule: CategoryRule = {
   categoryId: 'FOOD_DINING',
   createdAt: '2026-08-05T00:00:00.000Z',
   updatedAt: '2026-08-05T00:00:00.000Z',
+};
+
+const keywordCategoryRule: KeywordCategoryRule = {
+  keywordNormalized: 'fabricatedorder',
+  categoryId: 'SHOPPING',
+  createdAt: '2026-08-07T00:00:00.000Z',
+  updatedAt: '2026-08-07T00:00:00.000Z',
 };
 
 const localUserSettings: LocalUserSettings = {
@@ -86,6 +94,7 @@ describe('BrowserLedgerRepository', () => {
       }),
     ).resolves.toEqual([later, earlier]);
     await expect(repository.listCategoryRules()).resolves.toEqual([categoryRule]);
+    await expect(repository.listKeywordCategoryRules()).resolves.toEqual([]);
   });
 
   it('aborts the entire import when one duplicate transaction key fails', async () => {
@@ -102,6 +111,7 @@ describe('BrowserLedgerRepository', () => {
     await expect(repository.listImportBatches()).resolves.toEqual([]);
     await expect(repository.listAllTransactions()).resolves.toEqual([]);
     await expect(repository.listCategoryRules()).resolves.toEqual([]);
+    await expect(repository.listKeywordCategoryRules()).resolves.toEqual([]);
   });
 
   it('replaces a confirmed rule without rewriting previously stored transactions', async () => {
@@ -153,6 +163,30 @@ describe('BrowserLedgerRepository', () => {
     };
     await repository.replaceTransaction(replacement);
 
+    await expect(repository.listAllTransactions()).resolves.toEqual([replacement]);
+  });
+
+  it('stores a keyword rule and matching transaction replacements atomically', async () => {
+    const repository = createRepository();
+    const storedTransaction = transaction(
+      '550e8400-e29b-41d4-a716-446655440050',
+      '2026-08-05',
+    );
+    const replacement = {
+      ...storedTransaction,
+      categoryId: 'SHOPPING' as const,
+      updatedAt: '2026-08-07T00:00:00.000Z' as const,
+    };
+    await repository.commitImport(batch, [storedTransaction]);
+
+    await repository.saveKeywordCategoryRuleAndReplaceTransactions(
+      keywordCategoryRule,
+      [replacement],
+    );
+
+    await expect(repository.listKeywordCategoryRules()).resolves.toEqual([
+      keywordCategoryRule,
+    ]);
     await expect(repository.listAllTransactions()).resolves.toEqual([replacement]);
   });
 
@@ -223,6 +257,7 @@ describe('BrowserLedgerRepository', () => {
     );
 
     await expect(repository.listCategoryRules()).resolves.toEqual([]);
+    await expect(repository.listKeywordCategoryRules()).resolves.toEqual([]);
     await expect(repository.listAllTransactions()).resolves.toEqual([]);
     await expect(repository.getLocalUserSettings()).resolves.toBeUndefined();
   });
@@ -312,7 +347,83 @@ describe('BrowserLedgerRepository', () => {
       storedSettlement,
     ]);
     await expect(repository.listCategoryRules()).resolves.toEqual([categoryRule]);
+    await expect(repository.listKeywordCategoryRules()).resolves.toEqual([]);
     await expect(repository.getLocalUserSettings()).resolves.toBeUndefined();
+  });
+
+  it('upgrades a v3 local database by preserving existing stores and adding keyword rules', async () => {
+    const databaseName = `v3-ledger-${crypto.randomUUID()}`;
+    const databaseFactory = new IDBFactory();
+    const request = databaseFactory.open(databaseName, 3);
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.addEventListener(
+        'upgradeneeded',
+        () => {
+          const v3Database = request.result;
+          const transactions = v3Database.createObjectStore('transactions', {
+            keyPath: 'id',
+          });
+          transactions.createIndex('occurredOn', 'occurredOn', { unique: false });
+          transactions.createIndex('importBatchId', 'importBatchId', {
+            unique: false,
+          });
+          const importBatches = v3Database.createObjectStore('importBatches', {
+            keyPath: 'id',
+          });
+          importBatches.createIndex('committedAt', 'committedAt', { unique: false });
+          const settlements = v3Database.createObjectStore('budgetSettlements', {
+            keyPath: 'id',
+          });
+          settlements.createIndex(
+            'payerOutflowTransactionId',
+            'payerOutflowTransactionId',
+            { unique: false },
+          );
+          v3Database.createObjectStore('categoryRules', {
+            keyPath: 'matchDescriptionNormalized',
+          });
+          v3Database.createObjectStore('userSettings', { keyPath: 'id' });
+        },
+        { once: true },
+      );
+      request.addEventListener('success', () => resolve(request.result), { once: true });
+      request.addEventListener('error', () => reject(request.error), { once: true });
+    });
+    const writeTransaction = database.transaction(
+      ['transactions', 'importBatches', 'categoryRules', 'userSettings'],
+      'readwrite',
+    );
+    const storedTransaction = transaction(
+      '550e8400-e29b-41d4-a716-446655440070',
+      '2026-08-07',
+    );
+    writeTransaction.objectStore('transactions').add(storedTransaction);
+    writeTransaction.objectStore('importBatches').add(batch);
+    writeTransaction.objectStore('categoryRules').put(categoryRule);
+    writeTransaction.objectStore('userSettings').put(localUserSettings);
+    await new Promise<void>((resolve, reject) => {
+      writeTransaction.addEventListener('complete', () => resolve(), { once: true });
+      writeTransaction.addEventListener('abort', () => reject(writeTransaction.error), {
+        once: true,
+      });
+      writeTransaction.addEventListener('error', () => reject(writeTransaction.error), {
+        once: true,
+      });
+    });
+    database.close();
+
+    const repository = new BrowserLedgerRepository(
+      databaseName,
+      databaseFactory,
+      IDBKeyRange,
+    );
+
+    await expect(repository.listAllTransactions()).resolves.toEqual([
+      storedTransaction,
+    ]);
+    await expect(repository.listCategoryRules()).resolves.toEqual([categoryRule]);
+    await expect(repository.getLocalUserSettings()).resolves.toEqual(localUserSettings);
+    await expect(repository.listKeywordCategoryRules()).resolves.toEqual([]);
   });
 
   it('fails safely instead of waiting forever when another tab blocks a v1 upgrade', async () => {
