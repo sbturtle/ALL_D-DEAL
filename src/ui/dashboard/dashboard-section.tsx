@@ -11,6 +11,7 @@ import { saveManualBudgetSettlement } from '../../application/ledger/save-manual
 import { updateTransactionDetails } from '../../application/ledger/update-transaction-details';
 import type { BudgetSettlement } from '../../domain/transactions/budget-settlement';
 import { calculateLivingExpenseSummary } from '../../domain/transactions/living-expense';
+import { isReviewNeededTransaction } from '../../domain/transactions/review-needed';
 import {
   getTransactionDateRange,
   type TransactionPeriodPreset,
@@ -115,13 +116,6 @@ function enumerateCalendarDates(
 
 function getWeekdayLabel(date: CalendarDate): string {
   return WEEKDAY_LABELS[new Date(`${date}T00:00:00.000Z`).getUTCDay()] ?? '';
-}
-
-function isReviewNeededTransaction(transaction: Transaction): boolean {
-  return (
-    transaction.type === 'UNKNOWN' ||
-    (transaction.type === 'EXPENSE' && transaction.categoryId === undefined)
-  );
 }
 
 function filterTransactions(
