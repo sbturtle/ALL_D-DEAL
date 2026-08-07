@@ -2,7 +2,9 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { applyCategoryRulesToLegacyXlsPreview } from '../../application/imports/apply-category-rules-to-legacy-xls-preview';
 import type { PlaceSearchResult } from '../../application/places/place-search';
+import { normalizeCategoryRuleDescription } from '../../domain/categories/category-rule';
 import type { ImportPreview } from '../../domain/imports/legacy-xls-preview';
 import { LegacyXlsImportPreview } from './legacy-xls-import-preview';
 
@@ -74,18 +76,6 @@ const multipleExpensePreview: ImportPreview = {
       },
     },
   ],
-};
-
-const userRuleExpensePreview: ImportPreview = {
-  ...expensePreview,
-  candidates: expensePreview.candidates.map((candidate) => ({
-    ...candidate,
-    draft: {
-      ...candidate.draft,
-      descriptionOriginal: '지에쓰이십오 대전법동점',
-      categoryId: 'CONVENIENCE',
-    },
-  })),
 };
 
 const paymentIntermediaryPreview: ImportPreview = {
@@ -522,7 +512,21 @@ describe('LegacyXlsImportPreview', () => {
     const searchPlaces = vi.fn();
     render(
       <LegacyXlsImportPreview
-        previewFile={async () => userRuleExpensePreview}
+        previewFile={async () => aliasedExpensePreview}
+        applyCategoryRules={(preview) =>
+          applyCategoryRulesToLegacyXlsPreview(preview, {
+            listCategoryRules: async () => [
+              {
+                matchDescriptionNormalized: normalizeCategoryRuleDescription(
+                  '지에쓰이십오 대전법동점',
+                ),
+                categoryId: 'CONVENIENCE',
+                createdAt: '2026-08-07T00:00:00.000Z',
+                updatedAt: '2026-08-07T00:00:00.000Z',
+              },
+            ],
+          })
+        }
         searchPlaces={searchPlaces}
       />,
     );
@@ -536,6 +540,7 @@ describe('LegacyXlsImportPreview', () => {
     expect(
       await screen.findByText('사용자 규칙 → 편의점 · USER_RULE · HIGH'),
     ).toBeVisible();
+    expect(screen.queryByText('Merchant 분석 과정')).not.toBeInTheDocument();
   });
 
   it('does not send known payment intermediaries to Kakao and keeps them in review', async () => {

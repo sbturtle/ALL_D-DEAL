@@ -68,6 +68,38 @@ describe('analyzeMerchantWithKakao', () => {
     expect(analysis.classification.status).toBe('CLASSIFIED');
   });
 
+  it('uses a fuzzy brand fallback at medium confidence before canonical Kakao classification', async () => {
+    const searchPlaces = vi.fn(async (query: string) =>
+      query === '메가MGC커피 대전법동점'
+        ? [
+            fabricatedPlace(
+              '메가MGC커피 대전법동점',
+              '음식점 > 카페 > 커피전문점',
+            ),
+          ]
+        : [],
+    );
+
+    const analysis = await analyzeMerchantWithKakao(
+      '메가엠지시커피 대전법동점',
+      searchPlaces,
+    );
+
+    expect(searchPlaces.mock.calls.map(([query]) => query)).toEqual([
+      '메가엠지시커피 대전법동점',
+      '메가MGC커피 대전법동점',
+    ]);
+    expect(analysis.resolution).toMatchObject({
+      source: 'FUZZY',
+      confidence: 'MEDIUM',
+    });
+    expect(analysis.classification).toMatchObject({
+      status: 'CLASSIFIED',
+      confidence: 'MEDIUM',
+      categoryId: 'CAFE',
+    });
+  });
+
   it('deduplicates equal query forms and never exceeds three attempts', async () => {
     const searchPlaces = vi.fn().mockResolvedValue([]);
 
