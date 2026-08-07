@@ -136,7 +136,7 @@ export function App() {
           ))}
         </nav>
 
-        <span className="phase-chip">PHASE 8B · LOCAL</span>
+        <span className="phase-chip">PHASE 8C · LOCAL</span>
       </header>
 
       <main className={`work-page work-page--${route.toLowerCase()}`}>

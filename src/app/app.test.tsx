@@ -70,6 +70,10 @@ describe('App', () => {
     expect(
       screen.getByRole('heading', { name: '이번 주 거래, 확인하고 장부에 넣기.' }),
     ).toBeInTheDocument();
+    expect(screen.getByText('PHASE 8C · LOCAL')).toBeInTheDocument();
+    expect(
+      screen.getByText(/상호명 검색어만 Kakao Local API로 전송합니다/),
+    ).toBeInTheDocument();
     expect(screen.getByText('내 XLS 파일 미리보기')).toBeInTheDocument();
     expect(
       screen.queryByRole('heading', { name: '저장한 거래를 기간별로 확인하세요' }),
