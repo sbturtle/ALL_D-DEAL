@@ -1,62 +1,51 @@
-# Phase 8E — Review Queue and Transaction Direction Tone
+# Phase 8F — User-Confirmed Keyword Category Grouping
 
-- Status: `DONE`
+- Status: `IN_PROGRESS`
 - Plan updated: 2026-08-07
-- Prerequisite: Phase 8D Mobile App UI/UX Refresh `DONE`
+- Prerequisite: Phase 8E Review Queue and Transaction Direction Tone `DONE`
 
 ## Goal
 
-Let a user process a large local backlog of category-needed transactions one at a time in a dedicated, touch-first review queue, while making income and expense transaction cards immediately distinguishable.
+Let a user group local transactions whose descriptions contain a confirmed keyword such as `네이버페이`, `오더`, or `쿠팡` into one category, while preserving one-by-one editing for exceptions.
 
 ## Scope and decisions
 
-1. Add a canonical `/review` route. Keep the four-item primary bottom navigation unchanged; reach Review from the Home review summary and the Transactions review filter so the primary navigation does not become crowded.
-2. Move the definition of a review-needed transaction into a tested Domain helper: `UNKNOWN`, or an `EXPENSE` with no category. Dashboard and the new page must share it.
-3. The one-by-one queue auto-selects the next category-needed `EXPENSE`, shows real local remaining progress, merchant/date/amount/payment context, and provides large category choices. A chosen category saves only that Transaction and advances to the next queued transaction.
-4. Preserve FR-033: the review queue must not change a transaction's amount, date, direction, type, import trace, or any category rule. Category rule creation and transaction-type correction remain out of scope.
-5. `UNKNOWN` is a transaction-type review, not a category-needed expense. Show its real count and a direct path back to Transactions rather than falsely resolving it by attaching a category.
-6. Use no mock data, backend, analytics, remote asset, or private financial sample. Store no queue cursor or transaction data beyond the existing local Transaction update.
-7. Apply a semantic, accessible visual treatment to real and mock transaction rows: soft rose/red for OUTFLOW and soft mint/green for INFLOW, with text/icon contrast that does not rely on colour alone.
+1. Keep the existing exact `CategoryRule` contract and add a separate local `KeywordCategoryRule` contract/store. Exact description rules keep priority over user-confirmed keyword rules.
+2. A keyword rule is a normalized, user-entered substring. It is never inferred, learned, created from a payment intermediary, or applied without an explicit category and confirmation.
+3. On Review, provide a touch-friendly “similar transactions group” flow. It shows the real local count before saving, categorizes only matching uncategorized `EXPENSE` transactions, stores the keyword for future Imports, and leaves already categorized transactions untouched.
+4. Show only safe suggested chips when the current description contains a known user-facing payment/order marker (`네이버페이`, `오더`, `쿠팡`). The user can instead enter a different keyword, edit it, or cancel; suggestions do not save or classify anything by themselves.
+5. Imported Preview applies exact rules first, then the longest matching keyword rule. If same-length keyword rules overlap, a stable lexical tie-breaker is used. Users can still change every Preview category before confirmation.
+6. A batch group action is one explicit local operation. It preserves every changed Transaction field except `categoryId` and `updatedAt`, creates/replaces only the selected keyword rule, and does not create or change exact `CategoryRule` records.
+7. Reuse the existing detailed transaction editor for later corrections. Do not add remote services, AI classification, third-party assets, private sample access, or automatic historical reclassification.
 
 ## Vertical slices
 
-### Slice 1 — Shared review rule and route
+### Slice 1 — Keyword rule domain and local storage
 
-- Add the Domain review-needed helper and tests.
-- Add `/review`, route tests, title, route focus behavior, and clear entry points from Home and Transactions.
+- Add strict keyword normalization, validation, rule precedence, and fabricated tests.
+- Upgrade IndexedDB with an independent keyword-rule store while preserving schema v1–v3 stores and exact rules.
 
-### Slice 2 — One-by-one category review
+### Slice 2 — Import and review group action
 
-- Load local transactions, queue only category-needed expenses, and render loading, empty, error/retry, active, save, and save-error states.
-- Save a selected category through the existing single-transaction update use case, announce progress, and advance to the next queued expense.
-- Make the active card and category buttons touch-friendly with merchant, date, signed amount, type, and payment context.
+- Apply stored keyword rules in Import Preview after exact rules.
+- Add an explicit Review modal that previews real matching count, lets the user choose keyword/category, atomically stores the rule and updates only matching uncategorized expenses.
 
-### Slice 3 — Direction colour and finalisation
+### Slice 3 — Review, documentation, and completion
 
-- Apply direction classes to transaction rows and implement accessible income/expense colour tokens.
-- Run targeted tests, lint, typecheck, full tests, build, responsive browser checks without private XLS data, review, document, and make function-sized local commits.
+- Verify error, empty, cancellation, overlap, field-preservation, and individual-exception paths.
+- Update requirements, category-rule contract, ADR, architecture, history, engineering log, and archive this plan after validation.
 
 ## Acceptance criteria
 
-1. `/review` is reachable from the Home review summary and Transactions review filter, works with History navigation, has a descriptive title, and returns focus to its main content after navigation.
-2. The page displays real local category-needed expense counts and never invents a 771-like number, progress value, or financial amount.
-3. Selecting a category updates exactly one local `EXPENSE` through the existing validation path, preserves all other Transaction fields, removes it from the active category queue, and advances to the next available expense.
-4. Empty, loading, save failure, repository failure, and no-more-category-needed-expenses states give a clear next action.
-5. `UNKNOWN` records are not treated as successfully category-classified; their count and limitation are explicit.
-6. Transaction cards visibly distinguish OUTFLOW from INFLOW with labels/signs as well as colour, at 360–430px without horizontal overflow or sub-44px primary targets.
-7. Existing Home, Transactions, Import, payroll, and local setting behaviors remain intact. No private sample is read or committed.
-
-## Completion record
-
-- `/review` is a direct, History-compatible route with entry points from the Home review summary and Transactions review filter. The four-item primary navigation remains unchanged.
-- The shared Domain predicate keeps `UNKNOWN` as a transaction-type review. The queue loads only real local uncategorized `EXPENSE` transactions, saves one selected category through the existing single-Transaction use case, preserves all protected fields, and advances to the next transaction.
-- Loading, empty, retry, save failure, unknown-type limitation, progress, skip, and completion states are covered by UI tests with fabricated transactions only.
-- Income and expense rows now use semantic mint and rose cards respectively, while keeping `+`/`−` signs and contrast so direction is not encoded by colour alone.
-- Verification: targeted review and dashboard tests passed; `npm run lint`, `npm run typecheck`, `npm test` (41 files, 419 tests), and `npm run build` passed. Build retains only the pre-existing Vite >500 kB chunk warning.
-- Browser review: `/review` and mock Transactions were checked at 360px with no horizontal overflow; transaction rows measured 96px high and rendered as mint income / rose expense. No private XLS was opened, uploaded, or committed.
+1. A user can enter or choose a suggested contained keyword, choose a category, see the actual local matching count, and explicitly apply the group without network access or mock counts.
+2. The group operation changes only currently uncategorized matching `EXPENSE` transactions; already categorized transactions remain unchanged and can still be edited individually.
+3. The stored keyword rule categorizes matching future Import Preview expenses after exact rules but before Merchant/Kakao fallback; every Preview result remains editable before saving.
+4. Empty, invalid, sensitive-looking, too-short, no-match, storage error, cancellation, and overlapping-keyword cases have safe, tested behavior.
+5. Existing exact rules, transaction import trace, amounts, dates, directions, types, settlements, review queue, local-first boundary, and privacy guarantees remain intact.
+6. Primary controls are accessible and work at 360–430px without horizontal overflow or sub-44px touch targets.
 
 ## Out of scope
 
-- Changing a saved Transaction's type, direction, amount, date, import trace, or creating CategoryRules from this page
-- Batch category assignment, automatic/AI category suggestions, ranking, cloud sync, or backend work
-- Replacing the existing detailed transaction editor or adding a fifth primary bottom-navigation item
+- Automatic keyword learning, silent grouping, remote/AI merchant classification, batch modification of already categorized transactions, and a full rule-management screen
+- Changing payment-intermediary Kakao blocking or treating a keyword rule as merchant identity proof
+- Reading, uploading, or committing `samples/private/` files
