@@ -329,6 +329,29 @@ export class BrowserLedgerRepository {
     await transactionAsPromise(transaction);
   }
 
+  async resetLocalLedger(): Promise<void> {
+    const database = await this.getDatabase();
+    const transaction = database.transaction(
+      [
+        TRANSACTIONS_STORE,
+        IMPORT_BATCHES_STORE,
+        BUDGET_SETTLEMENTS_STORE,
+        CATEGORY_RULES_STORE,
+        KEYWORD_CATEGORY_RULES_STORE,
+        USER_SETTINGS_STORE,
+      ],
+      'readwrite',
+    );
+
+    transaction.objectStore(TRANSACTIONS_STORE).clear();
+    transaction.objectStore(IMPORT_BATCHES_STORE).clear();
+    transaction.objectStore(BUDGET_SETTLEMENTS_STORE).clear();
+    transaction.objectStore(CATEGORY_RULES_STORE).clear();
+    transaction.objectStore(KEYWORD_CATEGORY_RULES_STORE).clear();
+    transaction.objectStore(USER_SETTINGS_STORE).clear();
+    await transactionAsPromise(transaction);
+  }
+
   private getDatabase(): Promise<IDBDatabase> {
     if (this.databasePromise === undefined) {
       this.databasePromise = this.openDatabase();

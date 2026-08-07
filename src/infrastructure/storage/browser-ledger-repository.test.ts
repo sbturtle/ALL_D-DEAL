@@ -230,6 +230,40 @@ describe('BrowserLedgerRepository', () => {
     await expect(repository.getLocalUserSettings()).resolves.toBeUndefined();
   });
 
+  it('clears every local-ledger store while keeping the database available', async () => {
+    const repository = createRepository();
+    const storedTransaction = transaction(
+      '550e8400-e29b-41d4-a716-446655440080',
+      '2026-08-07',
+    );
+    const settlement = {
+      id: '550e8400-e29b-41d4-a716-446655440081',
+      payerOutflowTransactionId: storedTransaction.id,
+      reimbursementInflowTransactionIds: [
+        '550e8400-e29b-41d4-a716-446655440082',
+      ],
+      createdAt: '2026-08-07T00:00:00.000Z',
+      updatedAt: '2026-08-07T00:00:00.000Z',
+    } as const;
+
+    await repository.commitImport(batch, [storedTransaction], [categoryRule]);
+    await repository.saveKeywordCategoryRuleAndReplaceTransactions(
+      keywordCategoryRule,
+      [],
+    );
+    await repository.saveBudgetSettlement(settlement);
+    await repository.saveLocalUserSettings(localUserSettings);
+
+    await repository.resetLocalLedger();
+
+    await expect(repository.listAllTransactions()).resolves.toEqual([]);
+    await expect(repository.listImportBatches()).resolves.toEqual([]);
+    await expect(repository.listBudgetSettlements()).resolves.toEqual([]);
+    await expect(repository.listCategoryRules()).resolves.toEqual([]);
+    await expect(repository.listKeywordCategoryRules()).resolves.toEqual([]);
+    await expect(repository.getLocalUserSettings()).resolves.toBeUndefined();
+  });
+
   it('upgrades a v1 local database by adding empty category-rule and settings storage', async () => {
     const databaseName = `v1-ledger-${crypto.randomUUID()}`;
     const databaseFactory = new IDBFactory();
