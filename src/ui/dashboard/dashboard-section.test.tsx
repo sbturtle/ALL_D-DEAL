@@ -188,6 +188,9 @@ describe('DashboardSection', () => {
     expect(screen.getByText('Fabricated home expense')).toBeVisible();
     expect(screen.getByText('Fabricated review needed')).toBeVisible();
     expect(
+      screen.getByText('Fabricated home expense').closest('li'),
+    ).toHaveClass('transaction-row--expense');
+    expect(
       screen.queryByRole('button', { name: '최근 1주' }),
     ).not.toBeInTheDocument();
     expect(
@@ -300,6 +303,9 @@ describe('DashboardSection', () => {
 
     await user.click(within(filters).getByRole('button', { name: '수입' }));
     expect(screen.getByText('Fabricated classified income')).toBeVisible();
+    expect(
+      screen.getByText('Fabricated classified income').closest('li'),
+    ).toHaveClass('transaction-row--income');
     expect(screen.queryByText('Fabricated ordinary expense')).not.toBeInTheDocument();
     expect(screen.queryByText('Fabricated classified transfer')).not.toBeInTheDocument();
 

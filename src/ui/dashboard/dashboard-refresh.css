@@ -471,12 +471,20 @@
   gap: var(--space-3);
   align-items: center;
   min-height: 76px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border-subtle);
+  margin-block: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid transparent;
+  border-radius: 18px;
 }
 
-.mobile-app-shell .ledger-section .transaction-list li:last-child {
-  border-bottom: 0;
+.mobile-app-shell .ledger-section .transaction-list .transaction-row--expense {
+  background: var(--danger-soft);
+  border-color: rgb(227 109 109 / 22%);
+}
+
+.mobile-app-shell .ledger-section .transaction-list .transaction-row--income {
+  background: var(--positive-soft);
+  border-color: rgb(69 167 122 / 22%);
 }
 
 .mobile-app-shell .ledger-section .transaction-mark {
@@ -534,6 +542,20 @@
 
 .mobile-app-shell .ledger-section .transaction-list .amount--income {
   color: var(--positive);
+}
+
+.mobile-app-shell .ledger-section .transaction-list .amount--expense {
+  color: #ae4a4a;
+}
+
+.mobile-app-shell .ledger-section .transaction-row--expense .transaction-mark {
+  color: #ae4a4a;
+  background: rgb(255 255 255 / 58%);
+}
+
+.mobile-app-shell .ledger-section .transaction-row--income .transaction-mark {
+  color: #287d65;
+  background: rgb(255 255 255 / 62%);
 }
 
 .mobile-app-shell .ledger-section .home-review-action,
@@ -1278,8 +1300,12 @@
     background: var(--primary-soft);
   }
 
-  .mobile-app-shell .ledger-section .transaction-list li:hover {
-    background: var(--background-soft);
+  .mobile-app-shell .ledger-section .transaction-list .transaction-row--expense:hover {
+    background: #ffe8e8;
+  }
+
+  .mobile-app-shell .ledger-section .transaction-list .transaction-row--income:hover {
+    background: #e0f5eb;
   }
 
   .transaction-edit-close:hover {

@@ -389,7 +389,14 @@ function HomeDashboard({
               const category = getCategoryPresentation(transaction.categoryId);
 
               return (
-                <li key={transaction.id}>
+                <li
+                  className={
+                    transaction.direction === 'INFLOW'
+                      ? 'transaction-row transaction-row--income'
+                      : 'transaction-row transaction-row--expense'
+                  }
+                  key={transaction.id}
+                >
                   <span className="transaction-mark" aria-hidden="true">
                     {category.emoji}
                   </span>
@@ -406,7 +413,7 @@ function HomeDashboard({
                     className={
                       transaction.direction === 'INFLOW'
                         ? 'amount amount--income'
-                        : 'amount'
+                        : 'amount amount--expense'
                     }
                   >
                     {transaction.direction === 'INFLOW' ? '+' : '−'}
@@ -1050,7 +1057,14 @@ export function DashboardSection({
             {isMock ? (
               <ul className="transaction-list">
                 {dashboardMockTransactions.map((transaction) => (
-                  <li key={transaction.id}>
+                  <li
+                    className={
+                      transaction.direction === 'IN'
+                        ? 'transaction-row transaction-row--income'
+                        : 'transaction-row transaction-row--expense'
+                    }
+                    key={transaction.id}
+                  >
                     <span className="transaction-mark" aria-hidden="true">
                       {transaction.direction === 'IN' ? '+' : '−'}
                     </span>
@@ -1062,7 +1076,7 @@ export function DashboardSection({
                       className={
                         transaction.direction === 'IN'
                           ? 'amount amount--income'
-                          : 'amount'
+                          : 'amount amount--expense'
                       }
                     >
                       {transaction.direction === 'IN' ? '+' : '−'}
@@ -1104,7 +1118,14 @@ export function DashboardSection({
                     transactionEditDraft?.transactionId === transaction.id;
 
                   return (
-                  <li key={transaction.id}>
+                  <li
+                    className={
+                      transaction.direction === 'INFLOW'
+                        ? 'transaction-row transaction-row--income'
+                        : 'transaction-row transaction-row--expense'
+                    }
+                    key={transaction.id}
+                  >
                     <span className="transaction-mark" aria-hidden="true">
                       {category.emoji}
                     </span>
@@ -1137,9 +1158,9 @@ export function DashboardSection({
                     </span>
                     <strong
                       className={
-                        transaction.direction === 'INFLOW'
-                          ? 'amount amount--income'
-                          : 'amount'
+                      transaction.direction === 'INFLOW'
+                        ? 'amount amount--income'
+                        : 'amount amount--expense'
                       }
                     >
                       {transaction.direction === 'INFLOW' ? '+' : '−'}
