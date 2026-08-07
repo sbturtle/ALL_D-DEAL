@@ -1988,6 +1988,9 @@ fieldset {
 }
 
 .import-merchant-trace summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
   color: #cbd7d0;
   font-size: 0.72rem;
   font-weight: 800;
