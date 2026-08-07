@@ -110,6 +110,36 @@ const queuedExpensePreview: ImportPreview = {
 };
 
 describe('LegacyXlsImportPreview', () => {
+  it('shows the real file-reading state until parsing finishes', async () => {
+    const user = userEvent.setup();
+    let resolvePreview: (preview: ImportPreview) => void = () => {};
+    const previewFile = vi.fn(
+      () =>
+        new Promise<ImportPreview>((resolve) => {
+          resolvePreview = resolve;
+        }),
+    );
+    render(<LegacyXlsImportPreview previewFile={previewFile} />);
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake-card.xls', {
+        type: 'application/vnd.ms-excel',
+      }),
+    );
+
+    expect(screen.getByText('파일을 읽고 있어요')).toBeVisible();
+    expect(document.querySelector('#import')).toHaveAttribute('aria-busy', 'true');
+    expect(screen.queryByText(/%/)).not.toBeInTheDocument();
+
+    resolvePreview(expensePreview);
+
+    expect(
+      await screen.findByRole('heading', { name: '1건을 찾았어요' }),
+    ).toBeVisible();
+    expect(document.querySelector('#import')).toHaveAttribute('aria-busy', 'false');
+  });
+
   it('선택한 XLS의 후보와 원본 값 없는 확인 필요 사유를 미리보기로 보여준다', async () => {
     const user = userEvent.setup();
     const previewFile = vi.fn().mockResolvedValue(accountPreview);
@@ -121,7 +151,10 @@ describe('LegacyXlsImportPreview', () => {
     await user.upload(screen.getByLabelText('XLS 파일 선택'), file);
 
     expect(previewFile).toHaveBeenCalledWith(file);
-    expect(screen.getByText('계좌 거래 XLS · 후보 1건 · 확인 필요 1건')).toBeVisible();
+    expect(screen.getByRole('heading', { name: '1건을 찾았어요' })).toBeVisible();
+    expect(
+      screen.getByText('새 거래 1건, 중복 가능 0건, 확인 필요 2건을 찾았습니다.'),
+    ).toBeInTheDocument();
     expect(screen.getByText('가짜 식료품점')).toBeVisible();
     expect(screen.getByText('검토 필요 · 출금')).toBeVisible();
     expect(
@@ -165,9 +198,11 @@ describe('LegacyXlsImportPreview', () => {
     );
     await user.click(screen.getByRole('button', { name: '지우기' }));
 
-    expect(screen.queryByText('가져오기 검토')).not.toBeInTheDocument();
     expect(
-      screen.getByText(/Preview 후 사용자가 확인한 후보만 이 기기에 저장합니다/),
+      screen.queryByRole('heading', { name: '1건을 찾았어요' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/이 기기에서 읽고, 확인할 거래를 차근차근 정리해요/),
     ).toBeVisible();
   });
 
@@ -210,7 +245,7 @@ describe('LegacyXlsImportPreview', () => {
     expect(confirmPreview).not.toHaveBeenCalled();
 
     await user.click(
-      screen.getByRole('button', { name: '후보 1건을 이 기기에 저장' }),
+      screen.getByRole('button', { name: '1건 저장하기' }),
     );
 
     expect(confirmPreview).toHaveBeenCalledWith(accountPreview, { skippedCount: 0 });
@@ -247,6 +282,9 @@ describe('LegacyXlsImportPreview', () => {
     const candidateCheckbox = await screen.findByRole('checkbox', {
       name: '중복 가능 후보 1 저장',
     });
+    expect(
+      screen.getByText('새 거래 0건, 중복 가능 1건, 확인 필요 2건을 찾았습니다.'),
+    ).toBeInTheDocument();
     expect(candidateCheckbox).not.toBeChecked();
     expect(screen.getByTestId('import-confirm-action')).toBeDisabled();
 
@@ -390,6 +428,33 @@ describe('LegacyXlsImportPreview', () => {
     expect(screen.getByLabelText('후보 2 카테고리 규칙 저장')).toBeDisabled();
   });
 
+  it('closes the category bottom sheet with Escape and restores trigger focus', async () => {
+    const user = userEvent.setup();
+    render(<LegacyXlsImportPreview previewFile={async () => expensePreview} />);
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+    const trigger = await screen.findByLabelText('후보 1 카테고리 열기');
+    await user.click(trigger);
+
+    const picker = screen.getByRole('group', {
+      name: '후보 1 카테고리 선택',
+    });
+    expect(
+      screen.getByRole('dialog', { name: '어디에 사용하셨나요?' }),
+    ).toBeVisible();
+    expect(picker).toContainElement(document.activeElement as HTMLElement);
+
+    await user.keyboard('{Escape}');
+
+    expect(
+      screen.queryByRole('group', { name: '후보 1 카테고리 선택' }),
+    ).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
   it('automatically sends an expense description to Kakao after file upload', async () => {
     const user = userEvent.setup();
     const searchPlaces = vi.fn().mockResolvedValue([
@@ -472,7 +537,7 @@ describe('LegacyXlsImportPreview', () => {
       'GS25 대전법동점',
     ]);
 
-    await user.click(screen.getByText('Merchant 분석 과정'));
+    await user.click(screen.getByText('상세 분석 과정 (개발자용)'));
     expect(screen.getByText('해석: ALIAS · HIGH')).toBeVisible();
     expect(
       screen.getByText('Alias: 지에쓰이십오 → GS25 대전법동점'),
@@ -581,7 +646,9 @@ describe('LegacyXlsImportPreview', () => {
     expect(
       await screen.findByText('사용자 규칙 → 편의점 · USER_RULE · HIGH'),
     ).toBeVisible();
-    expect(screen.queryByText('Merchant 분석 과정')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('상세 분석 과정 (개발자용)'),
+    ).not.toBeInTheDocument();
   });
 
   it('does not send known payment intermediaries to Kakao and keeps them in review', async () => {
@@ -631,7 +698,9 @@ describe('LegacyXlsImportPreview', () => {
     resolveSearch([]);
 
     await waitFor(() => {
-      expect(screen.queryByText('가져오기 검토')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: '1건을 찾았어요' }),
+      ).not.toBeInTheDocument();
       expect(
         screen.queryByText('Kakao 장소를 분석하고 있어요'),
       ).not.toBeInTheDocument();

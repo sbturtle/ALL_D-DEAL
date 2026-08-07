@@ -185,22 +185,24 @@ export function MobileAppShell({
         {children}
       </main>
 
-      <button
-        aria-controls="quick-action-sheet"
-        aria-expanded={isQuickActionOpen}
-        aria-haspopup="dialog"
-        aria-label={
-          isQuickActionOpen ? '빠른 작업 메뉴 닫기' : '빠른 작업 열기'
-        }
-        className="mobile-app-fab"
-        onClick={() =>
-          isQuickActionOpen ? closeQuickActions() : setIsQuickActionOpen(true)
-        }
-        ref={fabRef}
-        type="button"
-      >
-        <AppIcon name={isQuickActionOpen ? 'close' : 'plus'} size={28} />
-      </button>
+      {currentRoute === 'IMPORTS' ? null : (
+        <button
+          aria-controls="quick-action-sheet"
+          aria-expanded={isQuickActionOpen}
+          aria-haspopup="dialog"
+          aria-label={
+            isQuickActionOpen ? '빠른 작업 메뉴 닫기' : '빠른 작업 열기'
+          }
+          className="mobile-app-fab"
+          onClick={() =>
+            isQuickActionOpen ? closeQuickActions() : setIsQuickActionOpen(true)
+          }
+          ref={fabRef}
+          type="button"
+        >
+          <AppIcon name={isQuickActionOpen ? 'close' : 'plus'} size={28} />
+        </button>
+      )}
 
       <nav className="bottom-navigation" aria-label="하단 주요 메뉴">
         <div className="bottom-navigation__inner">

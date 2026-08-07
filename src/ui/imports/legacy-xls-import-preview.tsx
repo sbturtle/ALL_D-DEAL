@@ -81,6 +81,23 @@ const CATEGORY_LABELS: Readonly<Record<CategoryId, string>> = {
   OTHER: '기타',
 };
 
+const CATEGORY_SYMBOLS: Readonly<Record<CategoryId, string>> = {
+  FOOD_DINING: '🍽️',
+  CAFE: '☕',
+  CONVENIENCE: '🏪',
+  TRANSPORT: '🚌',
+  HOUSING_UTILITIES: '🏠',
+  SHOPPING: '🛍️',
+  HEALTH: '🌿',
+  EDUCATION: '📚',
+  LEISURE: '🎮',
+  CULTURE: '🎫',
+  MEDICAL: '🩺',
+  DATE: '💜',
+  SUBSCRIPTION: '🔁',
+  OTHER: '•••',
+};
+
 function withCategoryId(
   candidate: ImportCandidate,
   categoryId: CategoryId | undefined,
@@ -148,13 +165,6 @@ function getIssueLabel(issue: ImportIssue): string {
   return `${rowLabel} · ${issue.message}`;
 }
 
-function getPreviewSummary(preview: ImportPreview): string {
-  const sourceLabel =
-    preview.source === undefined ? '지원하지 않는 파일' : SOURCE_LABELS[preview.source];
-
-  return `${sourceLabel} · 후보 ${preview.candidates.length}건 · 확인 필요 ${preview.issues.length}건`;
-}
-
 function MerchantAnalysisTrace({
   analysis,
 }: Readonly<{ analysis: MerchantKakaoAnalysis }>) {
@@ -162,7 +172,7 @@ function MerchantAnalysisTrace({
 
   return (
     <details className="import-merchant-trace">
-      <summary>Merchant 분석 과정</summary>
+      <summary>상세 분석 과정 (개발자용)</summary>
       <div>
         <small>원본: {trace.original}</small>
         <small>정제: {trace.normalized || '없음'}</small>
@@ -203,6 +213,41 @@ function MerchantAnalysisTrace({
   );
 }
 
+function ImportFileIllustration() {
+  return (
+    <div className="import-file-illustration" aria-hidden="true">
+      <span className="import-file-illustration__halo" />
+      <svg viewBox="0 0 96 96" focusable="false">
+        <path
+          d="M31 15h25l17 17v44a7 7 0 0 1-7 7H31a7 7 0 0 1-7-7V22a7 7 0 0 1 7-7Z"
+          fill="currentColor"
+        />
+        <path d="M56 15v17h17" fill="none" stroke="white" strokeWidth="5" />
+        <path
+          d="M48 66V41m0 0-10 10m10-10 10 10"
+          fill="none"
+          stroke="white"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="6"
+        />
+      </svg>
+      <span className="import-file-illustration__receipt">
+        <svg viewBox="0 0 32 32" focusable="false">
+          <path
+            d="M8 4h16v24l-4-2-4 2-4-2-4 2V4Zm4 7h8m-8 5h8m-8 5h5"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2.4"
+          />
+        </svg>
+      </span>
+    </div>
+  );
+}
+
 export function LegacyXlsImportPreview({
   previewFile,
   applyCategoryRules,
@@ -235,6 +280,8 @@ export function LegacyXlsImportPreview({
   >(new Map());
   const requestIdRef = useRef(0);
   const kakaoAbortControllerRef = useRef<AbortController | null>(null);
+  const categoryPickerRef = useRef<HTMLDivElement | null>(null);
+  const categoryTriggerRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
 
   useEffect(
     () => () => {
@@ -242,6 +289,62 @@ export function LegacyXlsImportPreview({
     },
     [],
   );
+
+  useEffect(() => {
+    if (openCategoryPickerIndex === null) {
+      return;
+    }
+
+    const trigger = categoryTriggerRefs.current.get(openCategoryPickerIndex);
+    const activeOption =
+      categoryPickerRef.current?.querySelector<HTMLButtonElement>(
+        '.category-quick-option[aria-pressed="true"]',
+      ) ??
+      categoryPickerRef.current?.querySelector<HTMLButtonElement>(
+        '.category-quick-option',
+      );
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    activeOption?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        const focusableElements = Array.from(
+          categoryPickerRef.current?.querySelectorAll<HTMLButtonElement>(
+            'button:not(:disabled)',
+          ) ?? [],
+        );
+        const firstFocusableElement = focusableElements[0];
+        const lastFocusableElement = focusableElements.at(-1);
+
+        if (
+          firstFocusableElement !== undefined &&
+          lastFocusableElement !== undefined &&
+          ((!event.shiftKey && document.activeElement === lastFocusableElement) ||
+            (event.shiftKey && document.activeElement === firstFocusableElement))
+        ) {
+          event.preventDefault();
+          (event.shiftKey ? lastFocusableElement : firstFocusableElement).focus();
+        }
+        return;
+      }
+
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      event.preventDefault();
+      setOpenCategoryPickerIndex(null);
+      trigger?.focus();
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openCategoryPickerIndex]);
 
   const resetPreview = () => {
     kakaoAbortControllerRef.current?.abort();
@@ -501,12 +604,17 @@ export function LegacyXlsImportPreview({
       });
     }
     setOpenCategoryPickerIndex(null);
+    categoryTriggerRefs.current.get(candidateIndex)?.focus();
   };
 
   const toggleCategoryPicker = (candidateIndex: number) => {
-    setOpenCategoryPickerIndex((currentIndex) =>
-      currentIndex === candidateIndex ? null : candidateIndex,
-    );
+    if (openCategoryPickerIndex === candidateIndex) {
+      setOpenCategoryPickerIndex(null);
+      categoryTriggerRefs.current.get(candidateIndex)?.focus();
+      return;
+    }
+
+    setOpenCategoryPickerIndex(candidateIndex);
   };
 
   const toggleCategoryRule = (candidateIndex: number) => {
@@ -642,12 +750,35 @@ export function LegacyXlsImportPreview({
           (match) => preview.candidates[match.candidateIndex] !== undefined,
         );
   const selectedCandidateCount = selectedCandidateIndexes.size;
+  const duplicateCandidateCount = new Set(
+    duplicateCandidateMatches.map((match) => match.candidateIndex),
+  ).size;
+  const newCandidateCount =
+    preview === null
+      ? 0
+      : Math.max(0, preview.candidates.length - duplicateCandidateCount);
+  const reviewRequiredCount =
+    preview === null
+      ? 0
+      : preview.issues.length +
+        preview.candidates.filter(
+          (candidate, candidateIndex) =>
+            candidate.draft.type === 'UNKNOWN' ||
+            (candidate.draft.type === 'EXPENSE' &&
+              categoryIdByCandidateIndex.get(candidateIndex) === undefined),
+        ).length;
   const kakaoAnalysisPendingCount = Array.from(
     placeSearchByCandidateIndex.values(),
   ).filter((placeSearchState) => placeSearchState.status === 'SEARCHING').length;
+  const isBusy =
+    status === 'READING' || status === 'SAVING' || kakaoAnalysisPendingCount > 0;
 
   return (
-    <div className="legacy-import-preview" id="import">
+    <div
+      className={`legacy-import-preview legacy-import-preview--${status.toLowerCase()}`}
+      id="import"
+      aria-busy={isBusy}
+    >
       {kakaoAnalysisPendingCount > 0 ? (
         <div className="import-kakao-loading" role="status" aria-live="polite">
           <span className="import-kakao-loading-spinner" aria-hidden="true" />
@@ -659,53 +790,95 @@ export function LegacyXlsImportPreview({
           </span>
         </div>
       ) : null}
-      <span className="status-pill">사용 가능 · Preview</span>
-      <p className="panel-kicker">LOCAL XLS IMPORT</p>
-      <h3 id="import-title">내 XLS 파일 미리보기</h3>
-      <p>
-        계좌 거래와 카드 이용내역을 브라우저 안에서 읽습니다. Preview 후 사용자가
-        확인한 후보만 이 기기에 저장합니다.
-      </p>
 
-      <div className="import-flow" aria-label="현재 가져오기 흐름">
-        <span>파일 선택</span>
-        <i aria-hidden="true">→</i>
-        <span>미리보기</span>
-        <i aria-hidden="true">→</i>
-        <span>저장 전 확인</span>
-      </div>
+      {status === 'IDLE' ? (
+        <div className="import-start-state">
+          <ImportFileIllustration />
+          <h2 id="import-title">소비 내역 파일을 선택해 주세요</h2>
+          <p>
+            계좌 거래와 카드 이용내역 XLS를 이 기기에서 읽고, 확인할 거래를
+            차근차근 정리해요.
+          </p>
+        </div>
+      ) : null}
+
+      {status === 'READING' ? (
+        <div className="import-reading-state" role="status" aria-live="polite">
+          <span className="import-reading-spinner" aria-hidden="true" />
+          <h2>파일을 읽고 있어요</h2>
+          <p>거래와 중복 가능성을 이 기기에서 확인하고 있습니다.</p>
+        </div>
+      ) : null}
 
       <label className="import-file-action">
         <input
           type="file"
           accept=".xls,application/vnd.ms-excel"
           aria-label="XLS 파일 선택"
+          disabled={status === 'SAVING'}
           onChange={handleFileChange}
         />
-        <span>{status === 'READING' ? '파일 읽는 중…' : 'XLS 파일 선택'}</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path
+            d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+        </svg>
+        <span>{status === 'IDLE' ? '파일 선택하기' : '다른 파일 선택하기'}</span>
       </label>
-
-      {status === 'READING' ? (
-        <p className="import-reading" role="status" aria-live="polite">
-          파일을 이 기기 안에서 확인하고 있습니다.
-        </p>
-      ) : null}
 
       {preview !== null ? (
         <section className="import-preview-result" aria-labelledby="import-result-title">
           <div className="import-preview-heading">
-            <div>
-              <span className="step-label">PREVIEW</span>
-              <h4 id="import-result-title">가져오기 검토</h4>
+            <span className="import-result-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path
+                  d="m6.5 12.5 3.2 3.2 7.8-8"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2.5"
+                />
+              </svg>
+            </span>
+            <div className="import-preview-heading__copy">
+              <span className="step-label">파일 확인 완료</span>
+              <h4 id="import-result-title">{preview.candidates.length}건을 찾았어요</h4>
+              <p>
+                {preview.source === undefined
+                  ? '지원 여부를 확인할 파일'
+                  : SOURCE_LABELS[preview.source]}
+              </p>
             </div>
             <button type="button" className="import-clear-action" onClick={resetPreview}>
               지우기
             </button>
           </div>
 
-          <p className="import-preview-summary" role="status" aria-live="polite">
-            {getPreviewSummary(preview)}
+          <p className="import-preview-announcement" role="status" aria-live="polite">
+            새 거래 {newCandidateCount}건, 중복 가능 {duplicateCandidateCount}건, 확인 필요{' '}
+            {reviewRequiredCount}건을 찾았습니다.
           </p>
+
+          <dl className="import-preview-stats" aria-label="가져오기 결과 요약">
+            <div className="import-preview-stat import-preview-stat--new">
+              <dt>새 거래</dt>
+              <dd>{newCandidateCount}건</dd>
+            </div>
+            <div className="import-preview-stat import-preview-stat--duplicate">
+              <dt>중복 가능</dt>
+              <dd>{duplicateCandidateCount}건</dd>
+            </div>
+            <div className="import-preview-stat import-preview-stat--review">
+              <dt>확인 필요</dt>
+              <dd>{reviewRequiredCount}건</dd>
+            </div>
+          </dl>
 
           {duplicateCheckFailed ? (
             <p className="duplicate-check-error" role="alert">
@@ -768,7 +941,15 @@ export function LegacyXlsImportPreview({
           ) : null}
 
           {preview.candidates.length > 0 ? (
-            <ul className="import-candidate-list" aria-label="가져오기 후보">
+            <>
+              <div className="import-review-section-heading">
+                <div>
+                  <span>거래별 확인</span>
+                  <h5>분류와 금액을 확인해 주세요</h5>
+                </div>
+                <strong>{preview.candidates.length}건</strong>
+              </div>
+              <ul className="import-candidate-list" aria-label="가져오기 후보">
               {preview.candidates.map((candidate, candidateIndex) => {
                 const selectedCategoryId = categoryIdByCandidateIndex.get(candidateIndex);
                 const isCategoryPickerOpen = openCategoryPickerIndex === candidateIndex;
@@ -777,25 +958,43 @@ export function LegacyXlsImportPreview({
                 const placeSearchState = placeSearchByCandidateIndex.get(candidateIndex);
 
                 return (
-                <li key={`${candidate.source}-${candidate.rowNumber}`}>
-                  <span className="import-candidate-date">{candidate.draft.occurredOn}</span>
-                  <strong>{candidate.draft.descriptionOriginal}</strong>
-                  <span className="import-candidate-meta">
-                    {getCandidateTypeLabel(candidate.draft.type)} ·{' '}
-                    {candidate.draft.direction === 'INFLOW' ? '입금' : '출금'}
-                    {candidate.draft.paymentInstrumentLabel === undefined
-                      ? ''
-                      : ` · ${candidate.draft.paymentInstrumentLabel}`}
-                  </span>
+                <li
+                  className={isCandidateSelected ? undefined : 'is-excluded'}
+                  key={`${candidate.source}-${candidate.rowNumber}`}
+                >
+                  <div className="import-candidate-heading">
+                    <span className="import-candidate-symbol" aria-hidden="true">
+                      {selectedCategoryId === undefined
+                        ? isExpenseCandidate
+                          ? '?'
+                          : candidate.draft.direction === 'INFLOW'
+                            ? '+'
+                            : '₩'
+                        : CATEGORY_SYMBOLS[selectedCategoryId]}
+                    </span>
+                    <div className="import-candidate-copy">
+                      <span className="import-candidate-date">
+                        {candidate.draft.occurredOn}
+                      </span>
+                      <strong>{candidate.draft.descriptionOriginal}</strong>
+                      <span className="import-candidate-meta">
+                        {getCandidateTypeLabel(candidate.draft.type)} ·{' '}
+                        {candidate.draft.direction === 'INFLOW' ? '입금' : '출금'}
+                        {candidate.draft.paymentInstrumentLabel === undefined
+                          ? ''
+                          : ` · ${candidate.draft.paymentInstrumentLabel}`}
+                      </span>
+                    </div>
+                    <span className="import-candidate-amount">
+                      {candidate.draft.direction === 'INFLOW' ? '+' : '−'}
+                      {formatWon(candidate.draft.amountMinor)}
+                    </span>
+                  </div>
                   {candidate.accountTypeClassification === undefined ? null : (
                     <small className="import-classification-meta">
                       분류: {getClassificationLabel(candidate.accountTypeClassification)}
                     </small>
                   )}
-                  <span className="import-candidate-amount">
-                    {candidate.draft.direction === 'INFLOW' ? '+' : '−'}
-                    {formatWon(candidate.draft.amountMinor)}
-                  </span>
                   {isExpenseCandidate ? (
                     <>
                   {searchPlaces === undefined ? (
@@ -881,9 +1080,16 @@ export function LegacyXlsImportPreview({
                     </div>
                   )}
                   <div className="import-category-picker">
-                    <span>카테고리</span>
+                    <span className="import-category-picker__label">카테고리</span>
                     <button
                       type="button"
+                      ref={(element) => {
+                        if (element === null) {
+                          categoryTriggerRefs.current.delete(candidateIndex);
+                        } else {
+                          categoryTriggerRefs.current.set(candidateIndex, element);
+                        }
+                      }}
                       className={
                         selectedCategoryId === undefined
                           ? 'import-category-trigger is-unclassified'
@@ -902,51 +1108,94 @@ export function LegacyXlsImportPreview({
                           ? '미분류'
                           : CATEGORY_LABELS[selectedCategoryId]}
                       </strong>
-                      <span>{isCategoryPickerOpen ? '닫기' : '변경'}</span>
+                      <span>{isCategoryPickerOpen ? '닫기' : '선택'}</span>
                     </button>
                     {candidate.draft.categoryId === undefined ? (
-                      <small>이번 저장에만 카테고리를 붙일 수 있어요.</small>
+                      <small>선택한 카테고리는 우선 이번 거래에만 반영해요.</small>
                     ) : (
-                      <small>저장된 규칙으로 채워졌으며 바꿀 수 있어요.</small>
+                      <small>기억한 규칙으로 채웠어요. 언제든 바꿀 수 있어요.</small>
                     )}
                     {isCategoryPickerOpen ? (
-                      <div
-                        className="import-category-options"
-                        id={`candidate-category-picker-${candidateIndex}`}
-                        role="group"
-                        aria-label={`후보 ${candidateIndex + 1} 카테고리 선택`}
-                      >
+                      <div className="import-category-sheet-layer">
                         <button
                           type="button"
-                          className={
-                            selectedCategoryId === undefined
-                              ? 'is-active category-quick-option'
-                              : 'category-quick-option'
-                          }
-                          aria-pressed={selectedCategoryId === undefined}
-                          onClick={() =>
-                            updateCandidateCategory(candidateIndex, undefined)
-                          }
+                          className="import-category-sheet-backdrop"
+                          aria-label="카테고리 선택 창 닫기"
+                          onClick={() => toggleCategoryPicker(candidateIndex)}
+                        />
+                        <div
+                          ref={categoryPickerRef}
+                          className="import-category-options"
+                          id={`candidate-category-picker-${candidateIndex}`}
+                          role="dialog"
+                          aria-modal="true"
+                          aria-labelledby={`candidate-category-title-${candidateIndex}`}
                         >
-                          미분류
-                        </button>
-                        {CATEGORY_IDS.map((categoryId) => (
-                          <button
-                            type="button"
-                            className={
-                              selectedCategoryId === categoryId
-                                ? 'is-active category-quick-option'
-                                : 'category-quick-option'
-                            }
-                            aria-pressed={selectedCategoryId === categoryId}
-                            key={categoryId}
-                            onClick={() =>
-                              updateCandidateCategory(candidateIndex, categoryId)
-                            }
+                          <div className="import-category-sheet-heading">
+                            <span aria-hidden="true" />
+                            <div>
+                              <small>분류가 필요한 거래</small>
+                              <strong id={`candidate-category-title-${candidateIndex}`}>
+                                어디에 사용하셨나요?
+                              </strong>
+                            </div>
+                            <button
+                              type="button"
+                              className="import-category-sheet-close"
+                              aria-label="카테고리 선택 닫기"
+                              onClick={() => toggleCategoryPicker(candidateIndex)}
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path
+                                  d="m7 7 10 10M17 7 7 17"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeWidth="2"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                          <div
+                            className="import-category-option-grid"
+                            role="group"
+                            aria-label={`후보 ${candidateIndex + 1} 카테고리 선택`}
                           >
-                            {CATEGORY_LABELS[categoryId]}
-                          </button>
-                        ))}
+                            <button
+                              type="button"
+                              className={
+                                selectedCategoryId === undefined
+                                  ? 'is-active category-quick-option'
+                                  : 'category-quick-option'
+                              }
+                              aria-pressed={selectedCategoryId === undefined}
+                              onClick={() =>
+                                updateCandidateCategory(candidateIndex, undefined)
+                              }
+                            >
+                              <span aria-hidden="true">?</span>
+                              <strong>미분류</strong>
+                            </button>
+                            {CATEGORY_IDS.map((categoryId) => (
+                              <button
+                                type="button"
+                                className={
+                                  selectedCategoryId === categoryId
+                                    ? 'is-active category-quick-option'
+                                    : 'category-quick-option'
+                                }
+                                aria-pressed={selectedCategoryId === categoryId}
+                                key={categoryId}
+                                onClick={() =>
+                                  updateCandidateCategory(candidateIndex, categoryId)
+                                }
+                              >
+                                <span aria-hidden="true">{CATEGORY_SYMBOLS[categoryId]}</span>
+                                <strong>{CATEGORY_LABELS[categoryId]}</strong>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     ) : null}
                   </div>
@@ -963,7 +1212,10 @@ export function LegacyXlsImportPreview({
                       }
                       onChange={() => toggleCategoryRule(candidateIndex)}
                     />
-                    <span>이 설명을 다음에도 기억</span>
+                    <span>
+                      <strong>앞으로 같은 설명에도 적용</strong>
+                      <small>선택하면 이 카테고리를 규칙으로 기억해요.</small>
+                    </span>
                   </label>
                     </>
                   ) : (
@@ -979,7 +1231,8 @@ export function LegacyXlsImportPreview({
                 </li>
                 );
               })}
-            </ul>
+              </ul>
+            </>
           ) : null}
 
           {preview.issues.length > 0 ? (
@@ -993,6 +1246,12 @@ export function LegacyXlsImportPreview({
                 ))}
               </ul>
             </div>
+          ) : null}
+
+          {saveMessage !== null ? (
+            <p className="import-save-message" role="status">
+              {saveMessage}
+            </p>
           ) : null}
 
           {confirmPreview !== undefined && preview.candidates.length > 0 ? (
@@ -1010,27 +1269,20 @@ export function LegacyXlsImportPreview({
                 }
               >
                 {status === 'SAVING'
-                  ? '이 기기에 저장하는 중'
+                  ? '선택한 거래를 저장하는 중'
                   : status === 'SAVED'
                     ? '저장 완료'
-                    : `후보 ${preview.candidates.length}건을 이 기기에 저장`}
+                    : `${selectedCandidateCount}건 저장하기`}
               </button>
               <p className="import-selection-note">
-                현재 {selectedCandidateCount}건만 저장 대상으로 선택되었습니다. 중복 가능 후보는 체크하거나 전체 포함을 눌러야 저장됩니다.
+                {selectedCandidateCount}건을 저장할 예정이에요. 중복 가능 거래는 직접
+                포함해야 저장돼요.
               </p>
               <p className="import-confirmation-note">
-                원본 XLS와 파일명은 저장하지 않으며, 저장 후 기간별 장부에서 확인할 수 있습니다.
+                저장 후 거래 화면에서 기간별로 확인할 수 있어요.
               </p>
             </div>
           ) : null}
-
-          {saveMessage !== null ? (
-            <p className="import-save-message" role="status">
-              {saveMessage}
-            </p>
-          ) : null}
-
-          <small>원본 파일과 파일명은 저장하지 않습니다.</small>
         </section>
       ) : null}
     </div>

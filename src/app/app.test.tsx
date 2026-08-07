@@ -88,8 +88,14 @@ describe('App', () => {
     );
 
     expect(
-      screen.getByRole('heading', { name: /이번 주 거래/ }),
+      screen.getByRole('heading', { name: '이번 주 소비 불러오기' }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/미분류 지출의 상호명 검색어만 전송하며/),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: '빠른 작업 열기' }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(window.location.pathname).toBe('/imports');
   });
@@ -145,7 +151,7 @@ describe('App', () => {
     window.history.pushState(null, '', '/imports');
     fireEvent.popState(window);
     expect(
-      screen.getByRole('heading', { name: /이번 주 거래/ }),
+      screen.getByRole('heading', { name: '이번 주 소비 불러오기' }),
     ).toBeInTheDocument();
   });
 });
