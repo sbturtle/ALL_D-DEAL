@@ -42,6 +42,35 @@ const ordinaryExpense: Transaction = {
   createdAt: '2026-08-04T00:00:00.000Z',
   updatedAt: '2026-08-04T00:00:00.000Z',
 };
+const classifiedIncome: Transaction = {
+  ...reimbursement,
+  id: '550e8400-e29b-41d4-a716-446655440004',
+  type: 'INCOME',
+  descriptionOriginal: 'Fabricated classified income',
+};
+const classifiedTransfer: Transaction = {
+  ...payer,
+  id: '550e8400-e29b-41d4-a716-446655440005',
+  type: 'TRANSFER',
+  descriptionOriginal: 'Fabricated classified transfer',
+};
+const categorizedUnknown: Transaction = {
+  ...payer,
+  id: '550e8400-e29b-41d4-a716-446655440006',
+  categoryId: 'OTHER',
+  descriptionOriginal: 'Fabricated unresolved unknown',
+};
+const uncategorizedExpense: Transaction = {
+  id: '550e8400-e29b-41d4-a716-446655440007',
+  occurredOn: '2026-08-02',
+  amountMinor: 15_000,
+  currency: 'KRW',
+  direction: 'OUTFLOW',
+  type: 'EXPENSE',
+  descriptionOriginal: 'Fabricated uncategorized expense',
+  createdAt: '2026-08-02T00:00:00.000Z',
+  updatedAt: '2026-08-02T00:00:00.000Z',
+};
 
 const repository: LocalLedgerRepository = {
   listTransactionsInRange: vi.fn().mockResolvedValue([
@@ -115,7 +144,13 @@ describe('DashboardSection', () => {
       descriptionOriginal: 'Fabricated review needed',
     };
     const homeRepository = createHomeRepository(
-      [homeExpense, homeReviewNeeded],
+      [
+        homeExpense,
+        homeReviewNeeded,
+        classifiedIncome,
+        classifiedTransfer,
+        categorizedUnknown,
+      ],
       {
         id: 'current',
         monthlyLivingExpenseGoalMinor: 50_000,
@@ -135,7 +170,7 @@ describe('DashboardSection', () => {
     expect(
       screen.getByRole('progressbar', { name: '월 생활비 목표 사용률' }),
     ).toHaveAttribute('aria-valuenow', '60');
-    expect(screen.getByText('분류가 필요한 거래 1건')).toBeVisible();
+    expect(screen.getByText('분류가 필요한 거래 2건')).toBeVisible();
     expect(
       within(
         screen.getByRole('list', { name: '최근 7일 생활비 막대 그래프' }),
@@ -234,26 +269,45 @@ describe('DashboardSection', () => {
 
   it('filters saved transactions by outflow, inflow, and review-needed state', async () => {
     const user = userEvent.setup();
-    render(<DashboardSection ledgerRepository={repository} />);
+    const filterRepository: LocalLedgerRepository = {
+      ...repository,
+      listTransactionsInRange: vi.fn().mockResolvedValue([
+        classifiedIncome,
+        classifiedTransfer,
+        categorizedUnknown,
+        uncategorizedExpense,
+        ordinaryExpense,
+      ]),
+      listAllTransactions: vi.fn().mockResolvedValue([
+        classifiedIncome,
+        classifiedTransfer,
+        categorizedUnknown,
+        uncategorizedExpense,
+        ordinaryExpense,
+      ]),
+    };
+    render(<DashboardSection ledgerRepository={filterRepository} />);
 
     await screen.findByText('Fabricated ordinary expense');
     const filters = screen.getByRole('group', { name: '거래 필터' });
 
     await user.click(within(filters).getByRole('button', { name: '수입' }));
-    expect(screen.getByText('Fabricated reimbursement')).toBeVisible();
+    expect(screen.getByText('Fabricated classified income')).toBeVisible();
     expect(screen.queryByText('Fabricated ordinary expense')).not.toBeInTheDocument();
-    expect(screen.queryByText('Fabricated group payment')).not.toBeInTheDocument();
+    expect(screen.queryByText('Fabricated classified transfer')).not.toBeInTheDocument();
 
     await user.click(within(filters).getByRole('button', { name: '지출' }));
     expect(screen.getByText('Fabricated ordinary expense')).toBeVisible();
-    expect(screen.getByText('Fabricated group payment')).toBeVisible();
-    expect(screen.queryByText('Fabricated reimbursement')).not.toBeInTheDocument();
+    expect(screen.getByText('Fabricated classified transfer')).toBeVisible();
+    expect(screen.queryByText('Fabricated classified income')).not.toBeInTheDocument();
 
     await user.click(
       within(filters).getByRole('button', { name: '확인 필요' }),
     );
-    expect(screen.getByText('Fabricated reimbursement')).toBeVisible();
-    expect(screen.getByText('Fabricated group payment')).toBeVisible();
+    expect(screen.getByText('Fabricated unresolved unknown')).toBeVisible();
+    expect(screen.getByText('Fabricated uncategorized expense')).toBeVisible();
+    expect(screen.queryByText('Fabricated classified income')).not.toBeInTheDocument();
+    expect(screen.queryByText('Fabricated classified transfer')).not.toBeInTheDocument();
     expect(screen.queryByText('Fabricated ordinary expense')).not.toBeInTheDocument();
   });
 

@@ -117,6 +117,13 @@ function getWeekdayLabel(date: CalendarDate): string {
   return WEEKDAY_LABELS[new Date(`${date}T00:00:00.000Z`).getUTCDay()] ?? '';
 }
 
+function isReviewNeededTransaction(transaction: Transaction): boolean {
+  return (
+    transaction.type === 'UNKNOWN' ||
+    (transaction.type === 'EXPENSE' && transaction.categoryId === undefined)
+  );
+}
+
 function filterTransactions(
   transactions: readonly Transaction[],
   filter: TransactionFilter,
@@ -130,7 +137,7 @@ function filterTransactions(
   }
 
   if (filter === 'REVIEW') {
-    return transactions.filter((transaction) => transaction.categoryId === undefined);
+    return transactions.filter(isReviewNeededTransaction);
   }
 
   return transactions;
@@ -631,9 +638,7 @@ export function DashboardSection({
       : transactions.find(
           (transaction) => transaction.id === transactionEditDraft.transactionId,
         );
-  const reviewNeededCount = allTransactions.filter(
-    (transaction) => transaction.categoryId === undefined,
-  ).length;
+  const reviewNeededCount = allTransactions.filter(isReviewNeededTransaction).length;
   const recentTransactions = useMemo(
     () =>
       sortTransactionsByMostRecent(transactions).slice(
