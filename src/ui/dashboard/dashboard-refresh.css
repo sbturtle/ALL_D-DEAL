@@ -1,0 +1,1287 @@
+.mobile-app-shell .ledger-section {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 0 var(--space-8);
+  color: var(--text-primary);
+  border: 0;
+}
+
+.mobile-app-shell .ledger-section .ledger-heading {
+  display: flex;
+  gap: var(--space-5);
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.mobile-app-shell .ledger-section .ledger-heading > div:first-child {
+  min-width: 0;
+}
+
+.mobile-app-shell .ledger-section .eyebrow {
+  margin: 0 0 var(--space-2);
+  color: var(--primary-strong);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+.mobile-app-shell .ledger-section .ledger-heading h2 {
+  max-width: 680px;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: clamp(24px, 4vw, 34px);
+  font-weight: 700;
+  line-height: 1.18;
+  letter-spacing: -0.045em;
+  word-break: keep-all;
+}
+
+.mobile-app-shell .ledger-section .ledger-heading > div > p:last-child {
+  max-width: 620px;
+  margin: var(--space-3) 0 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.65;
+  word-break: keep-all;
+}
+
+.mobile-app-shell .ledger-section .view-switch {
+  display: grid;
+  flex: 0 0 236px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-1);
+  width: 236px;
+  margin: 0;
+  padding: var(--space-1);
+  background: var(--surface-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-input);
+}
+
+.mobile-app-shell .ledger-section .view-switch button {
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 9px var(--space-3);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 650;
+  background: transparent;
+  border: 0;
+  border-radius: 11px;
+  box-shadow: none;
+}
+
+.mobile-app-shell .ledger-section .view-switch button.is-active {
+  color: var(--primary-strong);
+  background: var(--surface);
+  box-shadow: 0 1px 5px rgb(30 32 40 / 7%);
+}
+
+.mobile-app-shell .ledger-section .view-switch button:focus-visible,
+.mobile-app-shell .ledger-section .period-preset-buttons button:focus-visible,
+.mobile-app-shell .ledger-section .transaction-filter-buttons button:focus-visible,
+.mobile-app-shell .ledger-section .transaction-row-edit-action:focus-visible,
+.mobile-app-shell .ledger-section .settlement-panel :is(button, select, input):focus-visible,
+.mobile-app-shell .ledger-section .empty-transactions button:focus-visible,
+.transaction-edit-sheet :is(button, select, textarea):focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.mobile-app-shell .ledger-section .mock-notice {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin: var(--space-4) 0 0;
+  padding: 12px var(--space-4);
+  color: #74500e;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  background: var(--warning-soft);
+  border: 1px solid rgb(232 163 76 / 32%);
+  border-radius: var(--radius-input);
+}
+
+.mobile-app-shell .ledger-section .ledger-main {
+  min-width: 0;
+  margin-top: var(--space-6);
+}
+
+/* Home */
+
+.mobile-app-shell .ledger-section .home-dashboard {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.mobile-app-shell .ledger-section .home-dashboard-state {
+  display: grid;
+  min-height: 300px;
+  padding: var(--space-8) var(--space-5);
+  color: var(--text-secondary);
+  text-align: center;
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-surface);
+  place-items: center;
+  align-content: center;
+}
+
+.mobile-app-shell .ledger-section .home-dashboard-state strong {
+  margin-top: var(--space-3);
+  color: var(--text-primary);
+  font-size: 17px;
+}
+
+.mobile-app-shell .ledger-section .home-dashboard-state p {
+  max-width: 390px;
+  margin: var(--space-2) auto 0;
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: keep-all;
+}
+
+.mobile-app-shell .ledger-section .home-dashboard-state button {
+  min-height: 48px;
+  margin-top: var(--space-5);
+  padding: 0 var(--space-5);
+  color: var(--on-primary);
+  font-weight: 700;
+  background: var(--primary-strong);
+  border: 0;
+  border-radius: var(--radius-button);
+}
+
+.mobile-app-shell .ledger-section .home-dashboard-state--error {
+  background: var(--danger-soft);
+}
+
+.mobile-app-shell .ledger-section .home-dashboard-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--primary-soft);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: dashboard-spin 800ms linear infinite;
+}
+
+@keyframes dashboard-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mobile-app-shell .ledger-section .home-spending-hero {
+  min-width: 0;
+  padding: var(--space-3) var(--space-1) var(--space-4);
+}
+
+.mobile-app-shell .ledger-section .home-spending-hero p,
+.mobile-app-shell .ledger-section .home-spending-hero small {
+  margin: 0;
+}
+
+.mobile-app-shell .ledger-section .home-spending-hero p {
+  color: var(--text-secondary);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.mobile-app-shell .ledger-section .home-spending-hero strong {
+  display: block;
+  max-width: 100%;
+  margin-top: var(--space-2);
+  overflow-wrap: anywhere;
+  color: var(--primary-strong);
+  font-size: clamp(34px, 10vw, 48px);
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.12;
+  letter-spacing: -0.055em;
+}
+
+.mobile-app-shell .ledger-section .home-spending-hero small {
+  display: block;
+  margin-top: var(--space-2);
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mobile-app-shell .ledger-section :is(
+    .home-goal-card,
+    .home-review-card,
+    .home-weekly-card,
+    .home-recent-card
+  ) {
+  min-width: 0;
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid transparent;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-surface);
+}
+
+.mobile-app-shell .ledger-section .home-goal-card {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.mobile-app-shell .ledger-section .home-goal-card--empty {
+  background: var(--primary-soft);
+  border-color: rgb(108 127 242 / 10%);
+}
+
+.mobile-app-shell .ledger-section .home-goal-card--empty h3,
+.mobile-app-shell .ledger-section .home-goal-card--empty p,
+.mobile-app-shell .ledger-section .home-goal-heading h3,
+.mobile-app-shell .ledger-section .home-goal-heading p {
+  margin: 0;
+}
+
+.mobile-app-shell .ledger-section .home-goal-card--empty h3,
+.mobile-app-shell .ledger-section .home-goal-heading h3 {
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.mobile-app-shell .ledger-section .home-goal-card--empty p {
+  margin-top: var(--space-1);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+  word-break: keep-all;
+}
+
+.mobile-app-shell .ledger-section .home-goal-card--empty a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  color: var(--primary-strong);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  background: var(--surface);
+  border-radius: var(--radius-button);
+}
+
+.mobile-app-shell .ledger-section .home-goal-card--exceeded {
+  background: var(--danger-soft);
+}
+
+.mobile-app-shell .ledger-section .home-goal-heading {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.mobile-app-shell .ledger-section .home-goal-heading p {
+  margin-top: var(--space-1);
+  color: var(--primary-strong);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.mobile-app-shell .ledger-section .home-goal-card--exceeded .home-goal-heading p {
+  color: #ac4242;
+}
+
+.mobile-app-shell .ledger-section .home-goal-heading > span {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mobile-app-shell .ledger-section .home-goal-progress {
+  height: 10px;
+  overflow: hidden;
+  background: var(--surface-muted);
+  border-radius: 999px;
+}
+
+.mobile-app-shell .ledger-section .home-goal-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  border-radius: inherit;
+  transition: width 280ms ease;
+}
+
+.mobile-app-shell .ledger-section .home-goal-card--exceeded .home-goal-progress > span {
+  background: var(--danger);
+}
+
+.mobile-app-shell .ledger-section .home-goal-card > small {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mobile-app-shell .ledger-section .home-review-card {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  background: var(--secondary-soft);
+}
+
+.mobile-app-shell .ledger-section .home-review-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  color: #287d65;
+  font-size: 18px;
+  font-weight: 800;
+  background: var(--surface);
+  border-radius: 14px;
+  place-items: center;
+}
+
+.mobile-app-shell .ledger-section .home-review-card--needed .home-review-icon {
+  color: #a35f16;
+  background: var(--warning-soft);
+}
+
+.mobile-app-shell .ledger-section .home-review-card h3,
+.mobile-app-shell .ledger-section .home-review-card p {
+  margin: 0;
+}
+
+.mobile-app-shell .ledger-section .home-review-card h3 {
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.mobile-app-shell .ledger-section .home-review-card p {
+  margin-top: 2px;
+  color: #3f715f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mobile-app-shell .ledger-section .home-card-heading,
+.mobile-app-shell .ledger-section .panel-heading {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mobile-app-shell .ledger-section .home-card-heading {
+  min-height: 44px;
+  margin-bottom: var(--space-3);
+}
+
+.mobile-app-shell .ledger-section .home-card-heading .panel-kicker,
+.mobile-app-shell .ledger-section .panel-heading .panel-kicker {
+  margin: 0 0 2px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+.mobile-app-shell .ledger-section .home-card-heading h3,
+.mobile-app-shell .ledger-section .panel-heading h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -0.025em;
+}
+
+.mobile-app-shell .ledger-section .home-card-heading > span,
+.mobile-app-shell .ledger-section .panel-heading > span {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.mobile-app-shell .ledger-section .home-weekly-bars {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-1);
+  min-height: 132px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mobile-app-shell .ledger-section .home-weekly-bars li {
+  display: grid;
+  grid-template-rows: 92px auto auto;
+  gap: 3px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
+.mobile-app-shell .ledger-section .home-weekly-bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: min(18px, 70%);
+  height: 92px;
+  margin-inline: auto;
+  overflow: hidden;
+  background: var(--surface-muted);
+  border-radius: 8px 8px 3px 3px;
+}
+
+.mobile-app-shell .ledger-section .home-weekly-bar i {
+  display: block;
+  width: 100%;
+  background: var(--primary);
+  border-radius: inherit;
+  transition: height 280ms ease;
+}
+
+.mobile-app-shell .ledger-section .home-weekly-bars li > small {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mobile-app-shell .ledger-section .home-recent-card {
+  padding-bottom: var(--space-2);
+}
+
+.mobile-app-shell .ledger-section .transaction-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mobile-app-shell .ledger-section .transaction-list li {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  min-height: 76px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.mobile-app-shell .ledger-section .transaction-list li:last-child {
+  border-bottom: 0;
+}
+
+.mobile-app-shell .ledger-section .transaction-mark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  color: var(--primary-strong);
+  font-size: 19px;
+  background: var(--primary-soft);
+  border: 0;
+  border-radius: 14px;
+  place-items: center;
+}
+
+.mobile-app-shell .ledger-section .transaction-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mobile-app-shell .ledger-section .transaction-copy > strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-app-shell .ledger-section .transaction-copy small {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-app-shell .ledger-section .transaction-copy .transaction-memo {
+  color: var(--primary-strong);
+}
+
+.mobile-app-shell .ledger-section .transaction-list .amount {
+  align-self: start;
+  padding-top: 2px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
+.mobile-app-shell .ledger-section .transaction-list .amount--income {
+  color: var(--positive);
+}
+
+/* Transactions */
+
+.mobile-app-shell .ledger-section .period-controls {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(180px, 1fr);
+  gap: var(--space-3) var(--space-4);
+  align-items: end;
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-surface);
+}
+
+.mobile-app-shell .ledger-section .period-preset-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+
+.mobile-app-shell .ledger-section .period-preset-buttons button {
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 10px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 650;
+  background: var(--surface-muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-chip);
+}
+
+.mobile-app-shell .ledger-section .period-preset-buttons button.is-active {
+  color: var(--primary-strong);
+  background: var(--primary-soft);
+  border-color: rgb(108 127 242 / 16%);
+}
+
+.mobile-app-shell .ledger-section :is(.period-date-inputs, .period-anchor-input) {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.mobile-app-shell .ledger-section .period-date-inputs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mobile-app-shell .ledger-section .period-date-inputs label {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.mobile-app-shell .ledger-section .period-controls input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 var(--space-3);
+  color: var(--text-primary);
+  background: var(--background-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-input);
+}
+
+.mobile-app-shell .ledger-section :is(.period-range-note, .period-range-error) {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mobile-app-shell .ledger-section .period-range-error {
+  color: #ad4141;
+}
+
+.mobile-app-shell .ledger-section .summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.mobile-app-shell .ledger-section .summary-card {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 118px;
+  padding: var(--space-4);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid transparent;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-surface);
+  flex-direction: column;
+}
+
+.mobile-app-shell .ledger-section .summary-card::after {
+  position: absolute;
+  right: -22px;
+  bottom: -28px;
+  width: 72px;
+  height: 72px;
+  background: var(--card-accent, var(--surface-muted));
+  border-radius: 50%;
+  content: "";
+  opacity: 0.45;
+}
+
+.mobile-app-shell .ledger-section .summary-card--income {
+  --card-accent: var(--secondary-soft);
+}
+
+.mobile-app-shell .ledger-section .summary-card--expense {
+  --card-accent: var(--primary-soft);
+}
+
+.mobile-app-shell .ledger-section .summary-card--saving {
+  --card-accent: #e9f4fb;
+}
+
+.mobile-app-shell .ledger-section .summary-card--goal {
+  --card-accent: var(--primary-soft);
+}
+
+.mobile-app-shell .ledger-section .summary-card--goal-exceeded {
+  --card-accent: var(--danger-soft);
+  background: var(--danger-soft);
+}
+
+.mobile-app-shell .ledger-section .summary-card > span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.mobile-app-shell .ledger-section .summary-card > strong {
+  z-index: 1;
+  margin-top: auto;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-size: clamp(17px, 5vw, 23px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+}
+
+.mobile-app-shell .ledger-section .summary-card > small {
+  z-index: 1;
+  margin-top: var(--space-1);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.mobile-app-shell .ledger-section .summary-card.is-empty {
+  background: var(--background-soft);
+  border: 1px dashed var(--border-subtle);
+}
+
+.mobile-app-shell .ledger-section .monthly-goal-period-note {
+  margin: var(--space-3) 0 0;
+  padding: 12px var(--space-3);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+  background: var(--primary-soft);
+  border: 0;
+  border-radius: var(--radius-input);
+}
+
+.mobile-app-shell .ledger-section :is(.transactions-panel, .settlement-panel) {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid transparent;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-surface);
+}
+
+.mobile-app-shell .ledger-section .panel-heading {
+  min-height: 52px;
+  padding: 0;
+  border-bottom: 0;
+}
+
+.mobile-app-shell .ledger-section .transaction-filter-buttons {
+  display: flex;
+  gap: var(--space-2);
+  margin: var(--space-3) calc(var(--space-4) * -1) var(--space-2);
+  padding: 0 var(--space-4) var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.mobile-app-shell .ledger-section .transaction-filter-buttons::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-app-shell .ledger-section .transaction-filter-buttons button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 650;
+  background: var(--surface-muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-chip);
+}
+
+.mobile-app-shell .ledger-section .transaction-filter-buttons button.is-active {
+  color: var(--on-primary);
+  background: var(--primary-strong);
+}
+
+.mobile-app-shell .ledger-section .transaction-row-edit-action {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 var(--space-2) 0 0;
+  color: var(--primary-strong);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-chip);
+}
+
+.mobile-app-shell .ledger-section .empty-transactions {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  min-height: 180px;
+  padding: var(--space-6) var(--space-2);
+}
+
+.mobile-app-shell .ledger-section .empty-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  color: var(--primary-strong);
+  font-size: 18px;
+  background: var(--primary-soft);
+  border: 0;
+  border-radius: 16px;
+  place-items: center;
+}
+
+.mobile-app-shell .ledger-section .empty-transactions strong {
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.mobile-app-shell .ledger-section .empty-transactions p {
+  margin: var(--space-1) 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+  word-break: keep-all;
+}
+
+.mobile-app-shell .ledger-section .empty-transactions button {
+  min-height: 44px;
+  margin-top: var(--space-3);
+  padding: 0 var(--space-4);
+  color: var(--primary-strong);
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--primary-soft);
+  border: 0;
+  border-radius: var(--radius-button);
+}
+
+.mobile-app-shell .ledger-section .settlement-panel {
+  background: var(--background-soft);
+  border-color: var(--border-subtle);
+}
+
+.mobile-app-shell .ledger-section .settlement-panel > p {
+  margin: var(--space-3) 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+  word-break: keep-all;
+}
+
+.mobile-app-shell .ledger-section .settlement-form {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+
+.mobile-app-shell .ledger-section :is(
+    .settlement-form > label,
+    .settlement-form fieldset
+  ) {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 650;
+  border: 0;
+}
+
+.mobile-app-shell .ledger-section .settlement-form fieldset {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.mobile-app-shell .ledger-section .settlement-form select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 var(--space-3);
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-input);
+}
+
+.mobile-app-shell .ledger-section .settlement-reimbursement-list {
+  display: grid;
+  gap: var(--space-1);
+  max-height: 220px;
+  padding: 0;
+  overflow-y: auto;
+}
+
+.mobile-app-shell .ledger-section .settlement-reimbursement-list label {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  min-height: 48px;
+  padding: 8px var(--space-2);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1.5;
+  background: var(--surface);
+  border-radius: var(--radius-input);
+}
+
+.mobile-app-shell .ledger-section .settlement-reimbursement-list input {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--primary-strong);
+}
+
+.mobile-app-shell .ledger-section .settlement-save-action {
+  min-height: 48px;
+  padding: 0 var(--space-5);
+  color: var(--on-primary);
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--primary-strong);
+  border: 0;
+  border-radius: var(--radius-button);
+}
+
+.mobile-app-shell .ledger-section .settlement-save-action:disabled {
+  color: var(--text-tertiary);
+  background: var(--surface-muted);
+}
+
+.mobile-app-shell .ledger-section .settlement-notice {
+  margin: var(--space-3) 0 0;
+  padding: 12px var(--space-3);
+  color: #287d65;
+  font-size: 12px;
+  line-height: 1.5;
+  background: var(--positive-soft);
+  border: 0;
+  border-radius: var(--radius-input);
+}
+
+.mobile-app-shell .ledger-section .settlement-notice--error {
+  color: #ad4141;
+  background: var(--danger-soft);
+}
+
+.mobile-app-shell .ledger-section .settlement-list {
+  display: grid;
+  gap: 0;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mobile-app-shell .ledger-section .settlement-list li {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: var(--space-2) 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.mobile-app-shell .ledger-section .settlement-list button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  color: #ad4141;
+  font-size: 12px;
+  font-weight: 650;
+  background: var(--danger-soft);
+  border: 0;
+  border-radius: var(--radius-chip);
+}
+
+/* Transaction edit bottom sheet */
+
+.transaction-edit-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-top: calc(env(safe-area-inset-top, 0px) + var(--space-6));
+  background: var(--scrim);
+  animation: transaction-edit-fade-in 160ms ease-out;
+}
+
+.transaction-edit-sheet {
+  width: 100%;
+  max-height: min(86dvh, 720px);
+  padding:
+    var(--space-3)
+    max(var(--mobile-page-padding), env(safe-area-inset-right, 0px))
+    calc(var(--space-5) + env(safe-area-inset-bottom, 0px))
+    max(var(--mobile-page-padding), env(safe-area-inset-left, 0px));
+  overflow-y: auto;
+  color: var(--text-primary);
+  background: var(--surface);
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  box-shadow: var(--shadow-sheet);
+  overscroll-behavior: contain;
+  animation: transaction-edit-rise 200ms ease-out;
+}
+
+.transaction-edit-handle {
+  display: block;
+  width: 40px;
+  height: 4px;
+  margin: 0 auto var(--space-3);
+  background: var(--border-subtle);
+  border-radius: 999px;
+}
+
+.transaction-edit-sheet-heading {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  min-height: 52px;
+}
+
+.transaction-edit-sheet-heading > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.transaction-edit-sheet-heading p,
+.transaction-edit-sheet-heading h3,
+.transaction-edit-sheet-summary {
+  margin: 0;
+}
+
+.transaction-edit-sheet-heading p {
+  color: var(--primary-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.transaction-edit-sheet-heading h3 {
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: 20px;
+  line-height: 1.35;
+  letter-spacing: -0.025em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transaction-edit-close {
+  display: grid;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: 26px;
+  background: var(--surface-muted);
+  border: 0;
+  border-radius: 50%;
+  place-items: center;
+}
+
+.transaction-edit-sheet-summary {
+  margin-top: var(--space-3);
+  padding: 12px var(--space-3);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+  background: var(--background-soft);
+  border-radius: var(--radius-input);
+}
+
+.transaction-edit-sheet-form {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+
+.transaction-edit-sheet-form label {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.transaction-edit-sheet-form :is(select, textarea) {
+  width: 100%;
+  color: var(--text-primary);
+  font-size: 15px;
+  background: var(--background-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-input);
+}
+
+.transaction-edit-sheet-form select {
+  min-height: 50px;
+  padding: 0 var(--space-3);
+}
+
+.transaction-edit-sheet-form textarea {
+  min-height: 112px;
+  padding: 13px var(--space-3);
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.transaction-edit-sheet-form > p[role="alert"] {
+  margin: 0;
+  padding: 12px var(--space-3);
+  color: #ad4141;
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--danger-soft);
+  border-radius: var(--radius-input);
+}
+
+.transaction-edit-sheet-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.transaction-edit-sheet-actions button {
+  min-height: 50px;
+  margin: 0;
+  padding: 0 var(--space-4);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--surface-muted);
+  border: 0;
+  border-radius: var(--radius-button);
+}
+
+.transaction-edit-sheet-actions button[type="submit"] {
+  color: var(--on-primary);
+  background: var(--primary-strong);
+}
+
+.transaction-edit-sheet-actions button:disabled,
+.transaction-edit-close:disabled {
+  opacity: 0.55;
+}
+
+@keyframes transaction-edit-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes transaction-edit-rise {
+  from {
+    transform: translateY(24px);
+  }
+}
+
+@media (max-width: 719px) {
+  .mobile-app-shell .ledger-section .ledger-heading {
+    display: block;
+  }
+
+  .mobile-app-shell .ledger-section .ledger-heading h2 {
+    font-size: clamp(23px, 7.2vw, 28px);
+  }
+
+  .mobile-app-shell .ledger-section .ledger-heading > div > p:last-child {
+    margin-top: var(--space-2);
+    font-size: 13px;
+  }
+
+  .mobile-app-shell .ledger-section .view-switch {
+    width: 100%;
+    margin-top: var(--space-4);
+  }
+
+  .mobile-app-shell .ledger-section .period-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mobile-app-shell .ledger-section .period-preset-buttons {
+    width: 100%;
+  }
+
+  .mobile-app-shell .ledger-section :is(.transactions-panel, .settlement-panel) {
+    padding: var(--space-4);
+  }
+}
+
+@media (max-width: 370px) {
+  .mobile-app-shell .ledger-section .period-preset-buttons button {
+    padding-inline: 5px;
+    font-size: 12px;
+  }
+
+  .mobile-app-shell .ledger-section .period-date-inputs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mobile-app-shell .ledger-section .transaction-list li {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: var(--space-2);
+  }
+
+  .mobile-app-shell .ledger-section .transaction-mark {
+    width: 40px;
+    height: 40px;
+  }
+
+  .mobile-app-shell .ledger-section .transaction-list .amount {
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 720px) {
+  .mobile-app-shell .ledger-section .home-dashboard {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+
+  .mobile-app-shell .ledger-section .home-review-card {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-app-shell .ledger-section .summary-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .mobile-app-shell .ledger-section .transactions-panel,
+  .mobile-app-shell .ledger-section .settlement-panel {
+    padding: var(--space-5);
+  }
+
+  .transaction-edit-backdrop {
+    padding: var(--space-8);
+  }
+
+  .transaction-edit-sheet {
+    width: min(100%, 560px);
+    max-height: min(82dvh, 720px);
+    padding: var(--space-4) var(--space-5) var(--space-5);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sheet);
+  }
+
+  .transaction-edit-handle {
+    display: none;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mobile-app-shell .ledger-section .view-switch button:hover,
+  .mobile-app-shell .ledger-section .period-preset-buttons button:hover,
+  .mobile-app-shell .ledger-section .transaction-filter-buttons button:hover,
+  .mobile-app-shell .ledger-section .transaction-row-edit-action:hover {
+    color: var(--primary-strong);
+    background: var(--primary-soft);
+  }
+
+  .mobile-app-shell .ledger-section .transaction-list li:hover {
+    background: var(--background-soft);
+  }
+
+  .transaction-edit-close:hover {
+    color: var(--text-primary);
+    background: var(--surface-pressed);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-app-shell .ledger-section *,
+  .mobile-app-shell .ledger-section *::before,
+  .mobile-app-shell .ledger-section *::after,
+  .transaction-edit-backdrop,
+  .transaction-edit-sheet {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+  }
+}
+
+@media (forced-colors: active) {
+  .mobile-app-shell .ledger-section :is(
+      .home-goal-card,
+      .home-review-card,
+      .home-weekly-card,
+      .home-recent-card,
+      .summary-card,
+      .transactions-panel,
+      .settlement-panel
+    ),
+  .transaction-edit-sheet {
+    border: 1px solid CanvasText;
+  }
+}

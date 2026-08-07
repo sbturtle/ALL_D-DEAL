@@ -17,35 +17,88 @@ async function enterMoney(
   return input;
 }
 
+function renderAt(pathname: string) {
+  window.history.replaceState(null, '', pathname);
+  return render(<App />);
+}
+
 describe('App', () => {
   beforeEach(() => {
-    window.history.replaceState(null, '', '/ledger');
+    window.history.replaceState(null, '', '/');
   });
 
-  it('처음에는 장부만 보여주고 현재 페이지 탐색을 표시한다', () => {
-    render(<App />);
+  it.each(['/home', '/'])(
+    '%s에서 홈을 열고 현재 하단 메뉴를 표시한다',
+    (pathname) => {
+      renderAt(pathname);
+
+      expect(
+        screen.getByRole('heading', {
+          name: '이번 달 생활비를 한눈에 확인하세요',
+        }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: '홈' })).toHaveAttribute(
+        'aria-current',
+        'page',
+      );
+    },
+  );
+
+  it('기존 /ledger 주소를 거래 내역으로 이어서 연다', () => {
+    renderAt('/ledger');
 
     expect(
-      screen.getByRole('heading', { name: '저장한 거래를 기간별로 확인하세요' }),
+      screen.getByRole('heading', {
+        name: '저장한 거래를 기간별로 확인하세요',
+      }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '장부' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '거래' })).toHaveAttribute(
       'aria-current',
       'page',
     );
-    expect(
-      screen.queryByRole('heading', {
-        name: '이번 연봉, 실제로 남는 돈은?',
-        level: 1,
-      }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText('내 XLS 파일 미리보기')).not.toBeInTheDocument();
+    expect(window.location.pathname).toBe('/ledger');
   });
 
-  it('급여 계산 페이지에서 연봉과 상여·비과세액을 반영한다', async () => {
+  it('하단 메뉴로 거래 내역을 연다', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderAt('/home');
 
-    await user.click(screen.getByRole('link', { name: '급여 계산' }));
+    await user.click(screen.getByRole('link', { name: '거래' }));
+
+    expect(
+      screen.getByRole('heading', {
+        name: '저장한 거래를 기간별로 확인하세요',
+      }),
+    ).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/transactions');
+  });
+
+  it('빠른 작업에서 금융 데이터 불러오기를 연다', async () => {
+    const user = userEvent.setup();
+    renderAt('/home');
+
+    await user.click(screen.getByRole('button', { name: '빠른 작업 열기' }));
+    const quickActionSheet = screen.getByRole('dialog', {
+      name: '무엇을 할까요?',
+    });
+
+    expect(quickActionSheet).toBeInTheDocument();
+    await user.click(
+      screen.getByRole('link', { name: /금융 데이터 불러오기/ }),
+    );
+
+    expect(
+      screen.getByRole('heading', { name: /이번 주 거래/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(window.location.pathname).toBe('/imports');
+  });
+
+  it('급여 계산에서 연봉과 상여·비과세액을 반영한다', async () => {
+    const user = userEvent.setup();
+    renderAt('/home');
+
+    await user.click(screen.getByRole('link', { name: '급여' }));
     await enterMoney(user, '세전 기본 연봉', '48000000');
     await enterMoney(user, '연간 상여금', '12000000');
     await enterMoney(user, '월 비과세액', '200000');
@@ -61,28 +114,24 @@ describe('App', () => {
     expect(window.location.pathname).toBe('/payroll');
   });
 
-  it('XLS 가져오기 페이지를 독립적으로 연다', async () => {
+  it('하단 메뉴로 로컬 설정을 연다', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderAt('/home');
 
-    await user.click(screen.getByRole('link', { name: 'XLS 가져오기' }));
+    await user.click(screen.getByRole('link', { name: '설정' }));
 
     expect(
-      screen.getByRole('heading', { name: '이번 주 거래, 확인하고 장부에 넣기.' }),
+      screen.getByRole('heading', { name: /생활비 목표를/, level: 1 }),
     ).toBeInTheDocument();
-    expect(screen.getByText('PHASE 8C · LOCAL')).toBeInTheDocument();
-    expect(
-      screen.getByText(/상호명 검색어만 Kakao Local API로 전송합니다/),
-    ).toBeInTheDocument();
-    expect(screen.getByText('내 XLS 파일 미리보기')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('heading', { name: '저장한 거래를 기간별로 확인하세요' }),
-    ).not.toBeInTheDocument();
-    expect(window.location.pathname).toBe('/imports');
+    expect(screen.getByRole('link', { name: '설정' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(window.location.pathname).toBe('/settings');
   });
 
   it('브라우저 뒤로·앞으로에 해당하는 popstate로 화면을 바꾼다', () => {
-    render(<App />);
+    renderAt('/transactions');
 
     window.history.pushState(null, '', '/payroll');
     fireEvent.popState(window);
@@ -95,18 +144,8 @@ describe('App', () => {
 
     window.history.pushState(null, '', '/imports');
     fireEvent.popState(window);
-    expect(screen.getByText('내 XLS 파일 미리보기')).toBeInTheDocument();
-  });
-
-  it('navigates to the local settings page', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-
-    await user.click(screen.getByRole('link', { name: '설정' }));
-
     expect(
-      screen.getByRole('heading', { name: /생활비 목표를/, level: 1 }),
+      screen.getByRole('heading', { name: /이번 주 거래/ }),
     ).toBeInTheDocument();
-    expect(window.location.pathname).toBe('/settings');
   });
 });

@@ -4,19 +4,26 @@ import { getAppRoute, getAppRoutePath } from './app-route';
 
 describe('app routes', () => {
   it.each([
-    ['/', 'LEDGER'],
-    ['/ledger', 'LEDGER'],
-    ['/ledger/', 'LEDGER'],
+    ['/', 'HOME'],
+    ['/home', 'HOME'],
+    ['/home/', 'HOME'],
+    ['/transactions', 'TRANSACTIONS'],
+    ['/transactions/', 'TRANSACTIONS'],
+    ['/ledger', 'TRANSACTIONS'],
+    ['/ledger/', 'TRANSACTIONS'],
     ['/imports', 'IMPORTS'],
     ['/payroll', 'PAYROLL'],
-    ['/unknown', 'LEDGER'],
+    ['/settings', 'SETTINGS'],
+    ['/unknown', 'HOME'],
   ] as const)('maps %s to %s', (pathname, expectedRoute) => {
     expect(getAppRoute(pathname)).toBe(expectedRoute);
   });
 
   it('returns a stable path for every supported route', () => {
-    expect(getAppRoutePath('LEDGER')).toBe('/ledger');
+    expect(getAppRoutePath('HOME')).toBe('/home');
+    expect(getAppRoutePath('TRANSACTIONS')).toBe('/transactions');
     expect(getAppRoutePath('IMPORTS')).toBe('/imports');
     expect(getAppRoutePath('PAYROLL')).toBe('/payroll');
+    expect(getAppRoutePath('SETTINGS')).toBe('/settings');
   });
 });

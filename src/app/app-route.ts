@@ -1,5 +1,6 @@
 export const APP_ROUTE_PATHS = {
-  LEDGER: '/ledger',
+  HOME: '/home',
+  TRANSACTIONS: '/transactions',
   IMPORTS: '/imports',
   PAYROLL: '/payroll',
   SETTINGS: '/settings',
@@ -7,8 +8,30 @@ export const APP_ROUTE_PATHS = {
 
 export type AppRoute = keyof typeof APP_ROUTE_PATHS;
 
+export const APP_ROUTE_TITLES: Readonly<Record<AppRoute, string>> = {
+  HOME: '홈',
+  TRANSACTIONS: '거래 내역',
+  IMPORTS: '소비 불러오기',
+  PAYROLL: '급여 계산',
+  SETTINGS: '설정',
+};
+
 export function getAppRoute(pathname: string): AppRoute {
   const normalizedPathname = pathname.replace(/\/+$/, '') || '/';
+
+  if (
+    normalizedPathname === '/' ||
+    normalizedPathname === APP_ROUTE_PATHS.HOME
+  ) {
+    return 'HOME';
+  }
+
+  if (
+    normalizedPathname === '/ledger' ||
+    normalizedPathname === APP_ROUTE_PATHS.TRANSACTIONS
+  ) {
+    return 'TRANSACTIONS';
+  }
 
   if (normalizedPathname === APP_ROUTE_PATHS.IMPORTS) {
     return 'IMPORTS';
@@ -22,7 +45,7 @@ export function getAppRoute(pathname: string): AppRoute {
     return 'SETTINGS';
   }
 
-  return 'LEDGER';
+  return 'HOME';
 }
 
 export function getAppRoutePath(route: AppRoute): string {

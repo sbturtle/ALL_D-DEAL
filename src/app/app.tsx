@@ -20,19 +20,16 @@ import { DashboardSection } from '../ui/dashboard/dashboard-section';
 import { ImportPage } from '../ui/imports/import-page';
 import { PayrollPage } from '../ui/payroll-estimate/payroll-page';
 import { SettingsPage } from '../ui/settings/settings-page';
+import { MobileAppShell } from '../ui/shell/mobile-app-shell';
 
-import { getAppRoute, getAppRoutePath, type AppRoute } from './app-route';
+import {
+  APP_ROUTE_TITLES,
+  getAppRoute,
+  getAppRoutePath,
+  type AppRoute,
+} from './app-route';
 import './app.css';
-
-const NAVIGATION_ITEMS: readonly Readonly<{
-  route: AppRoute;
-  label: string;
-}>[] = [
-  { route: 'LEDGER', label: '장부' },
-  { route: 'IMPORTS', label: 'XLS 가져오기' },
-  { route: 'PAYROLL', label: '급여 계산' },
-  { route: 'SETTINGS', label: '설정' },
-];
+import './mobile-app.css';
 
 const ledgerRepository = new BrowserLedgerRepository();
 const kakaoMapPlaceSearch = getKakaoMapPlaceSearch();
@@ -94,6 +91,10 @@ export function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  useEffect(() => {
+    document.title = `${APP_ROUTE_TITLES[route]} · 내 가계부`;
+  }, [route]);
+
   const handleNavigation = (
     event: MouseEvent<HTMLAnchorElement>,
     nextRoute: AppRoute,
@@ -111,68 +112,31 @@ export function App() {
   };
 
   return (
-    <div className="app-shell" id="top">
-      <header className="site-header">
-        <a
-          className="brand"
-          href={getAppRoutePath('LEDGER')}
-          aria-label="가계부 장부로"
-          onClick={(event) => handleNavigation(event, 'LEDGER')}
-        >
-          <span aria-hidden="true">ㄱ</span>
-          <strong>가계부</strong>
-        </a>
-
-        <nav aria-label="주요 메뉴">
-          {NAVIGATION_ITEMS.map((item) => (
-            <a
-              href={getAppRoutePath(item.route)}
-              aria-current={route === item.route ? 'page' : undefined}
-              key={item.route}
-              onClick={(event) => handleNavigation(event, item.route)}
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
-
-        <span className="phase-chip">PHASE 8C · LOCAL</span>
-      </header>
-
-      <main className={`work-page work-page--${route.toLowerCase()}`}>
+    <MobileAppShell currentRoute={route} onNavigate={handleNavigation}>
+      <div className={`work-page work-page--${route.toLowerCase()}`}>
+        {route === 'HOME' ? (
+          <DashboardSection page="HOME" ledgerRepository={ledgerRepository} />
+        ) : null}
+        {route === 'TRANSACTIONS' ? (
+          <DashboardSection
+            page="TRANSACTIONS"
+            ledgerRepository={ledgerRepository}
+          />
+        ) : null}
         {route === 'PAYROLL' ? <PayrollPage /> : null}
-        {route === 'LEDGER' ? <DashboardSection ledgerRepository={ledgerRepository} /> : null}
         {route === 'IMPORTS' ? (
           <ImportPage
             previewLegacyXls={previewSelectedLegacyXls}
             confirmLegacyXlsImport={confirmSelectedLegacyXlsImport}
             findPotentialLegacyXlsImportDuplicates={findSelectedLegacyXlsImportDuplicates}
-              applyCategoryRulesToLegacyXlsPreview={applySelectedCategoryRules}
-              searchPlaces={kakaoMapPlaceSearch}
+            applyCategoryRulesToLegacyXlsPreview={applySelectedCategoryRules}
+            searchPlaces={kakaoMapPlaceSearch}
           />
         ) : null}
         {route === 'SETTINGS' ? (
           <SettingsPage settingsRepository={ledgerRepository} />
         ) : null}
-      </main>
-
-      <footer>
-        <a
-          className="brand brand--footer"
-          href={getAppRoutePath('LEDGER')}
-          onClick={(event) => handleNavigation(event, 'LEDGER')}
-        >
-          <span aria-hidden="true">ㄱ</span>
-          <strong>가계부</strong>
-        </a>
-        <p>개인 자산을 내 손으로 이해하는 local-first 프로젝트</p>
-        <a
-          href={getAppRoutePath('IMPORTS')}
-          onClick={(event) => handleNavigation(event, 'IMPORTS')}
-        >
-          XLS 가져오기 →
-        </a>
-      </footer>
-    </div>
+      </div>
+    </MobileAppShell>
   );
 }
