@@ -6,7 +6,7 @@
 
 ## 현재 개발 범위
 
-Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기, Phase 2 Transaction Domain Foundation, Phase 3A/3B Legacy XLS Preview·확정 저장, Phase 4 중복 후보 검토, Phase 5 확정 카테고리 규칙, Phase 6A 기능별 페이지 분리, Phase 6B 계좌 거래 유형 분류, Phase 7A/7B/7C Kakao 장소 분류·진행 표시, Phase 8A 저장 거래 메모·카테고리 편집, Phase 8B 월 생활비 목표 로컬 설정, Phase 8C 결정적 Merchant Entity Resolution, Phase 8D 모바일 앱 UI/UX 개편, Phase 8E 대량 분류 검토 큐와 거래 방향 색상 구분은 완료되었다. Git에서 제외한 private 카드 이용내역·계좌 거래내역은 이전 Phase의 실제 로컬 브라우저 Preview로 호환성을 확인했다. Phase 8D·8E 반응형 검증에서는 private 파일을 열지 않았다. 저축 분석과 장기 자산 모델은 후속 Phase에서 작은 단위로 진행한다.
+Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기, Phase 2 Transaction Domain Foundation, Phase 3A/3B Legacy XLS Preview·확정 저장, Phase 4 중복 후보 검토, Phase 5 확정 카테고리 규칙, Phase 6A 기능별 페이지 분리, Phase 6B 계좌 거래 유형 분류, Phase 7A/7B/7C Kakao 장소 분류·진행 표시, Phase 8A 저장 거래 메모·카테고리 편집, Phase 8B 월 생활비 목표 로컬 설정, Phase 8C 결정적 Merchant Entity Resolution, Phase 8D 모바일 앱 UI/UX 개편, Phase 8E 대량 분류 검토 큐와 거래 방향 색상 구분, Phase 8F 사용자 확인형 키워드 카테고리 묶기는 완료되었다. Git에서 제외한 private 카드 이용내역·계좌 거래내역은 이전 Phase의 실제 로컬 브라우저 Preview로 호환성을 확인했다. Phase 8D·8E·8F 반응형 검증에서는 private 파일을 열지 않았다. 저축 분석과 장기 자산 모델은 후속 Phase에서 작은 단위로 진행한다.
 
 ## 기능 요구사항
 
@@ -52,6 +52,7 @@ Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 �
 | FR-036 | MUST | Import 화면은 파일 읽기·Kakao 분석·저장의 실제 비동기 상태와 실제 신규·중복·확인 필요 수만 표시해야 하며, 가상의 진행률이나 후보 수를 만들지 않아야 한다. | 8D |
 | FR-037 | MUST | 사용자는 전용 검토 화면에서 로컬에 저장된 미분류 `EXPENSE`를 한 건씩 실제 남은 수와 함께 분류할 수 있어야 한다. 카테고리 선택은 해당 Transaction 하나에만 적용하고, 금액·일자·방향·유형·Import 추적정보·카테고리 규칙을 바꾸지 않은 채 다음 거래로 이동해야 한다. | 8E |
 | FR-038 | MUST | 거래 행은 수입과 지출을 색상뿐 아니라 `+`·`−` 부호와 방향 표기로 함께 구분해야 하며, 360–430px에서도 색상 처리로 인해 가로 넘침이나 44px 미만의 주요 조작을 만들지 않아야 한다. | 8E |
+| FR-039 | MUST | 사용자는 포함 키워드와 카테고리, 실제 미분류 지출 일치 건수를 확인한 뒤에만 해당 키워드의 거래를 묶을 수 있어야 한다. 묶기는 현재 저장된 미분류 `EXPENSE`만 변경하고 미래 Import Preview에도 적용하되, 정확 설명 규칙이 우선하며 이미 분류한 거래·원장 필드는 보존하고 사용자는 각 결과를 개별 수정할 수 있어야 한다. | 8F |
 
 ## Import 요구사항
 

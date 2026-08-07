@@ -1,7 +1,8 @@
 # Confirmed Category Rule Contract
 
-- Status: Implemented in Phase 5
+- Status: Implemented in Phase 5, extended in Phase 8F
 - Date: 2026-08-05
+- Amended: 2026-08-07
 - Related: [ADR-0007](../adr/ADR-0007-confirmed-description-category-rules.md), [Merchant Resolution Contract](merchant-resolution-contract.md)
 
 ## Initial categories
@@ -26,7 +27,15 @@ The current XLS importers do not supply a reliable separate merchant field. A ru
 
 The key is not a proof of merchant identity, a fuzzy match, or a cryptographic value. Rule creation rejects normalized descriptions longer than 300 characters or containing five or more consecutive ASCII digits. This avoids storing a new reusable derivative of a likely account/card identifier. The original Import file, file name, full source row, and remote copy are never stored.
 
-Phase 8C Merchant normalization과 이 규칙 키는 목적이 다르다. 저장 규칙은 계속 기존 `normalizeCategoryRuleDescription(descriptionOriginal)`의 정확 일치만 사용하고 Alias·Fuzzy·Kakao 결과로 넓히지 않는다. 따라서 이미 확인한 사용자 규칙이 있으면 해당 카테고리를 Preview에 채우고 Merchant resolver와 모든 Kakao 호출을 건너뛴다.
+Phase 8C Merchant normalization과 이 규칙 키는 목적이 다르다. 정확 설명 규칙은 계속 기존 `normalizeCategoryRuleDescription(descriptionOriginal)`의 정확 일치만 사용하고 Alias·Fuzzy·Kakao 결과로 넓히지 않는다.
+
+## User-confirmed keyword grouping
+
+Phase 8F adds a separate `KeywordCategoryRule`; it does not change the exact-rule key or any existing exact rule. A keyword is a user-entered, NFKC/case/punctuation/whitespace-insensitive contained phrase with a minimum of two and maximum of 80 normalized characters. It rejects long numeric identifier-looking values.
+
+The Review grouping dialog shows the current real count before the user chooses a category and confirms. It changes only local, uncategorized `EXPENSE` records that contain the chosen keyword, stores the keyword for future Preview, and leaves already categorized transactions unchanged. `네이버페이`, `오더`, `쿠팡` may appear only as selectable suggestions when present in the current description; no suggestion creates a rule or categorizes a transaction by itself.
+
+Exact rules have priority. If no exact rule exists, Preview uses the longest matching confirmed keyword; same-length matches use lexical order for a stable outcome. The selected Preview category is always editable before Import confirmation. Keyword matching is not a Merchant identity proof and does not change the Kakao payment-intermediary boundary.
 
 ## Preview and confirmation flow
 
@@ -34,6 +43,7 @@ Phase 8C Merchant normalization과 이 규칙 키는 목적이 다르다. 저장
 Legacy XLS Preview
   → read local categoryRules
   → fill an exact matching category in the Preview only
+  → otherwise fill the longest matching confirmed keyword category
   → only unresolved expense candidates enter Merchant/Kakao analysis
   → user changes category as needed
   → user separately chooses “apply to this description in the future”
@@ -61,6 +71,8 @@ IndexedDB schema v2 adds `categoryRules` with `matchDescriptionNormalized` as it
 
 An IndexedDB v2 upgrade block fails the open request immediately. A request that emits no terminal event is bounded to five seconds and then rejects, so the Dashboard leaves its loading state and shows the existing safe local-storage message. No storage contents are altered by either failure.
 
+IndexedDB schema v4 adds a separate `keywordCategoryRules` store keyed by `keywordNormalized`, preserving every v1–v3 store and exact rule. A `KeywordCategoryRule` stores `keywordNormalized`, `categoryId`, `createdAt`, and `updatedAt`. The group use case validates all replacement transactions before one read-write transaction writes the keyword rule and replacement records.
+
 ## Deferred work
 
-Custom categories, a rule management screen, rule deletion, historical bulk reclassification, persistent merchant-field rules, user-managed Merchant Alias/Cache, AI classification, and Dashboard category analytics require separate decisions. Phase 8C의 Alias·Fuzzy는 Preview 검색어 해석일 뿐 새 CategoryRule을 자동 생성하지 않는다.
+Custom categories, a rule-management screen, rule deletion, automatic keyword learning, batch modification of already categorized transactions, persistent merchant-field rules, user-managed Merchant Alias/Cache, AI classification, and Dashboard category analytics require separate decisions. Phase 8C의 Alias·Fuzzy는 Preview 검색어 해석일 뿐 새 CategoryRule 또는 KeywordCategoryRule을 자동 생성하지 않는다.

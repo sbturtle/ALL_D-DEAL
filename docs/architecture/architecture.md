@@ -1,6 +1,6 @@
 # Architecture
 
-> 상태: Phase 8E Implemented Baseline
+> 상태: Phase 8F Implemented Baseline
 >
 > 기준일: 2026-08-07
 
@@ -12,7 +12,7 @@
 
 ## 현재와 목표 상태
 
-### Phase 1–8E 구현 상태
+### Phase 1–8F 구현 상태
 
 - React + TypeScript + Vite 실행 기반과 lint, typecheck, test, build 명령이 있다.
 - 급여 입력 UI가 버전 지정 2026년 정책을 사용하는 순수 `payroll-estimate` Domain을 직접 호출한다.
@@ -22,12 +22,12 @@
 - Transaction 런타임 검증은 신뢰할 수 없는 `unknown` 입력의 모든 문제를 수집하되 원본 값과 금융 식별정보를 오류에 노출하지 않는다.
 - SheetJS `0.20.3` 기반 legacy XLS Reader가 첫 시트를 메모리에서만 읽고, 계좌 거래·카드 이용 레이아웃을 ImportCandidate Preview로 정규화한다. 계좌 후보는 순수 규칙 엔진으로 거래 유형과 비식별 근거·확신을 Preview에만 붙인다.
 - XLS Preview는 UI → Application use case → Infrastructure reader 경계로 연결된다. 원본 파일명·Blob·전체 행은 저장하지 않는다.
-- Import Preview는 실제 파일 읽기·Kakao 분석·저장 상태와 실제 신규·중복·확인 필요 수를 표시한다. 사용자는 모바일 카테고리 sheet에서 후보를 수정하고 별도로 카테고리 규칙 저장에 동의한 뒤 IndexedDB에 확정 저장한다. 분석 trace는 기본적으로 접혀 있다. 카테고리는 새 `EXPENSE` 후보에만 적용하며, 계좌 분류 근거는 저장하지 않는다. 원본 파일·파일명·행은 저장하지 않는다.
+- Import Preview는 실제 파일 읽기·Kakao 분석·저장 상태와 실제 신규·중복·확인 필요 수를 표시한다. 정확 설명 규칙 다음에는 사용자가 확인한 포함 키워드 규칙을 적용하고, 그 뒤에만 Merchant/Kakao fallback을 실행한다. 사용자는 모든 Preview 카테고리를 수정할 수 있다. 분석 trace는 기본적으로 접혀 있다. 카테고리는 새 `EXPENSE` 후보에만 적용하며, 계좌 분류 근거는 저장하지 않는다. 원본 파일·파일명·행은 저장하지 않는다.
 - 앱은 History API 기반의 작은 클라이언트 라우팅으로 `/home`, `/transactions`, `/imports`, `/payroll`, `/settings`, `/review`에서 한 번에 하나의 작업 화면만 렌더링한다. `/review`는 네 개 하단 탐색을 늘리지 않는 보조 경로이고, `/`는 Home, 기존 `/ledger`는 Transactions의 호환 alias다.
 - 모바일 앱 셸은 Home·Transactions·Payroll·Settings 하단 탐색과 Home·Transactions 전용 빠른 작업 시트를 제공한다. 시트는 Escape, 포커스 이동·순환·복귀를 지원하고 주요 터치 타깃은 44px 이상을 유지한다.
-- 저장 거래의 카테고리·메모 수정과 월 생활비 목표는 IndexedDB의 검증된 별도 흐름으로 관리한다.
+- 저장 거래의 카테고리·메모 수정과 월 생활비 목표는 IndexedDB의 검증된 별도 흐름으로 관리한다. Review의 키워드 묶기는 확인한 키워드 규칙과 일치한 미분류 지출만 하나의 IndexedDB 트랜잭션에서 저장하고, 이후 개별 편집은 기존 흐름을 그대로 쓴다.
 - Payroll과 Settings의 개편은 UI 정보 계층만 변경한다. 급여 값은 계속 메모리 전용이며 월 생활비 목표만 기존 IndexedDB 설정 계약으로 관리한다.
-- Kakao가 설정된 Import Preview는 정확 사용자 규칙이 없는 카드 지출 후보에 한해 Merchant를 정규화하고 중앙 Alias·제한적 Fuzzy로 canonical query를 만든다. 원문·정규화·canonical을 최대 3회 검색해 `category_name`을 카테고리 제안으로 쓰며, 분석 trace와 Kakao 메타데이터는 저장하지 않는다.
+- Kakao가 설정된 Import Preview는 정확 또는 포함 키워드 사용자 규칙이 없는 카드 지출 후보에 한해 Merchant를 정규화하고 중앙 Alias·제한적 Fuzzy로 canonical query를 만든다. 원문·정규화·canonical을 최대 3회 검색해 `category_name`을 카테고리 제안으로 쓰며, 분석 trace와 Kakao 메타데이터는 저장하지 않는다.
 
 ### 단계별 기술 방향
 
@@ -84,6 +84,7 @@ Composition Root: 구체 구현을 생성하고 서로 연결
 ### Domain
 
 - Transaction, 금액, 거래 유형과 집계처럼 프레임워크와 무관한 규칙을 가진다.
+- 정확 설명 `CategoryRule`과 사용자 확인형 포함 `KeywordCategoryRule`의 검증·우선순위를 순수 규칙으로 가진다.
 - Merchant 정규화, Alias, 제한적 Fuzzy, Kakao 장소 동일성·카테고리 매핑을 순수 규칙으로 가진다.
 - React, 브라우저 `File`, IndexedDB, SheetJS 같은 파일 라이브러리에 의존하지 않는다.
 - 가능한 한 순수 함수로 검증하고 테스트한다.

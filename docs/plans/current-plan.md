@@ -1,6 +1,6 @@
 # Phase 8F — User-Confirmed Keyword Category Grouping
 
-- Status: `IN_PROGRESS`
+- Status: `DONE`
 - Plan updated: 2026-08-07
 - Prerequisite: Phase 8E Review Queue and Transaction Direction Tone `DONE`
 
@@ -43,6 +43,15 @@ Let a user group local transactions whose descriptions contain a confirmed keywo
 4. Empty, invalid, sensitive-looking, too-short, no-match, storage error, cancellation, and overlapping-keyword cases have safe, tested behavior.
 5. Existing exact rules, transaction import trace, amounts, dates, directions, types, settlements, review queue, local-first boundary, and privacy guarantees remain intact.
 6. Primary controls are accessible and work at 360–430px without horizontal overflow or sub-44px touch targets.
+
+## Completion record
+
+- Added a strict local `KeywordCategoryRule` with a two-character minimum, 80-character maximum, numeric-identifier rejection, space/punctuation-insensitive matching, and static opt-in suggestions for `네이버페이`, `오더`, and `쿠팡` only when present in the active description.
+- Exact `CategoryRule` remains first. Otherwise Import Preview applies the longest matching keyword rule with a stable lexical tie-breaker; users can still change every category before saving.
+- IndexedDB schema v4 adds an independent `keywordCategoryRules` store and keeps v1–v3 transactions, batches, settlements, exact rules, and settings intact. Rule creation and replacement of matching uncategorized expenses are one local read-write transaction.
+- The Review dialog previews only the actual number of matching uncategorized expenses, requires a keyword and category selection, supports cancel/Escape/focus return, and leaves already categorized transactions unchanged. Individual corrections remain in Transactions.
+- Verification: targeted domain, storage, Import, application, and Review UI tests passed; `npm run lint`, `npm run typecheck`, `npm test` (43 files, 431 tests), and `npm run build` passed. Build retains only the existing Vite >500 kB chunk warning.
+- Browser review: the empty `/review` screen at 360px had no horizontal overflow and primary link/navigation targets measured at least 44px. The grouping UI behavior was tested with fabricated fixtures; no private XLS or actual financial transaction was opened, uploaded, written, or committed.
 
 ## Out of scope
 

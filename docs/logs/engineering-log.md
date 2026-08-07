@@ -1,5 +1,43 @@
 # Engineering Log
 
+## 2026-08-07 — Phase 8F User-Confirmed Keyword Category Grouping
+
+### 구현
+
+- 정확 설명 `CategoryRule`을 유지하고 별도 `KeywordCategoryRule`을 추가했다. 키워드는 NFKC·대소문자·공백·기호 차이를 정규화한 포함 비교이며, 두 글자 미만·80자 초과·긴 숫자 식별자 형태는 거절한다.
+- `네이버페이`, `오더`, `쿠팡`은 현재 거래 설명에 실제로 포함될 때만 선택 가능한 추천 칩으로 제공한다. 어떤 추천도 자동 저장·자동 분류하지 않으며 사용자는 직접 입력하거나 취소할 수 있다.
+- Import Preview는 정확 규칙을 먼저 적용한 뒤 가장 긴 일치 키워드 규칙을 적용하고, 같은 길이는 사전순으로 안정적으로 결정한다. 아직 해결되지 않은 지출만 기존 Merchant/Kakao fallback으로 넘어가며 Preview 카테고리는 계속 수정 가능하다.
+- Browser IndexedDB를 v4로 올려 `keywordCategoryRules`를 독립 저장소로 추가했다. v1–v3의 거래·Batch·정산·정확 규칙·설정을 보존하고, 키워드 규칙 저장과 현재 미분류 일치 지출의 갱신은 한 read-write 트랜잭션으로 처리한다.
+- Review에 키워드·카테고리·실제 일치 건수를 확인하는 mobile dialog를 추가했다. 일치한 미분류 `EXPENSE`만 변경하고 이미 분류한 거래는 건드리지 않으며, 이후 예외 수정은 기존 Transactions 편집 흐름을 사용한다.
+
+### Review와 검증
+
+- Domain은 공백/기호 차이, 긴 키워드 우선, 사전순 tie-break, 안전하지 않은 키워드 거절, 사용자에게 보이는 추천어만 검증했다.
+- Application은 원장 필드 보존, 이미 분류된 거래·수입 제외, 일치 없음, 저장 실패를 가짜 Transaction fixture로 검증했다.
+- Storage는 v1·v2·v3 업그레이드와 키워드 규칙·거래 교체의 원자 저장을 fake IndexedDB로 검증했다. Import와 Review UI는 키워드 우선순위, 사용자 선택, Escape 포커스 복귀, 저장 후 완료 상태를 검증했다.
+- 360px 실제 브라우저에서 빈 `/review`는 문서 폭 360px으로 가로 넘침이 없었고 링크·하단 메뉴는 44px 이상이었다. 저장소 주입이 허용되지 않아 묶기 dialog의 데이터 동작은 가짜 UI fixture로만 검증했으며, 어떤 private XLS·실제 거래도 열거나 쓰지 않았다.
+
+| Check | Result | Note |
+| --- | --- | --- |
+| `npm run lint` | PASS | warnings 0 |
+| `npm run typecheck` | PASS | TypeScript project build |
+| `npm test` | PASS | 43 files, 431 tests |
+| `npm run build` | PASS | existing >500 kB Vite chunk warning only |
+| Responsive browser check | PASS | 360px empty `/review`; no horizontal overflow, primary targets ≥44px |
+| Privacy review | PASS | private XLS and actual financial data not opened, uploaded, written, or committed |
+
+### Function-sized commits
+
+- `13f240e` `[Docs] : Phase 8F 키워드 묶기 계획 추가`
+- `26d52c1` `[Feat] : 키워드 카테고리 규칙 저장 추가`
+- `06e822a` `[Feat] : 포함 키워드 규칙을 Import에 적용`
+- `61e4fa9` `[Feat] : 키워드 거래 묶기 사용 사례 추가`
+- `06f6ef5` `[Feat] : 검토 화면에 키워드 묶기 추가`
+
+### 상태
+
+`DONE`
+
 ## 2026-08-07 — Phase 8E Review Queue and Transaction Direction Tone
 
 ### 구현
