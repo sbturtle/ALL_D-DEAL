@@ -1,6 +1,6 @@
 # Phase 8E — Review Queue and Transaction Direction Tone
 
-- Status: `IN_PROGRESS`
+- Status: `DONE`
 - Plan updated: 2026-08-07
 - Prerequisite: Phase 8D Mobile App UI/UX Refresh `DONE`
 
@@ -45,6 +45,15 @@ Let a user process a large local backlog of category-needed transactions one at 
 5. `UNKNOWN` records are not treated as successfully category-classified; their count and limitation are explicit.
 6. Transaction cards visibly distinguish OUTFLOW from INFLOW with labels/signs as well as colour, at 360–430px without horizontal overflow or sub-44px primary targets.
 7. Existing Home, Transactions, Import, payroll, and local setting behaviors remain intact. No private sample is read or committed.
+
+## Completion record
+
+- `/review` is a direct, History-compatible route with entry points from the Home review summary and Transactions review filter. The four-item primary navigation remains unchanged.
+- The shared Domain predicate keeps `UNKNOWN` as a transaction-type review. The queue loads only real local uncategorized `EXPENSE` transactions, saves one selected category through the existing single-Transaction use case, preserves all protected fields, and advances to the next transaction.
+- Loading, empty, retry, save failure, unknown-type limitation, progress, skip, and completion states are covered by UI tests with fabricated transactions only.
+- Income and expense rows now use semantic mint and rose cards respectively, while keeping `+`/`−` signs and contrast so direction is not encoded by colour alone.
+- Verification: targeted review and dashboard tests passed; `npm run lint`, `npm run typecheck`, `npm test` (41 files, 419 tests), and `npm run build` passed. Build retains only the pre-existing Vite >500 kB chunk warning.
+- Browser review: `/review` and mock Transactions were checked at 360px with no horizontal overflow; transaction rows measured 96px high and rendered as mint income / rose expense. No private XLS was opened, uploaded, or committed.
 
 ## Out of scope
 

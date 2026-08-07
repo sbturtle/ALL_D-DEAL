@@ -1,5 +1,42 @@
 # Engineering Log
 
+## 2026-08-07 — Phase 8E Review Queue and Transaction Direction Tone
+
+### 구현
+
+- `src/domain/transactions/review-needed.ts`에 공통 검토 판정을 추가했다. `UNKNOWN`과 카테고리 없는 `EXPENSE`는 모두 검토 필요로 집계하지만, 카테고리 큐에는 후자만 넣어 유형 검토를 카테고리 선택으로 숨기지 않는다.
+- Home 검토 요약과 Transactions 검토 필터에서 여는 canonical `/review` 경로를 추가했다. 하단 탐색은 네 항목으로 유지하며, Route 제목과 화면 포커스 동작은 기존 History API 셸을 따른다.
+- Review 화면은 Browser IndexedDB의 실제 미분류 지출을 오래된 순으로 하나씩 표시한다. 카테고리 버튼을 누르면 기존 단일 Transaction 수정 use case로 해당 건만 저장하고 다음 건으로 진행한다. 금액·일자·방향·유형·Import 추적정보·규칙은 변경하지 않는다.
+- 로딩, 저장 중 오류, 저장소 읽기 오류 재시도, 건너뛰기, 빈 큐 완료, `UNKNOWN` 유형 검토 안내를 제공한다. 큐 건수·진행률·금액에는 mock 값을 사용하지 않는다.
+- Home, 실제 Transactions, 명시적 Mock Transactions의 거래 행에 공통 방향 클래스를 적용했다. 수입은 민트, 지출은 로즈 카드와 대비되는 금액·아이콘을 쓰되 `+`·`−` 부호를 함께 유지한다.
+
+### Review와 검증
+
+- Domain 규칙은 `UNKNOWN`이 카테고리를 가져도 유형 검토로 남고, 미분류 지출만 분류 큐로 들어가는 경우를 검증했다.
+- Review UI는 한 건 저장 뒤 자동 다음 건 이동과 필드 보존, 유형 검토 분리, 저장소 재시도, 저장 실패 후 현재 건 유지까지 가짜 Transaction fixture로 검증했다.
+- 360px 실제 브라우저에서 `/review` 빈 상태와 명시적 Mock Transactions를 확인했다. 문서 폭은 345px로 viewport 360px 안에 머물렀고, 행 높이는 96px였다. 수입은 `rgb(234, 247, 241)`, 지출은 `rgb(255, 240, 240)` 배경으로 렌더링됐다.
+- private XLS·거래 샘플을 열거나 업로드하지 않았고, 외부 자산·백엔드·원격 분석은 추가하지 않았다.
+
+| Check | Result | Note |
+| --- | --- | --- |
+| `npm run lint` | PASS | warnings 0 |
+| `npm run typecheck` | PASS | TypeScript project build |
+| `npm test` | PASS | 41 files, 419 tests |
+| `npm run build` | PASS | existing >500 kB Vite chunk warning only |
+| Responsive browser check | PASS | 360px `/review` and Transactions; no horizontal overflow |
+| Privacy review | PASS | private XLS not opened or committed |
+
+### Function-sized commits
+
+- `856261c` `[Docs] : Phase 8E 분류 검토 큐 계획 추가`
+- `461e3ce` `[Refactor] : 거래 검토 판정 규칙 공통화`
+- `b44520b` `[Feat] : 분류 검토 전용 큐 추가`
+- `53ff5df` `[Style] : 거래 수입과 지출 색상 구분`
+
+### 상태
+
+`DONE`
+
 ## 2026-08-07 — Phase 8D Mobile App UI/UX Refresh
 
 ### 구현
