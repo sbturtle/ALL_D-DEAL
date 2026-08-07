@@ -59,6 +59,15 @@ describe('App', () => {
     expect(window.location.pathname).toBe('/ledger');
   });
 
+  it('/review에서 분류 검토 화면을 연다', () => {
+    renderAt('/review');
+
+    expect(
+      screen.getByRole('heading', { name: '분류 검토', level: 1 }),
+    ).toBeInTheDocument();
+    expect(document.title).toBe('분류 검토 · 내 가계부');
+  });
+
   it('하단 메뉴로 거래 내역을 연다', async () => {
     const user = userEvent.setup();
     renderAt('/home');

@@ -536,6 +536,35 @@
   color: var(--positive);
 }
 
+.mobile-app-shell .ledger-section .home-review-action,
+.mobile-app-shell .ledger-section .transaction-review-queue-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 9px 12px;
+  color: var(--primary-strong);
+  font-size: 13px;
+  font-weight: 750;
+  text-decoration: none;
+  background: var(--primary-soft);
+  border-radius: var(--radius-input);
+}
+
+.mobile-app-shell .ledger-section .home-review-action {
+  width: fit-content;
+  margin-top: var(--space-2);
+}
+
+.mobile-app-shell .ledger-section .transaction-review-tools {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.mobile-app-shell .ledger-section .transaction-review-queue-link {
+  width: fit-content;
+}
+
 /* Transactions */
 
 .mobile-app-shell .ledger-section .period-controls {

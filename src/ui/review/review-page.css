@@ -1,0 +1,387 @@
+.mobile-app-shell .review-page {
+  display: grid;
+  width: min(100%, 720px);
+  gap: var(--space-5);
+  margin-inline: auto;
+}
+
+.mobile-app-shell .review-page__header {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.mobile-app-shell .review-page__eyebrow,
+.mobile-app-shell .review-queue-card__heading p {
+  margin: 0;
+  color: var(--primary-strong);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.mobile-app-shell .review-page__header h1,
+.mobile-app-shell .review-page__header p,
+.mobile-app-shell .review-queue-card__heading h2,
+.mobile-app-shell .review-transaction-card h3,
+.mobile-app-shell .review-page__state p,
+.mobile-app-shell .review-page__complete h2,
+.mobile-app-shell .review-page__complete p,
+.mobile-app-shell .review-type-note h2,
+.mobile-app-shell .review-type-note p {
+  margin: 0;
+}
+
+.mobile-app-shell .review-page__header h1 {
+  font-size: clamp(26px, 7vw, 34px);
+  line-height: 1.18;
+  letter-spacing: -0.045em;
+}
+
+.mobile-app-shell .review-page__header > p:last-child {
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.mobile-app-shell .review-page__summary,
+.mobile-app-shell .review-page__state,
+.mobile-app-shell .review-page__complete,
+.mobile-app-shell .review-type-note,
+.mobile-app-shell .review-queue-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-surface);
+}
+
+.mobile-app-shell .review-page__summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-1) var(--space-4);
+  padding: var(--space-5);
+  background: var(--primary-soft);
+  border-color: rgb(108 127 242 / 20%);
+}
+
+.mobile-app-shell .review-page__summary span,
+.mobile-app-shell .review-page__summary small {
+  color: var(--primary-strong);
+}
+
+.mobile-app-shell .review-page__summary span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mobile-app-shell .review-page__summary strong {
+  grid-row: span 2;
+  color: var(--primary-strong);
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.mobile-app-shell .review-page__summary small {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mobile-app-shell .review-page__state,
+.mobile-app-shell .review-page__complete,
+.mobile-app-shell .review-type-note {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--surface);
+}
+
+.mobile-app-shell .review-page__state strong,
+.mobile-app-shell .review-page__complete h2,
+.mobile-app-shell .review-type-note h2 {
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.mobile-app-shell .review-page__state p,
+.mobile-app-shell .review-page__complete p,
+.mobile-app-shell .review-type-note p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.mobile-app-shell .review-page__state--error {
+  background: var(--danger-soft);
+  border-color: rgb(227 109 109 / 28%);
+}
+
+.mobile-app-shell .review-page__state button,
+.mobile-app-shell .review-page__complete a,
+.mobile-app-shell .review-type-note a,
+.mobile-app-shell .review-queue-card__footer button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px var(--space-4);
+  color: var(--primary-strong);
+  font-size: 14px;
+  font-weight: 750;
+  text-decoration: none;
+  background: var(--primary-soft);
+  border: 0;
+  border-radius: var(--radius-input);
+}
+
+.mobile-app-shell .review-page__spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgb(108 127 242 / 20%);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: review-page-spin 700ms linear infinite;
+}
+
+@keyframes review-page-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mobile-app-shell .review-queue-card {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  background: var(--surface);
+}
+
+.mobile-app-shell .review-queue-card__heading {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mobile-app-shell .review-queue-card__heading h2 {
+  margin-top: 3px;
+  font-size: 20px;
+  letter-spacing: -0.03em;
+}
+
+.mobile-app-shell .review-queue-card__heading > span {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  color: var(--primary-strong);
+  font-size: 12px;
+  font-weight: 750;
+  background: var(--primary-soft);
+  border-radius: 999px;
+}
+
+.mobile-app-shell .review-queue-card__progress {
+  height: 8px;
+  overflow: hidden;
+  background: var(--surface-muted);
+  border-radius: 999px;
+}
+
+.mobile-app-shell .review-queue-card__progress > span {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  border-radius: inherit;
+  transition: width 180ms ease;
+}
+
+.mobile-app-shell .review-transaction-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  border: 1px solid transparent;
+  border-radius: 18px;
+}
+
+.mobile-app-shell .review-transaction-card--expense {
+  background: var(--danger-soft);
+  border-color: rgb(227 109 109 / 24%);
+}
+
+.mobile-app-shell .review-transaction-card__direction {
+  width: fit-content;
+  padding: 5px 8px;
+  color: #ae4a4a;
+  font-size: 12px;
+  font-weight: 800;
+  background: rgb(255 255 255 / 62%);
+  border-radius: 999px;
+}
+
+.mobile-app-shell .review-transaction-card h3 {
+  overflow-wrap: anywhere;
+  font-size: 20px;
+  line-height: 1.35;
+  letter-spacing: -0.03em;
+}
+
+.mobile-app-shell .review-transaction-card > strong {
+  color: #ae4a4a;
+  font-size: 25px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.035em;
+}
+
+.mobile-app-shell .review-transaction-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.mobile-app-shell .review-category-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.mobile-app-shell .review-category-action {
+  display: flex;
+  min-height: 60px;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  color: var(--text-primary);
+  text-align: left;
+  background: var(--background-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-input);
+}
+
+.mobile-app-shell .review-category-action > span {
+  flex: 0 0 auto;
+  font-size: 19px;
+}
+
+.mobile-app-shell .review-category-action strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-app-shell .review-queue-card__footer {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mobile-app-shell .review-queue-card__footer p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mobile-app-shell .review-queue-card__footer button {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  background: var(--surface-muted);
+}
+
+.mobile-app-shell .review-page__notice {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  color: #287d65;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.5;
+  background: var(--positive-soft);
+  border: 1px solid rgb(69 167 122 / 20%);
+  border-radius: var(--radius-input);
+}
+
+.mobile-app-shell .review-type-note {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  background: var(--warning-soft);
+  border-color: rgb(232 163 76 / 28%);
+}
+
+.mobile-app-shell .review-type-note > span,
+.mobile-app-shell .review-page__complete > span {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  color: #a96d20;
+  font-weight: 850;
+  background: rgb(255 255 255 / 64%);
+  border-radius: 50%;
+  place-items: center;
+}
+
+.mobile-app-shell .review-page__complete {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+
+.mobile-app-shell .review-page__complete > span {
+  color: #287d65;
+  background: var(--positive-soft);
+}
+
+.mobile-app-shell .review-page__complete a,
+.mobile-app-shell .review-type-note a {
+  grid-column: 2;
+  width: fit-content;
+  margin-top: var(--space-1);
+}
+
+.mobile-app-shell .review-page :is(button, a):focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+@media (min-width: 560px) {
+  .mobile-app-shell .review-category-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mobile-app-shell .review-category-action:hover {
+    color: var(--primary-strong);
+    background: var(--primary-soft);
+    border-color: rgb(108 127 242 / 32%);
+  }
+
+  .mobile-app-shell .review-page__state button:hover,
+  .mobile-app-shell .review-page__complete a:hover,
+  .mobile-app-shell .review-type-note a:hover,
+  .mobile-app-shell .review-queue-card__footer button:hover {
+    background: var(--surface-pressed);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-app-shell .review-page *,
+  .mobile-app-shell .review-page *::before,
+  .mobile-app-shell .review-page *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+  }
+}
+
+@media (forced-colors: active) {
+  .mobile-app-shell .review-page__summary,
+  .mobile-app-shell .review-page__state,
+  .mobile-app-shell .review-page__complete,
+  .mobile-app-shell .review-type-note,
+  .mobile-app-shell .review-queue-card,
+  .mobile-app-shell .review-transaction-card,
+  .mobile-app-shell .review-category-action {
+    border: 1px solid CanvasText;
+  }
+}

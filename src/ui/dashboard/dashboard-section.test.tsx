@@ -171,6 +171,10 @@ describe('DashboardSection', () => {
       screen.getByRole('progressbar', { name: '월 생활비 목표 사용률' }),
     ).toHaveAttribute('aria-valuenow', '60');
     expect(screen.getByText('분류가 필요한 거래 2건')).toBeVisible();
+    expect(screen.getByRole('link', { name: '분류 시작하기' })).toHaveAttribute(
+      'href',
+      '/review',
+    );
     expect(
       within(
         screen.getByRole('list', { name: '최근 7일 생활비 막대 그래프' }),
@@ -210,6 +214,9 @@ describe('DashboardSection', () => {
       '/settings',
     );
     expect(screen.getByText('분류가 필요한 거래가 없어요')).toBeVisible();
+    expect(
+      screen.queryByRole('link', { name: '분류 시작하기' }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText('이번 달 거래가 아직 없어요')).toBeVisible();
   });
 
@@ -304,6 +311,9 @@ describe('DashboardSection', () => {
     await user.click(
       within(filters).getByRole('button', { name: '확인 필요' }),
     );
+    expect(
+      screen.getByRole('link', { name: '한 건씩 분류하기' }),
+    ).toHaveAttribute('href', '/review');
     expect(screen.getByText('Fabricated unresolved unknown')).toBeVisible();
     expect(screen.getByText('Fabricated uncategorized expense')).toBeVisible();
     expect(screen.queryByText('Fabricated classified income')).not.toBeInTheDocument();

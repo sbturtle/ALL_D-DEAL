@@ -19,6 +19,7 @@ import { getKakaoMapPlaceSearch } from '../infrastructure/kakao/kakao-map-config
 import { DashboardSection } from '../ui/dashboard/dashboard-section';
 import { ImportPage } from '../ui/imports/import-page';
 import { PayrollPage } from '../ui/payroll-estimate/payroll-page';
+import { ReviewPage } from '../ui/review/review-page';
 import { SettingsPage } from '../ui/settings/settings-page';
 import { MobileAppShell } from '../ui/shell/mobile-app-shell';
 
@@ -122,6 +123,9 @@ export function App() {
             page="TRANSACTIONS"
             ledgerRepository={ledgerRepository}
           />
+        ) : null}
+        {route === 'REVIEW' ? (
+          <ReviewPage ledgerRepository={ledgerRepository} />
         ) : null}
         {route === 'PAYROLL' ? <PayrollPage /> : null}
         {route === 'IMPORTS' ? (

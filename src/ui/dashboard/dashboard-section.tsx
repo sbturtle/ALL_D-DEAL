@@ -328,9 +328,14 @@ function HomeDashboard({
           </h3>
           <p>
             {reviewNeededCount > 0
-              ? '거래 목록에서 카테고리를 확인해 주세요.'
+              ? '한 건씩 빠르게 카테고리를 정리할 수 있어요.'
               : '저장한 거래의 카테고리가 모두 정리되어 있어요.'}
           </p>
+          {reviewNeededCount > 0 ? (
+            <a className="home-review-action" href="/review">
+              분류 시작하기
+            </a>
+          ) : null}
         </div>
       </section>
 
@@ -1010,28 +1015,35 @@ export function DashboardSection({
             </div>
 
             {!isMock && page === 'TRANSACTIONS' ? (
-              <div
-                className="transaction-filter-buttons"
-                role="group"
-                aria-label="거래 필터"
-              >
-                {TRANSACTION_FILTERS.map((filter) => (
-                  <button
-                    type="button"
-                    className={
-                      transactionFilter === filter.id ? 'is-active' : undefined
-                    }
-                    aria-pressed={transactionFilter === filter.id}
-                    key={filter.id}
-                    onClick={() => {
-                      setTransactionFilter(filter.id);
-                      setTransactionEditDraft(null);
-                      setTransactionEditError(null);
-                    }}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
+              <div className="transaction-review-tools">
+                <div
+                  className="transaction-filter-buttons"
+                  role="group"
+                  aria-label="거래 필터"
+                >
+                  {TRANSACTION_FILTERS.map((filter) => (
+                    <button
+                      type="button"
+                      className={
+                        transactionFilter === filter.id ? 'is-active' : undefined
+                      }
+                      aria-pressed={transactionFilter === filter.id}
+                      key={filter.id}
+                      onClick={() => {
+                        setTransactionFilter(filter.id);
+                        setTransactionEditDraft(null);
+                        setTransactionEditError(null);
+                      }}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+                {transactionFilter === 'REVIEW' && reviewNeededCount > 0 ? (
+                  <a className="transaction-review-queue-link" href="/review">
+                    한 건씩 분류하기
+                  </a>
+                ) : null}
               </div>
             ) : null}
 

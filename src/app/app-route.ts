@@ -1,6 +1,7 @@
 export const APP_ROUTE_PATHS = {
   HOME: '/home',
   TRANSACTIONS: '/transactions',
+  REVIEW: '/review',
   IMPORTS: '/imports',
   PAYROLL: '/payroll',
   SETTINGS: '/settings',
@@ -11,6 +12,7 @@ export type AppRoute = keyof typeof APP_ROUTE_PATHS;
 export const APP_ROUTE_TITLES: Readonly<Record<AppRoute, string>> = {
   HOME: '홈',
   TRANSACTIONS: '거래 내역',
+  REVIEW: '분류 검토',
   IMPORTS: '소비 불러오기',
   PAYROLL: '급여 계산',
   SETTINGS: '설정',
@@ -31,6 +33,10 @@ export function getAppRoute(pathname: string): AppRoute {
     normalizedPathname === APP_ROUTE_PATHS.TRANSACTIONS
   ) {
     return 'TRANSACTIONS';
+  }
+
+  if (normalizedPathname === APP_ROUTE_PATHS.REVIEW) {
+    return 'REVIEW';
   }
 
   if (normalizedPathname === APP_ROUTE_PATHS.IMPORTS) {
