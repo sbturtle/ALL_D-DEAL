@@ -23,6 +23,27 @@ function createRepository(
 }
 
 describe('SettingsPage', () => {
+  it('shows the saved goal and explains that it stays in this browser', async () => {
+    render(
+      <SettingsPage
+        settingsRepository={createRepository({
+          getLocalUserSettings: vi.fn().mockResolvedValue(savedSettings),
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByRole('heading', {
+        name: '생활비 목표를 내 기준으로 정해볼까요?',
+        level: 1,
+      }),
+    ).toBeVisible();
+    expect(await screen.findByText('300,000원')).toBeVisible();
+    expect(
+      screen.getByText('이 브라우저에만 저장하며 외부로 전송하지 않아요.'),
+    ).toBeVisible();
+  });
+
   it('saves a positive monthly goal only in the local settings repository', async () => {
     const user = userEvent.setup();
     const saveLocalUserSettings = vi.fn().mockResolvedValue(undefined);

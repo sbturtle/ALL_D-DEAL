@@ -1,0 +1,320 @@
+.settings-page.settings-page {
+  width: min(100%, 720px);
+  min-height: 0;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.settings-page .settings-page-intro {
+  max-width: 620px;
+}
+
+.settings-page .settings-page-intro .eyebrow {
+  margin: 0 0 var(--space-2);
+  color: var(--primary-strong);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.settings-page .settings-page-intro h1 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: clamp(28px, 8vw, 40px);
+  font-weight: 750;
+  line-height: 1.18;
+  letter-spacing: -0.045em;
+  word-break: keep-all;
+}
+
+.settings-page .settings-page-intro h1::first-line {
+  color: inherit;
+}
+
+.settings-page .settings-page-intro h1 em {
+  color: var(--primary);
+  font-style: normal;
+}
+
+.settings-page .settings-page-intro > p:last-child {
+  max-width: 560px;
+  margin: var(--space-3) 0 0;
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.65;
+  word-break: keep-all;
+}
+
+.settings-page .settings-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+  margin-top: var(--space-6);
+  overflow: hidden;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-surface);
+}
+
+.settings-page .settings-card-context {
+  display: flex;
+  min-height: 0;
+  padding: var(--space-5);
+  color: var(--text-primary);
+  background: var(--primary-soft);
+  flex-direction: column;
+}
+
+.settings-page .settings-card-context > .settings-card-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  color: var(--on-primary);
+  background: var(--primary);
+  border-radius: 14px;
+  place-items: center;
+}
+
+.settings-page .settings-card-icon svg {
+  width: 23px;
+  height: 23px;
+}
+
+.settings-page .settings-card-context .panel-kicker {
+  margin: var(--space-5) 0 var(--space-1);
+  color: var(--primary-strong);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.settings-page .settings-card-context h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 16px;
+  letter-spacing: -0.02em;
+}
+
+.settings-page .settings-current-goal {
+  margin-top: var(--space-2);
+  color: var(--primary-strong);
+  font-size: clamp(24px, 7vw, 30px);
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
+}
+
+.settings-page .settings-card-context > p:not(.panel-kicker) {
+  margin: var(--space-4) 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+  word-break: keep-all;
+}
+
+.settings-page .settings-card-context .settings-local-note {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: 48px;
+  margin-top: var(--space-5);
+  padding: 10px var(--space-3);
+  color: #287d65;
+  font-size: 12px;
+  line-height: 1.5;
+  background: var(--secondary-soft);
+  border: 0;
+  border-radius: var(--radius-input);
+  word-break: keep-all;
+}
+
+.settings-page .settings-local-note svg {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+}
+
+.settings-page .settings-goal-form,
+.settings-page .settings-loading,
+.settings-page .settings-load-error {
+  align-self: center;
+  width: 100%;
+  margin: 0;
+  padding: var(--space-5);
+}
+
+.settings-page .settings-goal-form {
+  display: flex;
+  gap: var(--space-4);
+  flex-direction: column;
+}
+
+.settings-page .settings-goal-label {
+  gap: var(--space-1);
+}
+
+.settings-page .settings-goal-label label {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.settings-page .settings-goal-label p {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.settings-page .settings-money-input {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: 56px;
+  padding: 0 var(--space-4);
+  background: var(--background-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-input);
+}
+
+.settings-page .settings-money-input:focus-within {
+  background: var(--surface);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.settings-page .settings-money-input input {
+  min-height: 54px;
+  color: var(--text-primary);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.settings-page .settings-money-input input::placeholder {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.settings-page .settings-money-input > span {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.settings-page .settings-notice {
+  margin: 0;
+  padding: var(--space-3);
+  font-size: 12px;
+  border: 0;
+  border-radius: var(--radius-input);
+}
+
+.settings-page .settings-notice--success {
+  color: #287d65;
+  background: var(--positive-soft);
+}
+
+.settings-page .settings-notice--error {
+  color: #a24545;
+  background: var(--danger-soft);
+}
+
+.settings-page .settings-goal-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.settings-page .settings-goal-actions button,
+.settings-page .settings-load-error button {
+  min-height: 48px;
+  margin: 0;
+  padding: 10px var(--space-4);
+  color: var(--on-primary);
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--primary);
+  border: 0;
+  border-radius: var(--radius-button);
+}
+
+.settings-page .settings-goal-actions .settings-clear-action,
+.settings-page .settings-load-error button {
+  color: var(--text-secondary);
+  background: var(--surface-muted);
+  border: 0;
+}
+
+.settings-page .settings-goal-actions button:disabled,
+.settings-page .settings-load-error button:disabled {
+  color: var(--text-tertiary);
+  background: var(--surface-muted);
+  opacity: 0.72;
+}
+
+.settings-page .settings-loading,
+.settings-page .settings-load-error {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.settings-page .settings-loading {
+  min-height: 140px;
+}
+
+.settings-page .settings-load-error {
+  color: #a24545;
+  background: var(--danger-soft);
+  border: 0;
+}
+
+.settings-page .settings-load-error button {
+  margin-top: var(--space-4);
+  color: #a24545;
+  background: var(--surface);
+}
+
+.settings-page :is(button, input):focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-page .settings-goal-actions button:not(:disabled):hover {
+    background: var(--primary-strong);
+  }
+
+  .settings-page
+    .settings-goal-actions
+    .settings-clear-action:not(:disabled):hover,
+  .settings-page .settings-load-error button:hover {
+    color: var(--text-primary);
+    background: var(--surface-pressed);
+  }
+}
+
+@media (min-width: 620px) {
+  .settings-page .settings-card {
+    grid-template-columns: minmax(250px, 0.9fr) minmax(0, 1.1fr);
+  }
+
+  .settings-page .settings-card-context,
+  .settings-page .settings-goal-form,
+  .settings-page .settings-loading,
+  .settings-page .settings-load-error {
+    padding: var(--space-6);
+  }
+}
+
+@media (min-width: 760px) {
+  .settings-page .settings-goal-actions {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}

@@ -1,10 +1,14 @@
 import { PayrollEstimateCalculator } from './payroll-estimate-calculator';
+import './payroll-page-refresh.css';
 
 export function PayrollPage() {
   return (
-    <section className="hero-section" aria-labelledby="page-title">
-      <div className="hero-intro">
-        <p className="eyebrow">PAYCHECK, DECODED</p>
+    <section
+      className="hero-section payroll-page"
+      aria-labelledby="page-title"
+    >
+      <header className="hero-intro payroll-page__intro">
+        <p className="eyebrow">급여 계산</p>
         <h1 id="page-title">
           이번 연봉,
           <br />
@@ -15,25 +19,26 @@ export function PayrollPage() {
           한눈에 풀어드립니다.
         </p>
 
-        <div className="trust-list" aria-label="계산기 특징">
+        <div className="trust-list" aria-label="계산 방식 안내">
           <span>
-            <i aria-hidden="true">01</i>
-            외부 전송 없음
+            <i aria-hidden="true">✓</i>
+            이 기기에서만 계산
           </span>
           <span>
-            <i aria-hidden="true">02</i>
-            공식 세액표 반영
+            <i aria-hidden="true">✓</i>
+            2026년 공식 기준 반영
           </span>
           <span>
-            <i aria-hidden="true">03</i>
-            상여 월평균 포함
+            <i aria-hidden="true">✓</i>
+            상여금도 월평균에 포함
           </span>
         </div>
 
         <p className="hero-footnote">
-          정확한 급여명세서가 아닌 일반 직장근로자용 간편 추정입니다.
+          일반 직장근로자를 위한 간편 추정이에요. 실제 급여명세서와는 차이가
+          있을 수 있습니다.
         </p>
-      </div>
+      </header>
 
       <PayrollEstimateCalculator />
     </section>

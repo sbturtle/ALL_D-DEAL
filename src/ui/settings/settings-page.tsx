@@ -12,6 +12,7 @@ import {
   parseWonInput,
   sanitizeWonInput,
 } from '../../shared/format/currency';
+import './settings-page-refresh.css';
 
 export type LocalSettingsRepository = Pick<
   BrowserLedgerRepository,
@@ -141,29 +142,64 @@ export function SettingsPage({
     });
   };
 
+  const currentGoalLabel = isLoading
+    ? '목표를 확인하는 중이에요'
+    : loadError
+      ? '목표를 확인하지 못했어요'
+      : settings === undefined
+        ? '아직 정하지 않았어요'
+        : `${formatWonInput(String(settings.monthlyLivingExpenseGoalMinor))}원`;
+
   return (
     <section className="settings-page" aria-labelledby="settings-page-title">
-      <div className="settings-page-intro">
-        <p className="eyebrow">LOCAL SETTINGS</p>
+      <header className="settings-page-intro">
+        <p className="eyebrow">생활비 목표</p>
         <h1 id="settings-page-title">
           생활비 목표를
           <br />
-          내 기준으로 설정하세요.
+          <em>내 기준으로 정해볼까요?</em>
         </h1>
         <p>
-          설정한 월 목표와 장부의 순생활비를 비교합니다. 공동결제 정산은 내가 실제로 부담한 금액만 반영됩니다.
+          내 소비 흐름에 맞는 금액을 정하면 홈에서 남은 생활비를 바로 확인할
+          수 있어요.
         </p>
-      </div>
+      </header>
 
-      <article className="settings-card">
+      <article
+        className="settings-card"
+        aria-labelledby="monthly-goal-card-title"
+      >
         <div className="settings-card-context">
-          <span aria-hidden="true">◎</span>
-          <p className="panel-kicker">MONTHLY GOAL</p>
-          <h2>월 생활비 목표</h2>
+          <span className="settings-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path
+                d="M4 7.5h16v11H4zM7 7.5V5.8C7 4.8 7.8 4 8.8 4h6.4c1 0 1.8.8 1.8 1.8v1.7M8 12h8"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <p className="panel-kicker">현재 상태</p>
+          <h2 id="monthly-goal-card-title">월 생활비 목표</h2>
+          <strong className="settings-current-goal">{currentGoalLabel}</strong>
           <p>
-            목표는 이번 달 장부에서만 계산합니다. 일·주·직접 선택 기간에는 목표를 일할 계산하지 않습니다.
+            월간 보기에서 순생활비와 비교해요. 일·주·직접 선택 기간에는 목표를
+            나누어 계산하지 않아요.
           </p>
-          <small>입력값은 이 브라우저의 로컬 저장소에만 보관되며 외부로 전송하지 않습니다.</small>
+          <small className="settings-local-note">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M7 10V8a5 5 0 0 1 10 0v2M6 10h12v10H6zM12 14v2"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            이 브라우저에만 저장하며 외부로 전송하지 않아요.
+          </small>
         </div>
 
         {isLoading ? (
@@ -181,11 +217,14 @@ export function SettingsPage({
             </button>
           </div>
         ) : (
-          <form className="settings-goal-form" onSubmit={(event) => void handleSubmit(event)}>
+          <form
+            className="settings-goal-form"
+            onSubmit={(event) => void handleSubmit(event)}
+          >
             <div className="settings-goal-label">
               <label htmlFor="monthly-living-expense-goal">월 생활비 목표</label>
               <p id="monthly-living-expense-goal-help">
-                원 단위의 양의 정수만 저장할 수 있습니다.
+                부담 없이 시작해 보세요. 나중에 언제든 바꿀 수 있어요.
               </p>
             </div>
             <div className="settings-money-input">
@@ -194,7 +233,7 @@ export function SettingsPage({
                 type="text"
                 inputMode="numeric"
                 autoComplete="off"
-                placeholder="원 단위로 입력"
+                placeholder="금액을 입력하세요"
                 aria-describedby="monthly-living-expense-goal-help"
                 value={formatWonInput(goalInput)}
                 disabled={isSaving}
