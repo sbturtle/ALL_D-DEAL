@@ -281,7 +281,202 @@
   background: var(--surface);
 }
 
+.settings-page .settings-reset-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: var(--space-6);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid rgb(205 96 96 / 32%);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-surface);
+}
+
+.settings-page .settings-reset-card__context {
+  padding: var(--space-5);
+  background: var(--danger-soft);
+}
+
+.settings-page .settings-reset-card__icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  color: #a24545;
+  background: var(--surface);
+  border: 1px solid rgb(205 96 96 / 28%);
+  border-radius: 14px;
+  place-items: center;
+}
+
+.settings-page .settings-reset-card__icon svg {
+  width: 23px;
+  height: 23px;
+}
+
+.settings-page .settings-reset-card__context .panel-kicker,
+.settings-page .settings-reset-dialog .panel-kicker {
+  margin: var(--space-5) 0 var(--space-1);
+  color: #a24545;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.settings-page .settings-reset-card__context h2,
+.settings-page .settings-reset-dialog h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 18px;
+  letter-spacing: -0.025em;
+}
+
+.settings-page .settings-reset-card__context > p:last-child {
+  margin: var(--space-3) 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.settings-page .settings-reset-card__action {
+  display: grid;
+  gap: var(--space-3);
+  align-content: center;
+  padding: var(--space-5);
+}
+
+.settings-page .settings-reset-card__action > p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.settings-page .settings-reset-card__action .settings-reset-card__warning {
+  padding: var(--space-3);
+  color: #a24545;
+  background: var(--danger-soft);
+  border-radius: var(--radius-input);
+}
+
+.settings-page .settings-reset-trigger {
+  min-height: 48px;
+  margin: var(--space-1) 0 0;
+  padding: 10px var(--space-4);
+  color: #a24545;
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--surface);
+  border: 1px solid rgb(205 96 96 / 48%);
+  border-radius: var(--radius-button);
+}
+
+.settings-page .settings-reset-trigger:disabled {
+  color: var(--text-tertiary);
+  background: var(--surface-muted);
+  border-color: var(--border-subtle);
+}
+
+.settings-reset-layer {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  display: grid;
+  align-items: end;
+}
+
+.settings-reset-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: rgb(17 24 39 / 56%);
+  border: 0;
+}
+
+.settings-reset-dialog {
+  position: relative;
+  display: grid;
+  width: min(100%, 560px);
+  max-height: min(86dvh, 680px);
+  gap: var(--space-4);
+  padding: var(--space-5);
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -20px 50px rgb(17 24 39 / 22%);
+}
+
+.settings-reset-dialog .panel-kicker {
+  margin: 0;
+}
+
+.settings-reset-dialog > p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.58;
+}
+
+.settings-reset-dialog ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-4) var(--space-4) var(--space-4) 34px;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.55;
+  background: var(--background-soft);
+  border-radius: var(--radius-input);
+}
+
+.settings-reset-dialog .settings-reset-dialog__local-note {
+  padding: var(--space-3);
+  color: #287d65;
+  font-size: 12px;
+  background: var(--secondary-soft);
+  border-radius: var(--radius-input);
+}
+
+.settings-reset-dialog .settings-reset-dialog__error {
+  padding: var(--space-3);
+  color: #a24545;
+  font-size: 13px;
+  font-weight: 650;
+  background: var(--danger-soft);
+  border-radius: var(--radius-input);
+}
+
+.settings-reset-dialog__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  padding-top: var(--space-1);
+}
+
+.settings-reset-dialog__actions button {
+  min-height: 48px;
+  padding: 10px var(--space-4);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 750;
+  background: var(--surface-muted);
+  border: 0;
+  border-radius: var(--radius-input);
+}
+
+.settings-reset-dialog__actions .settings-reset-confirm {
+  color: white;
+  background: #b24b4b;
+}
+
 .settings-page :is(button, input):focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.settings-reset-dialog button:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 3px;
 }
@@ -298,6 +493,16 @@
     color: var(--text-primary);
     background: var(--surface-pressed);
   }
+
+  .settings-page .settings-reset-trigger:not(:disabled):hover {
+    color: #843434;
+    background: var(--danger-soft);
+    border-color: #b24b4b;
+  }
+
+  .settings-reset-dialog__actions .settings-reset-confirm:not(:disabled):hover {
+    background: #923b3b;
+  }
 }
 
 @media (min-width: 620px) {
@@ -308,13 +513,44 @@
   .settings-page .settings-card-context,
   .settings-page .settings-goal-form,
   .settings-page .settings-loading,
-  .settings-page .settings-load-error {
+  .settings-page .settings-load-error,
+  .settings-page .settings-reset-card__context,
+  .settings-page .settings-reset-card__action {
     padding: var(--space-6);
+  }
+
+  .settings-page .settings-reset-card {
+    grid-template-columns: minmax(250px, 0.9fr) minmax(0, 1.1fr);
+  }
+
+  .settings-reset-layer {
+    align-items: center;
+    justify-items: center;
+    padding: var(--space-5);
+  }
+
+  .settings-reset-dialog {
+    border-radius: 28px;
   }
 }
 
 @media (min-width: 760px) {
   .settings-page .settings-goal-actions {
     grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .settings-reset-dialog__actions {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+}
+
+@media (forced-colors: active) {
+  .settings-page .settings-reset-card,
+  .settings-page .settings-reset-trigger,
+  .settings-reset-dialog,
+  .settings-reset-dialog ul,
+  .settings-reset-dialog .settings-reset-dialog__local-note,
+  .settings-reset-dialog .settings-reset-dialog__error {
+    border: 1px solid CanvasText;
   }
 }

@@ -18,6 +18,7 @@ function createRepository(
     getLocalUserSettings: vi.fn().mockResolvedValue(undefined),
     saveLocalUserSettings: vi.fn().mockResolvedValue(undefined),
     removeLocalUserSettings: vi.fn().mockResolvedValue(undefined),
+    resetLocalLedger: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -131,5 +132,92 @@ describe('SettingsPage', () => {
       ),
     ).toBeVisible();
     expect(input).toHaveValue('320,000');
+  });
+
+  it('opens a scoped reset confirmation and lets the user cancel without clearing data', async () => {
+    const user = userEvent.setup();
+    const resetLocalLedger = vi.fn().mockResolvedValue(undefined);
+    render(
+      <SettingsPage settingsRepository={createRepository({ resetLocalLedger })} />,
+    );
+
+    await screen.findByRole('textbox', { name: '월 생활비 목표' });
+    const resetTrigger = screen.getByRole('button', {
+      name: '로컬 장부 초기화',
+    });
+    await user.click(resetTrigger);
+
+    expect(
+      screen.getByRole('dialog', { name: '로컬 장부를 초기화할까요?' }),
+    ).toBeVisible();
+    expect(screen.getByText('거래 내역과 불러오기 이력')).toBeVisible();
+    expect(
+      screen.getByText('원본 엑셀 파일, 샘플 파일, 앱 코드와 환경 설정은 지우지 않습니다.'),
+    ).toBeVisible();
+
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(resetLocalLedger).not.toHaveBeenCalled();
+    expect(resetTrigger).toHaveFocus();
+  });
+
+  it('clears the local ledger only after the final reset confirmation', async () => {
+    const user = userEvent.setup();
+    const resetLocalLedger = vi.fn().mockResolvedValue(undefined);
+    render(
+      <SettingsPage
+        settingsRepository={createRepository({
+          getLocalUserSettings: vi.fn().mockResolvedValue(savedSettings),
+          resetLocalLedger,
+        })}
+      />,
+    );
+
+    const input = await screen.findByRole('textbox', { name: '월 생활비 목표' });
+    await user.click(
+      screen.getByRole('button', { name: '로컬 장부 초기화' }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: '모든 로컬 데이터 초기화' }),
+    );
+
+    expect(resetLocalLedger).toHaveBeenCalledOnce();
+    expect(
+      await screen.findByText('이 브라우저에 저장한 장부 데이터를 초기화했어요.'),
+    ).toBeVisible();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(input).toHaveValue('');
+  });
+
+  it('keeps the confirmation open and reports an error when reset storage fails', async () => {
+    const user = userEvent.setup();
+    const resetLocalLedger = vi.fn().mockRejectedValue(new Error('failed'));
+    render(
+      <SettingsPage
+        settingsRepository={createRepository({
+          getLocalUserSettings: vi.fn().mockResolvedValue(savedSettings),
+          resetLocalLedger,
+        })}
+      />,
+    );
+
+    const input = await screen.findByRole('textbox', { name: '월 생활비 목표' });
+    await user.click(
+      screen.getByRole('button', { name: '로컬 장부 초기화' }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: '모든 로컬 데이터 초기화' }),
+    );
+
+    expect(
+      await screen.findByText(
+        '로컬 장부를 초기화하지 못했어요. 이 기기의 저장소를 확인한 뒤 다시 시도해 주세요.',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('dialog', { name: '로컬 장부를 초기화할까요?' }),
+    ).toBeVisible();
+    expect(input).toHaveValue('300,000');
   });
 });

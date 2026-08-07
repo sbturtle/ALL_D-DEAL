@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 import {
   clearMonthlyLivingExpenseGoal,
@@ -19,6 +19,7 @@ export type LocalSettingsRepository = Pick<
   | 'getLocalUserSettings'
   | 'saveLocalUserSettings'
   | 'removeLocalUserSettings'
+  | 'resetLocalLedger'
 >;
 
 type SettingsPageProps = Readonly<{
@@ -46,6 +47,13 @@ export function SettingsPage({
   const [loadError, setLoadError] = useState(false);
   const [reloadVersion, setReloadVersion] = useState(0);
   const [notice, setNotice] = useState<SettingsNotice | undefined>(undefined);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetError, setResetError] = useState<string>();
+  const [resetNotice, setResetNotice] = useState<string>();
+  const resetTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const resetDialogRef = useRef<HTMLDivElement | null>(null);
+  const isResettingRef = useRef(false);
 
   useEffect(() => {
     let isCurrent = true;
@@ -81,6 +89,65 @@ export function SettingsPage({
       isCurrent = false;
     };
   }, [reloadVersion, settingsRepository]);
+
+  useEffect(() => {
+    isResettingRef.current = isResetting;
+  }, [isResetting]);
+
+  useEffect(() => {
+    if (!isResetDialogOpen) {
+      return;
+    }
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const resetTrigger = resetTriggerRef.current;
+    document.body.style.overflow = 'hidden';
+
+    const firstFocusable = resetDialogRef.current?.querySelector<HTMLElement>(
+      'button:not([disabled])',
+    );
+    firstFocusable?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (!isResettingRef.current) {
+          setIsResetDialogOpen(false);
+        }
+        return;
+      }
+
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      const focusableElements = Array.from(
+        resetDialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled])',
+        ) ?? [],
+      );
+      if (focusableElements.length === 0) {
+        return;
+      }
+
+      const first = focusableElements[0];
+      const last = focusableElements.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+      resetTrigger?.focus();
+    };
+  }, [isResetDialogOpen]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -140,6 +207,46 @@ export function SettingsPage({
       tone: 'success',
       message: '월 생활비 목표를 이 기기에서 비웠어요.',
     });
+  };
+
+  const openResetDialog = () => {
+    if (isResetting) {
+      return;
+    }
+
+    setResetError(undefined);
+    setResetNotice(undefined);
+    setIsResetDialogOpen(true);
+  };
+
+  const closeResetDialog = () => {
+    if (!isResetting) {
+      setIsResetDialogOpen(false);
+    }
+  };
+
+  const handleResetLocalLedger = async () => {
+    if (isResetting) {
+      return;
+    }
+
+    setIsResetting(true);
+    setResetError(undefined);
+    setNotice(undefined);
+
+    try {
+      await settingsRepository.resetLocalLedger();
+      setSettings(undefined);
+      setGoalInput('');
+      setIsResetDialogOpen(false);
+      setResetNotice('이 브라우저에 저장한 장부 데이터를 초기화했어요.');
+    } catch {
+      setResetError(
+        '로컬 장부를 초기화하지 못했어요. 이 기기의 저장소를 확인한 뒤 다시 시도해 주세요.',
+      );
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   const currentGoalLabel = isLoading
@@ -267,6 +374,107 @@ export function SettingsPage({
           </form>
         )}
       </article>
+
+      <article className="settings-reset-card" aria-labelledby="reset-card-title">
+        <div className="settings-reset-card__context">
+          <span className="settings-reset-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path
+                d="M6.3 8.2A7.5 7.5 0 0 1 19 11m-1.3 4.8A7.5 7.5 0 0 1 5 13m.1-5.5v3.3h3.3m10.2 5.7v-3.3h-3.3"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <p className="panel-kicker">로컬 데이터 관리</p>
+          <h2 id="reset-card-title">로컬 장부 초기화</h2>
+          <p>
+            이 브라우저에 저장한 거래와 설정을 새로 시작하고 싶을 때만 사용하세요.
+          </p>
+        </div>
+
+        <div className="settings-reset-card__action">
+          <p>
+            거래 내역, 불러오기 이력, 공동결제 정산, 저장한 카테고리 규칙과 월 생활비 목표를 지웁니다.
+          </p>
+          <p className="settings-reset-card__warning">
+            원본 엑셀 파일과 컴퓨터의 파일은 지우지 않으며, 초기화한 장부 데이터는 되돌릴 수 없어요.
+          </p>
+          {resetNotice === undefined ? null : (
+            <p className="settings-notice settings-notice--success" role="status">
+              {resetNotice}
+            </p>
+          )}
+          <button
+            type="button"
+            className="settings-reset-trigger"
+            disabled={isResetting}
+            ref={resetTriggerRef}
+            onClick={openResetDialog}
+          >
+            로컬 장부 초기화
+          </button>
+        </div>
+      </article>
+
+      {isResetDialogOpen ? (
+        <div className="settings-reset-layer">
+          <button
+            type="button"
+            className="settings-reset-backdrop"
+            aria-label="로컬 장부 초기화 창 닫기"
+            disabled={isResetting}
+            onClick={closeResetDialog}
+          />
+          <div
+            className="settings-reset-dialog"
+            ref={resetDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-dialog-title"
+            aria-describedby="reset-dialog-description"
+          >
+            <p className="panel-kicker">되돌릴 수 없는 작업</p>
+            <h2 id="reset-dialog-title">로컬 장부를 초기화할까요?</h2>
+            <p id="reset-dialog-description">
+              이 브라우저에 저장한 다음 데이터를 모두 지웁니다.
+            </p>
+            <ul>
+              <li>거래 내역과 불러오기 이력</li>
+              <li>공동결제 정산 기록</li>
+              <li>정확한 이름·포함 키워드 카테고리 규칙</li>
+              <li>월 생활비 목표</li>
+            </ul>
+            <p className="settings-reset-dialog__local-note">
+              원본 엑셀 파일, 샘플 파일, 앱 코드와 환경 설정은 지우지 않습니다.
+            </p>
+            {resetError === undefined ? null : (
+              <p className="settings-reset-dialog__error" role="alert">
+                {resetError}
+              </p>
+            )}
+            <div className="settings-reset-dialog__actions">
+              <button
+                type="button"
+                disabled={isResetting}
+                onClick={closeResetDialog}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className="settings-reset-confirm"
+                disabled={isResetting}
+                onClick={() => void handleResetLocalLedger()}
+              >
+                {isResetting ? '초기화 중' : '모든 로컬 데이터 초기화'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
