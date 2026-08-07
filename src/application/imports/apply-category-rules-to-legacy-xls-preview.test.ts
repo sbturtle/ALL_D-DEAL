@@ -35,7 +35,7 @@ const preview: ImportPreview = {
 };
 
 describe('applyCategoryRulesToLegacyXlsPreview', () => {
-  it('applies only an exact normalized description rule to the visible Preview', async () => {
+  it('applies an exact normalized description rule before keyword rules', async () => {
     const listCategoryRules = vi.fn().mockResolvedValue([
       {
         matchDescriptionNormalized: 'fabricated cafe seoul',
@@ -47,6 +47,14 @@ describe('applyCategoryRulesToLegacyXlsPreview', () => {
 
     const result = await applyCategoryRulesToLegacyXlsPreview(preview, {
       listCategoryRules,
+      listKeywordCategoryRules: async () => [
+        {
+          keywordNormalized: 'fabricatedcafe',
+          categoryId: 'SHOPPING',
+          createdAt: '2026-08-07T00:00:00.000Z',
+          updatedAt: '2026-08-07T00:00:00.000Z',
+        },
+      ],
     });
 
     expect(result.candidates[0]?.draft.categoryId).toBe('FOOD_DINING');
@@ -57,18 +65,21 @@ describe('applyCategoryRulesToLegacyXlsPreview', () => {
 
   it('does not read rules when there is no valid Preview candidate', async () => {
     const listCategoryRules = vi.fn();
+    const listKeywordCategoryRules = vi.fn();
 
     await expect(
       applyCategoryRulesToLegacyXlsPreview(
         { source: undefined, candidates: [], issues: [] },
-        { listCategoryRules },
+        { listCategoryRules, listKeywordCategoryRules },
       ),
     ).resolves.toEqual({ source: undefined, candidates: [], issues: [] });
     expect(listCategoryRules).not.toHaveBeenCalled();
+    expect(listKeywordCategoryRules).not.toHaveBeenCalled();
   });
 
   it('does not apply a category rule to non-expense account cash flow', async () => {
     const listCategoryRules = vi.fn();
+    const listKeywordCategoryRules = vi.fn();
     const accountCashFlowPreview: ImportPreview = {
       source: 'ACCOUNT_LEDGER_XLS',
       candidates: [
@@ -91,8 +102,45 @@ describe('applyCategoryRulesToLegacyXlsPreview', () => {
     await expect(
       applyCategoryRulesToLegacyXlsPreview(accountCashFlowPreview, {
         listCategoryRules,
+        listKeywordCategoryRules,
       }),
     ).resolves.toBe(accountCashFlowPreview);
     expect(listCategoryRules).not.toHaveBeenCalled();
+    expect(listKeywordCategoryRules).not.toHaveBeenCalled();
+  });
+
+  it('applies the longest matching user-confirmed keyword to unresolved expenses', async () => {
+    const keywordPreview: ImportPreview = {
+      ...preview,
+      candidates: [
+        {
+          ...preview.candidates[0]!,
+          draft: {
+            ...preview.candidates[0]!.draft,
+            descriptionOriginal: 'Fabricated 쿠팡이츠 오더',
+          },
+        },
+      ],
+    };
+
+    const result = await applyCategoryRulesToLegacyXlsPreview(keywordPreview, {
+      listCategoryRules: async () => [],
+      listKeywordCategoryRules: async () => [
+        {
+          keywordNormalized: '쿠팡',
+          categoryId: 'SHOPPING',
+          createdAt: '2026-08-07T00:00:00.000Z',
+          updatedAt: '2026-08-07T00:00:00.000Z',
+        },
+        {
+          keywordNormalized: '쿠팡이츠',
+          categoryId: 'FOOD_DINING',
+          createdAt: '2026-08-07T00:00:00.000Z',
+          updatedAt: '2026-08-07T00:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(result.candidates[0]?.draft.categoryId).toBe('FOOD_DINING');
   });
 });

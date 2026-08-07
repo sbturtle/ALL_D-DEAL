@@ -1,9 +1,14 @@
 import type { CategoryRule } from '../../domain/categories/category-rule';
 import { normalizeCategoryRuleDescription } from '../../domain/categories/category-rule';
+import {
+  findKeywordCategoryRule,
+  type KeywordCategoryRule,
+} from '../../domain/categories/keyword-category-rule';
 import type { ImportPreview } from '../../domain/imports/legacy-xls-preview';
 
 export type CategoryRuleReader = Readonly<{
   listCategoryRules: () => Promise<readonly CategoryRule[]>;
+  listKeywordCategoryRules: () => Promise<readonly KeywordCategoryRule[]>;
 }>;
 
 export async function applyCategoryRulesToLegacyXlsPreview(
@@ -18,7 +23,10 @@ export async function applyCategoryRulesToLegacyXlsPreview(
     return preview;
   }
 
-  const rules = await reader.listCategoryRules();
+  const [rules, keywordRules] = await Promise.all([
+    reader.listCategoryRules(),
+    reader.listKeywordCategoryRules(),
+  ]);
   const categoryIdByDescription = new Map(
     rules.map((rule) => [rule.matchDescriptionNormalized, rule.categoryId]),
   );
@@ -30,9 +38,14 @@ export async function applyCategoryRulesToLegacyXlsPreview(
         return candidate;
       }
 
-      const categoryId = categoryIdByDescription.get(
-        normalizeCategoryRuleDescription(candidate.draft.descriptionOriginal),
-      );
+      const categoryId =
+        categoryIdByDescription.get(
+          normalizeCategoryRuleDescription(candidate.draft.descriptionOriginal),
+        ) ??
+        findKeywordCategoryRule(
+          candidate.draft.descriptionOriginal,
+          keywordRules,
+        )?.categoryId;
 
       return categoryId === undefined
         ? candidate
