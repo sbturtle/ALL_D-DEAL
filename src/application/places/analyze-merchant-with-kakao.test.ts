@@ -99,6 +99,22 @@ describe('analyzeMerchantWithKakao', () => {
     });
   });
 
+  it('does not query a punctuation-normalized payment intermediary variant', async () => {
+    const searchPlaces = vi.fn();
+
+    const analysis = await analyzeMerchantWithKakao(
+      'ＰＡＹＣＯ（오더）',
+      searchPlaces,
+    );
+
+    expect(searchPlaces).not.toHaveBeenCalled();
+    expect(analysis.classification).toMatchObject({
+      status: 'NEEDS_REVIEW',
+      source: 'NOT_QUERIED',
+      reason: 'PAYMENT_INTERMEDIARY',
+    });
+  });
+
   it('keeps an earlier unmapped canonical place as the final review reason', async () => {
     const unmappedPlace = fabricatedPlace('GS25 대전법동점', '숙박 > 호텔');
     const searchPlaces = vi

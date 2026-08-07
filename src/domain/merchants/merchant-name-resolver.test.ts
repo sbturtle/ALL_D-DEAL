@@ -81,8 +81,14 @@ describe('resolveMerchantName', () => {
     });
   });
 
-  it('excludes PAYCO orders before alias or fuzzy resolution', () => {
-    expect(resolveMerchantName('PAYCO오더')).toMatchObject({
+  it.each([
+    'PAYCO오더',
+    'PAYCO-오더',
+    'ＰＡＹＣＯ（오더）',
+    '네이버-페이 주문',
+    'KG(이니시스)',
+  ])('excludes the intermediary variant %s before alias or fuzzy resolution', (input) => {
+    expect(resolveMerchantName(input)).toMatchObject({
       source: 'REVIEW',
       confidence: 'REVIEW',
       canSearchKakao: false,
