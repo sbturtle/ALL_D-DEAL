@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type {
   ImportCandidate,
@@ -19,9 +19,10 @@ import {
 import type { TransactionType } from '../../domain/transactions/transaction';
 import type { PlaceSearch, PlaceSearchResult } from '../../application/places/place-search';
 import {
-  classifyKakaoPlaceCategory,
-  type KakaoPlaceCategoryClassification,
-} from '../../domain/categories/kakao-place-category-classifier';
+  analyzeMerchantWithKakao,
+  type MerchantKakaoAnalysis,
+} from '../../application/places/analyze-merchant-with-kakao';
+import type { KakaoPlaceCategoryClassification } from '../../domain/categories/kakao-place-category-classifier';
 import type {
   AccountTransactionTypeClassification,
   AccountTransactionTypeClassificationReasonCode,
@@ -33,6 +34,7 @@ type PlaceSearchState = Readonly<{
   status: 'SEARCHING' | 'COMPLETE' | 'FAILED' | 'SKIPPED';
   results: readonly PlaceSearchResult[];
   classification?: KakaoPlaceCategoryClassification;
+  analysis?: MerchantKakaoAnalysis;
   userRuleCategoryId?: CategoryId;
 }>;
 
@@ -146,6 +148,54 @@ function getPreviewSummary(preview: ImportPreview): string {
   return `${sourceLabel} · 후보 ${preview.candidates.length}건 · 확인 필요 ${preview.issues.length}건`;
 }
 
+function MerchantAnalysisTrace({
+  analysis,
+}: Readonly<{ analysis: MerchantKakaoAnalysis }>) {
+  const { resolution, trace } = analysis;
+
+  return (
+    <details className="import-merchant-trace">
+      <summary>Merchant 분석 과정</summary>
+      <div>
+        <small>원본: {trace.original}</small>
+        <small>정제: {trace.normalized || '없음'}</small>
+        <small>
+          해석: {trace.resolutionSource} · {resolution.confidence}
+        </small>
+        {trace.matchedAlias === undefined ? null : (
+          <small>
+            Alias: {trace.matchedAlias} → {trace.canonicalQuery}
+          </small>
+        )}
+        <small>Canonical: {trace.canonicalQuery || '없음'}</small>
+        {trace.attempts.length === 0 ? (
+          <small>검색: 외부 호출 없음</small>
+        ) : (
+          <ol aria-label="Kakao 검색 시도">
+            {trace.attempts.map((attempt) => (
+              <li key={`${attempt.kind}-${attempt.query}`}>
+                {attempt.kind}: {attempt.query} · 결과 {attempt.resultCount}건
+              </li>
+            ))}
+          </ol>
+        )}
+        {trace.matchedPlaceName === undefined ? null : (
+          <small>Kakao 장소: {trace.matchedPlaceName}</small>
+        )}
+        {trace.kakaoCategoryName === undefined ? null : (
+          <small>Kakao 카테고리: {trace.kakaoCategoryName}</small>
+        )}
+        {trace.mappedCategoryId === undefined ? null : (
+          <small>내부 카테고리: {CATEGORY_LABELS[trace.mappedCategoryId]}</small>
+        )}
+        {trace.finalReviewReason === undefined ? null : (
+          <small>최종 검토 사유: {trace.finalReviewReason}</small>
+        )}
+      </div>
+    </details>
+  );
+}
+
 export function LegacyXlsImportPreview({
   previewFile,
   applyCategoryRules,
@@ -177,8 +227,18 @@ export function LegacyXlsImportPreview({
     ReadonlyMap<number, PlaceSearchState>
   >(new Map());
   const requestIdRef = useRef(0);
+  const kakaoAbortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(
+    () => () => {
+      kakaoAbortControllerRef.current?.abort();
+    },
+    [],
+  );
 
   const resetPreview = () => {
+    kakaoAbortControllerRef.current?.abort();
+    kakaoAbortControllerRef.current = null;
     requestIdRef.current += 1;
     setStatus('IDLE');
     setPreview(null);
@@ -204,6 +264,9 @@ export function LegacyXlsImportPreview({
 
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
+    kakaoAbortControllerRef.current?.abort();
+    const kakaoAbortController = new AbortController();
+    kakaoAbortControllerRef.current = kakaoAbortController;
     setStatus('READING');
     setPreview(null);
     setDuplicateMatches([]);
@@ -279,6 +342,8 @@ export function LegacyXlsImportPreview({
             void searchCandidatePlace(
               candidateIndex,
               candidate.draft.descriptionOriginal,
+              requestId,
+              kakaoAbortController.signal,
             );
           });
         }
@@ -452,55 +517,65 @@ export function LegacyXlsImportPreview({
   const searchCandidatePlace = async (
     candidateIndex: number,
     descriptionOriginal: string,
+    previewRequestId = requestIdRef.current,
+    signal = kakaoAbortControllerRef.current?.signal,
   ) => {
     if (searchPlaces === undefined) {
       return;
     }
 
-    const excludedClassification = classifyKakaoPlaceCategory(
-      descriptionOriginal,
-      [],
-    );
+    const isActivePreview = () =>
+      previewRequestId === requestIdRef.current && signal?.aborted !== true;
 
-    if (excludedClassification.source === 'NOT_QUERIED') {
+    if (isActivePreview()) {
+      setPlaceSearchByCandidateIndex((current) => {
+        const next = new Map(current);
+        next.set(candidateIndex, { status: 'SEARCHING', results: [] });
+        return next;
+      });
+    }
+
+    try {
+      const analysis = await analyzeMerchantWithKakao(
+        descriptionOriginal,
+        searchPlaces,
+        { ...(signal === undefined ? {} : { signal }) },
+      );
+
+      if (!isActivePreview()) {
+        return;
+      }
+
+      const { classification, results } = analysis;
       setPlaceSearchByCandidateIndex((current) => {
         const next = new Map(current);
         next.set(candidateIndex, {
-          status: 'SKIPPED',
-          results: [],
-          classification: excludedClassification,
+          status:
+            classification.source === 'NOT_QUERIED' ? 'SKIPPED' : 'COMPLETE',
+          results,
+          classification,
+          analysis,
         });
-        return next;
-      });
-      return;
-    }
-
-    setPlaceSearchByCandidateIndex((current) => {
-      const next = new Map(current);
-      next.set(candidateIndex, { status: 'SEARCHING', results: [] });
-      return next;
-    });
-
-    try {
-      const results = await searchPlaces(descriptionOriginal);
-      const classification = classifyKakaoPlaceCategory(
-        descriptionOriginal,
-        results,
-      );
-      setPlaceSearchByCandidateIndex((current) => {
-        const next = new Map(current);
-        next.set(candidateIndex, { status: 'COMPLETE', results, classification });
         return next;
       });
       if (classification.status === 'CLASSIFIED') {
         setCategoryIdByCandidateIndex((current) => {
-          if (current.get(candidateIndex) !== undefined) return current;
+          if (
+            !isActivePreview() ||
+            current.get(candidateIndex) !== undefined
+          ) {
+            return current;
+          }
           const next = new Map(current);
           next.set(candidateIndex, classification.categoryId);
           return next;
         });
       }
     } catch {
+      if (!isActivePreview()) {
+        return;
+      }
+
       setPlaceSearchByCandidateIndex((current) => {
         const next = new Map(current);
         next.set(candidateIndex, { status: 'FAILED', results: [] });
@@ -694,6 +769,8 @@ export function LegacyXlsImportPreview({
                               void searchCandidatePlace(
                                 candidateIndex,
                                 candidate.draft.descriptionOriginal,
+                                requestIdRef.current,
+                                kakaoAbortControllerRef.current?.signal,
                               )
                             }
                           >
@@ -741,12 +818,15 @@ export function LegacyXlsImportPreview({
                           {placeSearchState.classification.reason === 'PAYMENT_INTERMEDIARY'
                             ? '결제 중개자 표식이라 Kakao 자동 분석에서 제외했습니다. 검토가 필요합니다.'
                             : placeSearchState.classification.reason === 'NO_EXACT_MERCHANT_MATCH'
-                              ? 'Kakao 결과와 거래처명이 정확히 일치하지 않아 검토가 필요합니다.'
+                              ? 'Kakao 결과와 같은 Merchant로 확인되지 않아 검토가 필요합니다.'
                               : 'Kakao 카테고리를 내부 분류로 안전하게 매핑할 수 없어 검토가 필요합니다.'}{' '}
                           · {placeSearchState.classification.source} ·{' '}
                           {placeSearchState.classification.confidence}
                         </small>
                       ) : null}
+                      {placeSearchState?.analysis === undefined ? null : (
+                        <MerchantAnalysisTrace analysis={placeSearchState.analysis} />
+                      )}
                     </div>
                   )}
                   <div className="import-category-picker">

@@ -1980,6 +1980,30 @@ fieldset {
   padding-left: 1rem;
 }
 
+.import-merchant-trace {
+  padding: 0.45rem 0.55rem;
+  background: rgb(255 255 255 / 4%);
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 7px;
+}
+
+.import-merchant-trace summary {
+  color: #cbd7d0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.import-merchant-trace > div {
+  display: grid;
+  gap: 0.25rem;
+  padding-top: 0.45rem;
+}
+
+.import-merchant-trace ol {
+  margin: 0;
+}
+
 .import-card .import-category-trigger {
   display: flex;
   gap: 8px;

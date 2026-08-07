@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -80,7 +80,11 @@ const userRuleExpensePreview: ImportPreview = {
   ...expensePreview,
   candidates: expensePreview.candidates.map((candidate) => ({
     ...candidate,
-    draft: { ...candidate.draft, categoryId: 'FOOD_DINING' },
+    draft: {
+      ...candidate.draft,
+      descriptionOriginal: '지에쓰이십오 대전법동점',
+      categoryId: 'CONVENIENCE',
+    },
   })),
 };
 
@@ -88,7 +92,18 @@ const paymentIntermediaryPreview: ImportPreview = {
   ...expensePreview,
   candidates: expensePreview.candidates.map((candidate) => ({
     ...candidate,
-    draft: { ...candidate.draft, descriptionOriginal: '네이버페이 주문' },
+    draft: { ...candidate.draft, descriptionOriginal: 'PAYCO오더' },
+  })),
+};
+
+const aliasedExpensePreview: ImportPreview = {
+  ...expensePreview,
+  candidates: expensePreview.candidates.map((candidate) => ({
+    ...candidate,
+    draft: {
+      ...candidate.draft,
+      descriptionOriginal: '지에쓰이십오(대전법동점)',
+    },
   })),
 };
 
@@ -413,6 +428,61 @@ describe('LegacyXlsImportPreview', () => {
     ).toBeVisible();
   });
 
+  it('uses a canonical fallback query and shows the in-memory resolution trace', async () => {
+    const user = userEvent.setup();
+    const searchPlaces = vi.fn(async (query: string) =>
+      query === 'GS25 대전법동점'
+        ? [
+            {
+              id: 'canonical-place',
+              placeName: 'GS25 대전법동점',
+              categoryName: '가정,생활 > 편의점 > GS25',
+              categoryGroupCode: 'CS2',
+              categoryGroupName: '편의점',
+              addressName: 'Fabricated parcel address',
+              roadAddressName: 'Fabricated road address',
+              x: '127.0000',
+              y: '37.0000',
+            },
+          ]
+        : [],
+    );
+    render(
+      <LegacyXlsImportPreview
+        previewFile={async () => aliasedExpensePreview}
+        searchPlaces={searchPlaces}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+
+    expect(
+      await screen.findByText(
+        /GS25 대전법동점 · 가정,생활 > 편의점 > GS25 → 편의점 · KAKAO_LOCAL · HIGH/,
+      ),
+    ).toBeVisible();
+    expect(searchPlaces.mock.calls.map(([query]) => query)).toEqual([
+      '지에쓰이십오(대전법동점)',
+      '지에쓰이십오 대전법동점',
+      'GS25 대전법동점',
+    ]);
+
+    await user.click(screen.getByText('Merchant 분석 과정'));
+    expect(screen.getByText('해석: ALIAS · HIGH')).toBeVisible();
+    expect(
+      screen.getByText('Alias: 지에쓰이십오 → GS25 대전법동점'),
+    ).toBeVisible();
+    expect(
+      screen.getByText('Canonical: GS25 대전법동점'),
+    ).toBeVisible();
+    expect(
+      screen.getByText('내부 카테고리: 편의점'),
+    ).toBeVisible();
+  });
+
   it('shows pending Kakao analysis progress until the place search completes', async () => {
     const user = userEvent.setup();
     let resolveSearch: (value: readonly PlaceSearchResult[]) => void = () => {};
@@ -464,7 +534,7 @@ describe('LegacyXlsImportPreview', () => {
 
     expect(searchPlaces).not.toHaveBeenCalled();
     expect(
-      await screen.findByText('사용자 규칙 → 식비·외식 · USER_RULE · HIGH'),
+      await screen.findByText('사용자 규칙 → 편의점 · USER_RULE · HIGH'),
     ).toBeVisible();
   });
 
@@ -487,5 +557,119 @@ describe('LegacyXlsImportPreview', () => {
     expect(
       await screen.findByText(/결제 중개자 표식이라 Kakao 자동 분석에서 제외했습니다/),
     ).toBeVisible();
+  });
+
+  it('ignores a stale Kakao result after the active Preview is cleared', async () => {
+    const user = userEvent.setup();
+    let resolveSearch: (value: readonly PlaceSearchResult[]) => void = () => {};
+    const searchPlaces = vi.fn(
+      () =>
+        new Promise<readonly PlaceSearchResult[]>((resolve) => {
+          resolveSearch = resolve;
+        }),
+    );
+    render(
+      <LegacyXlsImportPreview
+        previewFile={async () => aliasedExpensePreview}
+        searchPlaces={searchPlaces}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+    expect(await screen.findByText('Kakao 장소를 분석하고 있어요')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: '지우기' }));
+    resolveSearch([]);
+
+    await waitFor(() => {
+      expect(screen.queryByText('가져오기 검토')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Kakao 장소를 분석하고 있어요'),
+      ).not.toBeInTheDocument();
+    });
+    expect(searchPlaces).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not let an older upload overwrite a newer candidate at the same index', async () => {
+    const user = userEvent.setup();
+    let resolveOldSearch: (value: readonly PlaceSearchResult[]) => void = () => {};
+    const previewFile = vi
+      .fn()
+      .mockResolvedValueOnce(aliasedExpensePreview)
+      .mockResolvedValueOnce(expensePreview);
+    const searchPlaces = vi.fn((query: string) => {
+      if (query === '지에쓰이십오(대전법동점)') {
+        return new Promise<readonly PlaceSearchResult[]>((resolve) => {
+          resolveOldSearch = resolve;
+        });
+      }
+
+      return Promise.resolve(
+        query === '가짜 식료품점'
+          ? [
+              {
+                id: 'new-place',
+                placeName: '가짜 식료품점',
+                categoryName: '음식점 > 카페 > 커피전문점',
+                categoryGroupCode: 'CE7',
+                categoryGroupName: '카페',
+                addressName: 'Fabricated new parcel address',
+                roadAddressName: 'Fabricated new road address',
+                x: '127.0000',
+                y: '37.0000',
+              },
+            ]
+          : [],
+      );
+    });
+    render(
+      <LegacyXlsImportPreview
+        previewFile={previewFile}
+        searchPlaces={searchPlaces}
+      />,
+    );
+    const input = screen.getByLabelText('XLS 파일 선택');
+
+    await user.upload(
+      input,
+      new File(['first'], 'first.xls', {
+        type: 'application/vnd.ms-excel',
+      }),
+    );
+    expect(await screen.findByText('Kakao 장소를 분석하고 있어요')).toBeVisible();
+
+    await user.upload(
+      input,
+      new File(['second'], 'second.xls', {
+        type: 'application/vnd.ms-excel',
+      }),
+    );
+    expect(
+      await screen.findByText(
+        /가짜 식료품점 · 음식점 > 카페 > 커피전문점 → 카페 · KAKAO_LOCAL · HIGH/,
+      ),
+    ).toBeVisible();
+
+    resolveOldSearch([
+      {
+        id: 'old-place',
+        placeName: 'GS25 대전법동점',
+        categoryName: '가정,생활 > 편의점 > GS25',
+        categoryGroupCode: 'CS2',
+        categoryGroupName: '편의점',
+        addressName: 'Fabricated old parcel address',
+        roadAddressName: 'Fabricated old road address',
+        x: '127.0000',
+        y: '37.0000',
+      },
+    ]);
+
+    await waitFor(() => {
+      expect(screen.queryByText('GS25 대전법동점')).not.toBeInTheDocument();
+      expect(screen.getByText('가짜 식료품점')).toBeVisible();
+    });
   });
 });
