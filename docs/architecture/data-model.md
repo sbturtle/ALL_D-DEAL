@@ -1,8 +1,8 @@
 # Data Model
 
-> 상태: Phase 2 Implemented Baseline
+> 상태: Phase 8C Documented Baseline
 >
-> 기준일: 2026-08-05
+> 기준일: 2026-08-07
 
 ## 설계 목적
 
@@ -112,6 +112,12 @@ Category와 CategoryRule은 실제 규칙 사용 사례가 생긴 뒤 별도 모
 
 The ledger compares this goal only to the calendar-month result of the existing net living-expense calculation. It does not modify imported transactions, save salary calculator values, or infer a day/week/custom budget. See [ADR-0011](../adr/ADR-0011-local-monthly-living-expense-goal.md).
 
+### Phase 8C — Merchant resolution metadata
+
+Phase 8C는 Transaction 또는 IndexedDB 스키마를 변경하지 않는다. 현재 카드 XLS가 별도 Merchant 필드를 제공하지 않으므로 Preview의 `descriptionOriginal`을 Merchant 해석 입력으로만 사용하며, `merchantOriginal`과 `merchantNormalized`를 새로 채우지 않는다.
+
+정규화 표시값·comparison key, Alias/Fuzzy 출처, canonical query, Kakao 검색 시도, 장소·카테고리와 Review 이유는 모두 Import Preview 메모리에만 존재한다. 확정 저장에는 사용자가 확인한 기존 `Transaction.categoryId`만 남고 Merchant resolution trace나 Kakao DTO는 포함하지 않는다. 자세한 경계는 [Merchant Resolution Contract](merchant-resolution-contract.md)와 [ADR-0012](../adr/ADR-0012-merchant-entity-resolution-before-vector-search.md)를 따른다.
+
 ## ImportBatch 후보
 
 확정된 Import 작업을 추적하기 위한 최소 후보는 다음과 같다.
@@ -138,6 +144,7 @@ The ledger compares this goal only to the calendar-month result of the existing 
 - 전체 계좌번호와 카드번호
 - Parser가 사용하는 기관별 Source Record
 - 확정 전 ImportCandidate와 Preview 상태
+- Merchant resolution trace, Kakao 검색 시도와 장소 응답
 
 Source Record와 ImportCandidate는 처리 중 메모리에만 두고 확정된 Domain 데이터만 저장한다.
 
@@ -160,6 +167,6 @@ Phase 2에서는 저장 포트, DB 스키마와 라이브러리를 구현하지 
 - 실제 금융 파일에 시각과 게시일이 얼마나 제공되는지
 - `REFUND`의 원거래 연결 방식과 월간 집계 기준
 - `LOAN_PAYMENT`의 원금·이자 분리 방식
-- Merchant 정규화 규칙과 결제수단 라벨의 가명 처리
+- 영속 Merchant identity·사용자 Alias·성공 Cache를 도입할지와 삭제·보존 정책
 - ImportBatch 통계 필드를 저장할지 조회 시 계산할지
 - 다중 통화 도입 시 환율과 반올림 정책

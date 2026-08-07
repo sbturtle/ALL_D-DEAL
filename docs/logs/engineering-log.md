@@ -1,5 +1,65 @@
 # Engineering Log
 
+## 2026-08-07 — Phase 8C Deterministic Merchant Name Resolution
+
+### 문제와 기존 기준선
+
+Phase 7B는 정확 사용자 `CategoryRule`이 없는 카드 지출 설명을 Kakao에 한 번 검색하고, 정규화한 원문과 장소명이 정확히 같을 때만 `category_name`을 제안했다. 별도 Merchant Normalizer·Alias·Fuzzy·Cache는 없어서 카드사의 한글 발음 브랜드와 Kakao 영문 브랜드가 같은 Entity여도 검색과 장소 동일성 판정이 실패했다.
+
+### 구현
+
+- 원문을 보존하는 Unicode NFKC·기호·공백 Merchant Normalizer와 중앙 Alias Registry를 추가했다. GS25, CU, 7-ELEVEN, 메가MGC커피의 확인된 Alias만 처리하고 지점명을 canonical query에 유지한다.
+- Exact·Alias 뒤에만 동작하는 의존성 없는 Fuzzy matcher를 추가했다. 길이 6 이상 Alias, 편집 거리 1 이하, 유사도 0.82 이상, 차점과 0.05 이상 차이인 단일 승자만 `MEDIUM`으로 인정한다.
+- 기존 정확 `CategoryRule`을 최우선으로 유지했다. 일치 규칙은 Merchant 해석과 Kakao를 모두 건너뛰고, 사용자의 한 번 수정으로 넓은 Alias를 자동 학습하지 않는다.
+- `PAYCO오더`, 네이버페이, 카카오페이, 토스페이, KG이니시스는 정규화 comparison key로 Alias·Fuzzy 전에 차단한다. 구두점과 전각 변형도 Kakao 호출 없이 Review로 남는다.
+- Kakao Application use case가 원문·정규화·canonical query를 중복 제거해 후보별 최대 3회 순차 검색하고 분류 가능한 결과에서 멈춘다. 장소의 `category_name`이 매핑되고 정확 또는 안전한 canonical 동일성이 확인될 때만 제안한다.
+- Import Preview는 original, normalized, 해석 출처, Alias, canonical query, 시도별 결과, Kakao 장소·카테고리와 최종 Review 이유를 기본적으로 접힌 상세 정보로 보여준다. 새 파일·지우기 시 기존 request를 무효화해 이미 시작한 SDK callback 뒤의 fallback·상태 반영을 중단하고, 한 파일의 동시 후보 분석을 3개 worker로 제한한다.
+- 화면에 상호명 검색어의 Kakao 전송 범위를 명시하고 `PHASE 8C`로 갱신했다. 390px 점검에서 발견한 큰 제목 잘림은 360px에서도 안전하게 줄바꿈하도록 보완했다.
+
+### Fixture measurement
+
+실제 금융 데이터나 실제 Kakao 응답을 사용하지 않은 Fabricated Merchant Fixture v1 14건의 결과다.
+
+| Measurement | Result |
+| --- | --- |
+| Resolution source | EXACT 4, ALIAS 7, FUZZY 1, USER_RULE 1, REVIEW 1 |
+| Phase 7B baseline classifier | KAKAO 4, USER_RULE 1, REVIEW 9 |
+| Phase 8C classifier with supplied fabricated place | KAKAO 12, USER_RULE 1, REVIEW 1 |
+
+`4 → 12`는 각 fixture에 기대 가짜 장소 결과를 미리 공급한 classifier 비교다. 실제 Kakao 검색 성공률, private sample 분류율 또는 production 정확도가 아니다.
+
+### Review and verification
+
+- 독립 코드 리뷰에서 발견된 결제 중개자 punctuation 우회와 무제한 후보 동시 실행을 각각 정규화 차단과 3-worker queue로 수정했다.
+- 저장된 GS25 사용자 규칙의 Kakao 0회, Fuzzy → canonical → `MEDIUM`, PAYCO 변형 0회, raw/normalized/canonical 최대 3회를 통합 테스트로 보강했다.
+- 후속 독립 코드·테스트 리뷰는 blocking/high 이슈가 없음을 확인했다.
+
+| Check | Result | Note |
+| --- | --- | --- |
+| `npm run lint` | PASS | warnings 0 |
+| `npm run typecheck` | PASS | TypeScript project build |
+| `npm test` | PASS | 37 files, 384 tests |
+| `npm run build` | PASS | existing >500 kB Vite chunk warning only |
+| Responsive browser check | PASS | desktop, 390px, 360px `/imports`; console errors 0 |
+| Privacy review | PASS | private XLS를 브라우저 검증·fixture·문서에 사용하지 않고 Kakao 전송 범위를 화면에 명시 |
+
+### Function-sized commits
+
+- `d2e11dd` `[Docs] : Phase 8C Merchant Resolution 계획 추가`
+- `92765de` `[Feat] : Merchant 정규화와 Alias 해석 추가`
+- `7b66417` `[Feat] : Canonical Merchant Kakao 검색 전략 추가`
+- `9ec68cb` `[Feat] : Import Preview Merchant 분석 과정 표시`
+- `71d3236` `[Test] : Merchant Resolution Fixture 전후 측정 추가`
+- `b62bf22` `[Fix] : 결제 중개자 변형의 외부 전송 차단`
+- `21ae968` `[Test] : Merchant 분류 우선순위 통합 검증 강화`
+- `53ee648` `[Fix] : Kakao 후보 분석 동시 실행 수 제한`
+- `d499d3a` `[Fix] : Merchant 분석 상세 터치 영역 보완`
+- `4ab4403` `[Fix] : Import 화면 Phase와 모바일 가독성 보완`
+
+### 상태
+
+`DONE`
+
 ## 2026-08-05 — Phase 8B Local Monthly Living-Expense Goal
 
 - Added a validated `LocalUserSettings` singleton for one positive KRW monthly goal and a pure remaining/exceeded calculation. The record contains no transaction, payroll, account, or Kakao data.

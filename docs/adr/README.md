@@ -15,8 +15,9 @@ ADR은 기술 선택뿐 아니라 중요한 제품 요구가 왜 바뀌었는지
 | [ADR-0007](ADR-0007-confirmed-description-category-rules.md) | Accepted | 명시적으로 동의한 거래 설명 카테고리 규칙만 Preview에 재사용한다. |
 | [ADR-0008](ADR-0008-client-routes-for-financial-workflows.md) | Accepted | 금융 작업 목적별 클라이언트 경로를 작은 자체 라우터로 분리한다. |
 | [ADR-0009](ADR-0009-card-expense-and-account-cashflow-classification.md) | Accepted | 카드 사용은 소비로, 계좌 거래는 유형 분류가 우선인 현금흐름으로 처리한다. |
-| [ADR-0010](ADR-0010-kakao-map-web-sdk-opt-in-boundary.md) | Accepted | Kakao 장소 검색은 Web SDK와 후보별 명시적 요청으로 제한한다. |
+| [ADR-0010](ADR-0010-kakao-map-web-sdk-opt-in-boundary.md) | Accepted | Kakao 장소 검색은 Web SDK, 사전 고지와 Preview 전용 결과로 제한한다. |
 | [ADR-0011](ADR-0011-local-monthly-living-expense-goal.md) | Accepted | 월 생활비 목표는 단일 로컬 설정으로 저장하고 월간 순생활비와만 비교한다. |
+| [ADR-0012](ADR-0012-merchant-entity-resolution-before-vector-search.md) | Accepted | Vector Search보다 결정적 Merchant Entity Resolution을 먼저 적용한다. |
 
 ## 새 ADR 기본 구조
 

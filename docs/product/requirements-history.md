@@ -1,5 +1,31 @@
 # Requirements History
 
+## 2026-08-07 — Vector Search보다 Merchant Entity Resolution 우선
+
+### 확인된 문제
+
+Kakao `category_name` 기반 카테고리 제안을 도입했지만 카드사 Merchant Name과 Kakao Place Name이 같은 브랜드를 서로 다르게 표기하면 검색과 동일 상호 판정이 실패했다. 대표적으로 `지에쓰이십오 대전법동점`과 `GS25 대전법동점`, `씨유`와 `CU`는 의미 유사도가 아니라 동일 Entity의 표기 차이다.
+
+### 결정
+
+- 기존 정확 `CategoryRule`을 최우선으로 유지하고, 일치하면 Fuzzy와 Kakao를 호출하지 않는다.
+- 원문을 보존하는 Unicode NFKC·기호·공백 정규화, 중앙 Alias Registry, 지점명을 보존하는 canonical query를 도입한다.
+- GS25, CU, 7-ELEVEN, 메가MGC커피의 확인된 표기만 Alias로 관리한다. 범용 한글 숫자 변환이나 공격적인 법인·suffix 삭제는 하지 않는다.
+- Exact·Alias 실패 뒤에만 Registry 후보를 대상으로 편집 거리 1 이하의 제한적 Fuzzy를 적용한다. 단일 안전 후보가 아니면 Review로 둔다.
+- Kakao는 원문, 정규화 표시값, canonical query를 중복 제거해 최대 3회 검색한다. `category_name`이 매핑되고 원문 정확 일치 또는 안전한 canonical 동일성이 확인될 때만 카테고리를 제안한다.
+- `PAYCO오더` 등 결제 중개자와 그 구두점·전각 변형은 Alias·Fuzzy·Kakao에 전달하지 않는다.
+- Original부터 최종 Review 이유까지의 분석 과정은 Preview에서 필요할 때만 펼쳐 보고 저장·로그하지 않는다.
+
+### 측정과 제한
+
+명백한 가짜 Merchant 14건의 classifier fixture에서 해석 출처는 `EXACT 4 / ALIAS 7 / FUZZY 1 / USER_RULE 1 / REVIEW 1`이었다. 미리 제공한 가짜 Kakao 장소 결과를 기준으로 한 분류 결과는 기존 `KAKAO 4 / USER_RULE 1 / REVIEW 9`에서 `KAKAO 12 / USER_RULE 1 / REVIEW 1`로 바뀌었다.
+
+이 수치는 실제 Kakao 검색 성공률이나 운영 데이터 정확도가 아니다. 각 Merchant에 기대 장소 결과가 이미 주어졌을 때 classifier가 표기 차이를 처리하는지 비교한 재현 가능한 테스트 수치다.
+
+### 보류
+
+사용자 수정 한 건에서 넓은 브랜드 Alias를 자동 학습하지 않는다. 사용자 관리 Alias, 성공 Merchant Cache, 법인 wrapper·영업 suffix 처리에는 저장·수정·삭제 정책과 별도 fixture가 필요하다. Normalize + Alias + Fuzzy + Kakao 이후에도 의미 기반 추천 문제가 충분히 많이 남는다는 측정 전에는 Vector DB나 Embedding을 도입하지 않는다. 자세한 결정은 [ADR-0012](../adr/ADR-0012-merchant-entity-resolution-before-vector-search.md)를 따른다.
+
 ## 2026-08-05 저장 거래별 메모·카테고리 직접 수정 추가
 
 ### 추가 요구

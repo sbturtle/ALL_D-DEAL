@@ -1,7 +1,8 @@
 # Phase 8C — Deterministic Merchant Name Resolution
 
-- Status: `IN_PROGRESS`
+- Status: `DONE`
 - Plan updated: 2026-08-07
+- Completed: 2026-08-07
 - Prerequisite: Phase 8B Local Monthly Living-Expense Goal `DONE`
 
 ## Goal
@@ -55,3 +56,30 @@ Confirmed user rules remain the highest-priority category source and skip Kakao.
 - Automatic alias learning from user edits or Kakao results
 - Reclassification of already stored Transactions
 - Vector search, embeddings, LLM classification, backend/API proxy, cloud sync, and Android implementation
+
+## Completion evidence
+
+- Required GS25, CU, 7-ELEVEN and 메가MGC커피 aliases resolve to canonical brands while preserving safe branch names.
+- Exact stored CategoryRule wins end-to-end and produces zero Kakao calls. Payment-intermediary variants also produce zero calls and remain in review.
+- Fuzzy matching is a registry-only fallback with bounded edit distance, threshold and winner margin. Canonical Kakao fallback is deduplicated and capped at three sequential attempts per candidate.
+- Import Preview exposes a collapsed, memory-only resolution trace, invalidates stale upload results and further fallbacks after any in-flight SDK callback settles, and limits file-level candidate analysis to three workers.
+- Fabricated Merchant Fixture v1 has 14 cases: resolution `EXACT 4 / ALIAS 7 / FUZZY 1 / USER_RULE 1 / REVIEW 1`; supplied-place classifier baseline `KAKAO 4 / USER_RULE 1 / REVIEW 9`; enhanced `KAKAO 12 / USER_RULE 1 / REVIEW 1`. These are not actual Kakao API or production accuracy measurements.
+- Independent code and test reviews found no remaining blocking/high issue after intermediary punctuation guards, integration coverage and bounded concurrency were added.
+
+## Final verification
+
+| Check | Result |
+| --- | --- |
+| `npm run lint` | PASS, warnings 0 |
+| `npm run typecheck` | PASS |
+| `npm test` | PASS, 37 files / 384 tests |
+| `npm run build` | PASS; existing >500 kB chunk warning only |
+| Browser `/imports` | PASS at desktop, 390px and 360px; console errors 0 |
+| Privacy | PASS; no private sample upload or fixture/document disclosure, and Kakao merchant-query boundary is visible before file selection |
+
+## Documentation
+
+- Requirements and Requirements History include FR-034, priority, privacy boundary and fixture limitations.
+- [Merchant Resolution Contract](../architecture/merchant-resolution-contract.md) records normalization, aliases, Fuzzy thresholds, query strategy, trace and deferred storage.
+- [ADR-0012](../adr/ADR-0012-merchant-entity-resolution-before-vector-search.md) records why Vector/Embedding remains deferred and when to revisit it.
+- Engineering Log records implementation, review fixes, verification and function-sized commits.

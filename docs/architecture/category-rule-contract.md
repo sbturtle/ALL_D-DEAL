@@ -2,7 +2,7 @@
 
 - Status: Implemented in Phase 5
 - Date: 2026-08-05
-- Related: [ADR-0007](../adr/ADR-0007-confirmed-description-category-rules.md)
+- Related: [ADR-0007](../adr/ADR-0007-confirmed-description-category-rules.md), [Merchant Resolution Contract](merchant-resolution-contract.md)
 
 ## Initial categories
 
@@ -26,12 +26,15 @@ The current XLS importers do not supply a reliable separate merchant field. A ru
 
 The key is not a proof of merchant identity, a fuzzy match, or a cryptographic value. Rule creation rejects normalized descriptions longer than 300 characters or containing five or more consecutive ASCII digits. This avoids storing a new reusable derivative of a likely account/card identifier. The original Import file, file name, full source row, and remote copy are never stored.
 
+Phase 8C Merchant normalization과 이 규칙 키는 목적이 다르다. 저장 규칙은 계속 기존 `normalizeCategoryRuleDescription(descriptionOriginal)`의 정확 일치만 사용하고 Alias·Fuzzy·Kakao 결과로 넓히지 않는다. 따라서 이미 확인한 사용자 규칙이 있으면 해당 카테고리를 Preview에 채우고 Merchant resolver와 모든 Kakao 호출을 건너뛴다.
+
 ## Preview and confirmation flow
 
 ```text
 Legacy XLS Preview
   → read local categoryRules
   → fill an exact matching category in the Preview only
+  → only unresolved expense candidates enter Merchant/Kakao analysis
   → user changes category as needed
   → user separately chooses “apply to this description in the future”
   → selected candidates + confirmed rules commit atomically
@@ -60,4 +63,4 @@ An IndexedDB v2 upgrade block fails the open request immediately. A request that
 
 ## Deferred work
 
-Custom categories, a rule management screen, rule deletion, historical bulk reclassification, merchant-field matching, fuzzy/AI classification, and Dashboard category analytics require separate decisions.
+Custom categories, a rule management screen, rule deletion, historical bulk reclassification, persistent merchant-field rules, user-managed Merchant Alias/Cache, AI classification, and Dashboard category analytics require separate decisions. Phase 8C의 Alias·Fuzzy는 Preview 검색어 해석일 뿐 새 CategoryRule을 자동 생성하지 않는다.

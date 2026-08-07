@@ -1,8 +1,8 @@
 # Legacy XLS Import Contract
 
-> 상태: Phase 3A 구현·실제 private XLS Preview 검증 완료
+> 상태: Phase 8C 구현·실제 private XLS Preview 호환성 검증 완료
 >
-> 기준일: 2026-08-05
+> 기준일: 2026-08-07
 
 ## 목적
 
@@ -26,6 +26,7 @@
 - 원화 금액이 양의 KRW safe integer이고 보조 통화 금액이 0인 매입 행만 `EXPENSE + OUTFLOW` 후보가 된다.
 - 취소·역분개 행과 외화 금액 행은 자동 반영하지 않고 확인 필요 issue로 Preview한다.
 - 카드 표기는 원문을 보존하지 않는다. 숫자가 있으면 끝 4자리만 이용한 안전한 라벨을 만들고, 숫자가 없으면 일반 `카드` 라벨만 사용한다.
+- 이용처는 현재 `descriptionOriginal`로 보존한다. 별도 Merchant 열 계약이 없으므로 이 값을 Phase 8C Merchant 해석의 메모리 입력으로만 사용하고 `merchantOriginal`·`merchantNormalized` 저장 필드를 추측해 채우지 않는다.
 
 ## 파일 및 처리 제한
 
@@ -41,6 +42,8 @@
   → XLS 형식·크기·행/열 제한 검사
   → 지원 레이아웃 판별
   → ImportCandidate 또는 행 단위 issue 생성
+  → 정확 CategoryRule 적용
+  → 미분류 카드 지출의 Merchant 해석·Kakao category 제안
   → 사용자가 메모리에서 Preview
   → (Phase 3B) 확인된 후보만 Transaction으로 완성·저장
 ```
@@ -49,14 +52,26 @@
 
 Phase 6B의 계좌 분류 메타데이터도 `ImportCandidate`에만 존재한다. 저장 확정 시에는 검증된 `Transaction.type`만 보존하며, 분류 근거·확신 수준·원본 행은 저장하지 않는다.
 
+Phase 8C의 Merchant resolution과 Kakao 분석 trace도 Preview 메모리에만 존재한다. 새 파일 선택이나 Preview 지우기는 기존 분석 request를 무효화한다. 이미 시작한 Kakao SDK 검색 callback 자체는 완료될 수 있지만 이후 fallback과 늦은 상태 반영은 중단한다.
+
 ## 카드·계좌 역할과 분류 순서
 
 1. 카드 이용내역을 `EXPENSE + OUTFLOW` 소비 후보로 만든다.
 2. 계좌 거래내역을 입출금 현금흐름 후보로 만들고, 먼저 거래 유형을 분류한다.
-3. 새 `EXPENSE` 후보에만 카테고리 규칙과 사용자의 빠른 카테고리 선택을 적용한다.
-4. `CARD_PAYMENT`는 카드 지출의 결제 현금흐름으로 남겨 생활비에서 제외한다.
+3. 새 `EXPENSE` 후보에만 정확 `CategoryRule`을 먼저 적용한다. 규칙이 있으면 Merchant Fuzzy와 Kakao를 호출하지 않는다.
+4. 규칙이 없는 카드 지출은 결제 중개자를 먼저 차단한 뒤 Merchant Normalize → Alias → 제한적 Fuzzy 순서로 canonical query를 만든다.
+5. Kakao 설정이 있으면 원문·정규화·canonical 검색어를 중복 제거해 후보별 최대 3회 순차 검색한다. 한 파일의 후보 분석은 최대 3개 worker로 제한하며, Kakao `category_name`이 매핑되고 같은 Merchant가 확인된 결과만 제안한다.
+6. 모든 제안은 사용자의 빠른 카테고리 선택으로 변경할 수 있고, `CARD_PAYMENT`는 카드 지출의 결제 현금흐름으로 남겨 생활비에서 제외한다.
 
 카테고리와 거래 유형은 같은 값이 아니다. 유형은 돈의 성격과 집계 방식을, 카테고리는 소비 항목을 표현한다. 따라서 수입·저축·대출상환·이체·카드대금·리워드에는 카테고리 규칙을 적용하지 않는다.
+
+## Kakao 외부 전송 경계
+
+- 원본 파일, 전체 행, 금액, 일자, 결제수단과 금융 식별자는 Kakao에 전송하지 않는다.
+- Kakao JavaScript 키가 설정되고 사용자가 화면의 전송 안내를 확인한 뒤 파일을 선택한 경우에만 미분류 카드 지출 후보의 상호명 검색어를 자동 분석한다.
+- 결제 중개자는 정규화된 비교 키에서 차단해 구두점·전각 변형도 보내지 않는다.
+- 분석 진행 수와 실패 상태를 Preview에 표시하며, 상세 trace는 기본적으로 접어서 필요할 때만 확인한다.
+- Kakao 장소·주소·좌표·카테고리와 검색 trace는 Import 확정 시 저장하지 않는다.
 
 ## 오류 코드
 
@@ -76,3 +91,4 @@ Phase 6B의 계좌 분류 메타데이터도 `ImportCandidate`에만 존재한�
 - CSV, XLSX, PDF, 다중 시트와 암호화된 파일 지원
 - 취소·환불의 원거래 연결과 자동 순액 처리
 - 사용자 정의 Category, Dashboard 카테고리 집계, 원본 파일·Blob 저장
+- 사용자 관리 Merchant Alias/Cache, 자동 Alias 학습, Vector/Embedding 분류

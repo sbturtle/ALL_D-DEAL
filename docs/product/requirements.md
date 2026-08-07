@@ -6,7 +6,7 @@
 
 ## 현재 개발 범위
 
-Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기, Phase 2 Transaction Domain Foundation, Phase 3A/3B Legacy XLS Preview·확정 저장, Phase 4 중복 후보 검토, Phase 5 확정 카테고리 규칙, Phase 6A 기능별 페이지 분리, Phase 6B 계좌 거래 유형 분류, Phase 7A/7B/7C Kakao 장소 분류·진행 표시, Phase 8A 저장 거래 메모·카테고리 편집, Phase 8B 월 생활비 목표 로컬 설정은 완료되었다. Git에서 제외한 private 카드 이용내역·계좌 거래내역은 실제 로컬 브라우저 Preview로 호환성을 확인했다. 저축 분석과 장기 자산 모델은 후속 Phase에서 작은 단위로 진행한다.
+Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기, Phase 2 Transaction Domain Foundation, Phase 3A/3B Legacy XLS Preview·확정 저장, Phase 4 중복 후보 검토, Phase 5 확정 카테고리 규칙, Phase 6A 기능별 페이지 분리, Phase 6B 계좌 거래 유형 분류, Phase 7A/7B/7C Kakao 장소 분류·진행 표시, Phase 8A 저장 거래 메모·카테고리 편집, Phase 8B 월 생활비 목표 로컬 설정, Phase 8C 결정적 Merchant Entity Resolution은 완료되었다. Git에서 제외한 private 카드 이용내역·계좌 거래내역은 실제 로컬 브라우저 Preview로 호환성을 확인했다. 저축 분석과 장기 자산 모델은 후속 Phase에서 작은 단위로 진행한다.
 
 ## 기능 요구사항
 
@@ -47,6 +47,7 @@ Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 �
 | FR-031 | SHOULD | 사용자가 XLS를 업로드하면 `EXPENSE` 후보 설명을 Kakao 장소 분석에 자동 사용할 수 있어야 하며, 업로드 전 외부 전송 사실을 알고 결과를 자동 저장·자동 카테고리 확정에 사용하지 않아야 한다. | 7A |
 | FR-032 | MUST | Kakao 키워드 장소 검색 결과의 `category_name`을 제한된 내부 지출 카테고리 제안으로만 사용해야 한다. 사용자 규칙이 우선하며, 결제 중개자·상호 불일치·미매핑 결과는 자동 분류하지 않고 검토 상태로 보여야 한다. Preview에는 Kakao 카테고리·그룹, 주소, 출처, 신뢰도를 보여야 하고 Kakao 메타데이터는 저장하지 않아야 한다. | 7B |
 | FR-033 | MUST | 사용자는 로컬 장부에서 저장된 거래별 카테고리와 선택 메모를 수정하거나 비울 수 있어야 한다. 수정은 해당 Transaction 하나에만 적용하고 금액·일자·유형·Import 추적정보를 바꾸지 않아야 하며, 카테고리는 대표 이모지와 이름으로 빠르게 식별할 수 있어야 한다. | 8A |
+| FR-034 | MUST | 카테고리 규칙이 없는 카드 Merchant는 원문 보존 정규화, 중앙 Alias, 지점명 보존, 제한적 Fuzzy fallback으로 canonical 검색어를 만들 수 있어야 한다. 정확 사용자 규칙과 결제 중개자 차단이 먼저이며, Kakao 검색은 원문·정규화·canonical의 중복 제거된 최대 3회로 제한한다. 불명확한 결과는 Review로 두고 분석 trace와 Kakao 메타데이터는 Preview 메모리에만 유지해야 한다. | 8C |
 
 ## Import 요구사항
 
@@ -80,7 +81,7 @@ Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 �
 
 ### 개인정보와 보안
 
-- MUST: 초기 버전은 금융 데이터를 외부 서버로 전송하지 않는다.
+- MUST: 초기 버전은 원본 금융 파일, 원본 거래 행과 금융 식별자를 외부 서버로 전송하지 않는다. Kakao 설정과 업로드 전 고지가 있는 경우에만 FR-031·FR-034의 미분류 지출 후보 상호명 검색어를 Kakao Local에 전송할 수 있으며, Kakao 검색 이력과 응답은 저장하지 않는다. 원본 설명은 기존 Transaction 계약에 따라 별도로 로컬 저장될 수 있다.
 - MUST: 금융기관 ID·비밀번호, 주민등록번호, 공동인증서, 카드 전체 번호를 저장하지 않는다.
 - MUST: 실제 금융 샘플은 가능한 범위에서 먼저 마스킹하고 `samples/private/`에만 두며 Git 추적 대상에서 제외한다.
 - MUST: 테스트와 예제에는 실제 사람이나 계정을 식별할 수 없는 가짜 데이터만 사용한다.

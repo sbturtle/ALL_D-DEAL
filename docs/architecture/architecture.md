@@ -1,18 +1,18 @@
 # Architecture
 
-> 상태: Phase 6A Implemented Baseline
+> 상태: Phase 8C Implemented Baseline
 >
-> 기준일: 2026-08-05
+> 기준일: 2026-08-07
 
 ## 목적
 
 초기 애플리케이션은 백엔드가 없는 단일 사용자용 웹 앱이다. 이 문서는 구현을 앞서 확장하기 위한 설계가 아니라, 금융 파일 Parser와 UI의 결합을 막고 민감한 데이터를 사용자 기기 안에서 처리하기 위한 최소 경계를 정의한다.
 
-관련 결정은 [ADR-0001 파일 Import](../adr/ADR-0001-file-import-over-financial-api.md), [ADR-0002 local-first](../adr/ADR-0002-local-first-architecture.md), [ADR-0003 주 1회 Import](../adr/ADR-0003-weekly-import-instead-of-realtime.md), [ADR-0004 버전 지정 급여 추정](../adr/ADR-0004-versioned-local-payroll-estimation.md)을 따른다.
+관련 결정은 [ADR-0001 파일 Import](../adr/ADR-0001-file-import-over-financial-api.md), [ADR-0002 local-first](../adr/ADR-0002-local-first-architecture.md), [ADR-0003 주 1회 Import](../adr/ADR-0003-weekly-import-instead-of-realtime.md), [ADR-0004 버전 지정 급여 추정](../adr/ADR-0004-versioned-local-payroll-estimation.md), [ADR-0010 Kakao 경계](../adr/ADR-0010-kakao-map-web-sdk-opt-in-boundary.md), [ADR-0012 Merchant Resolution](../adr/ADR-0012-merchant-entity-resolution-before-vector-search.md)을 따른다.
 
 ## 현재와 목표 상태
 
-### Phase 1–6A 구현 상태
+### Phase 1–8C 구현 상태
 
 - React + TypeScript + Vite 실행 기반과 lint, typecheck, test, build 명령이 있다.
 - 급여 입력 UI가 버전 지정 2026년 정책을 사용하는 순수 `payroll-estimate` Domain을 직접 호출한다.
@@ -24,6 +24,8 @@
 - XLS Preview는 UI → Application use case → Infrastructure reader 경계로 연결된다. 원본 파일명·Blob·전체 행은 저장하지 않는다.
 - Import Preview는 중복 가능 후보와 명시적 카테고리 규칙 동의를 검토한 뒤 IndexedDB에 확정 저장한다. 카테고리는 새 `EXPENSE` 후보에만 적용하며, 계좌 분류 근거는 저장하지 않는다. 원본 파일·파일명·행은 저장하지 않는다.
 - 앱은 History API 기반의 작은 클라이언트 라우팅으로 `/ledger`, `/imports`, `/payroll`, `/settings`에서 한 번에 하나의 작업 화면만 렌더링한다.
+- 저장 거래의 카테고리·메모 수정과 월 생활비 목표는 IndexedDB의 검증된 별도 흐름으로 관리한다.
+- Kakao가 설정된 Import Preview는 정확 사용자 규칙이 없는 카드 지출 후보에 한해 Merchant를 정규화하고 중앙 Alias·제한적 Fuzzy로 canonical query를 만든다. 원문·정규화·canonical을 최대 3회 검색해 `category_name`을 카테고리 제안으로 쓰며, 분석 trace와 Kakao 메타데이터는 저장하지 않는다.
 
 ### 단계별 기술 방향
 
@@ -44,7 +46,7 @@
 ## 핵심 원칙
 
 1. 금융 파일의 읽기, 파싱, 정규화, 검증과 Preview는 브라우저에서 수행한다.
-2. 원본 파일과 거래 데이터는 외부 API, 분석 도구, 원격 로그로 보내지 않는다.
+2. 원본 파일·원본 거래 행·금융 식별자는 외부 API, 분석 도구, 원격 로그로 보내지 않는다. Kakao 설정과 화면 고지 후에는 정확 사용자 규칙이 없는 지출 후보의 상호명 검색어만 Kakao Local에 전달할 수 있고 결과는 저장하지 않는다.
 3. 파일을 선택하자마자 저장하지 않고 `Preview → Confirm → Commit`을 지킨다.
 4. 금융기관 고유 형식은 Infrastructure Adapter 안에 가두고 Domain에 노출하지 않는다.
 5. 주 1회는 사용자 습관을 반영한 기본 흐름이며 강제 스케줄이나 도메인 제약이 아니다.
@@ -74,17 +76,20 @@ Composition Root: 구체 구현을 생성하고 서로 연결
 - `prepareImport`, `confirmImport`, `listTransactions` 같은 사용자 목적 단위 흐름을 조율한다.
 - Domain 규칙과 필요한 Infrastructure 포트를 연결한다.
 - Preview 단계와 확정 저장 단계를 명확히 분리한다.
+- 사용자 규칙 우선 적용, Merchant fallback 검색, 취소 신호와 Preview request 경계를 조율한다.
 - 범용 CRUD Repository나 미래 기능용 포트를 미리 만들지 않는다.
 
 ### Domain
 
 - Transaction, 금액, 거래 유형과 집계처럼 프레임워크와 무관한 규칙을 가진다.
+- Merchant 정규화, Alias, 제한적 Fuzzy, Kakao 장소 동일성·카테고리 매핑을 순수 규칙으로 가진다.
 - React, 브라우저 `File`, IndexedDB, SheetJS 같은 파일 라이브러리에 의존하지 않는다.
 - 가능한 한 순수 함수로 검증하고 테스트한다.
 
 ### Infrastructure
 
 - IndexedDB 저장, 파일 읽기, Import Adapter와 해시 생성 같은 브라우저 세부사항을 담당한다.
+- Kakao Map Web SDK를 감싼 장소 검색 Adapter가 Application의 `PlaceSearch` 포트를 구현한다.
 - 금융기관 원본 레코드를 Domain 후보로 변환한다.
 - 사용자 화면을 렌더링하거나 카테고리 선택 UX를 결정하지 않는다.
 
@@ -126,6 +131,10 @@ Adapter가 처리 가능 여부 확인
   ↓
 중복 후보 탐지
   ↓
+정확 CategoryRule 적용
+  ↓
+미분류 카드 지출 Merchant 해석·Kakao 카테고리 제안
+  ↓
 메모리 기반 Preview
   ↓
 사용자 수정·제외·확인
@@ -135,7 +144,7 @@ ImportBatch와 Transaction을 원자적으로 Commit
 Dashboard 조회
 ```
 
-중복 탐지는 Phase 4 전까지 목표 단계일 뿐 구현된 것으로 간주하지 않는다. 같은 파일 경고와 거래 중복 판정도 분리한다.
+중복 후보, 사용자 카테고리 규칙, Merchant 분석 결과는 모두 저장 전 Preview 정보다. 같은 파일 경고와 거래 중복 판정은 분리하며, Kakao trace는 확정 저장에도 포함하지 않는다.
 
 ## Import Adapter 책임
 
@@ -202,5 +211,7 @@ Adapter는 저장, Dashboard 집계, UI 렌더링, 사용자 카테고리 질문
 - 백업·복원과 앱 수준 암호화
 - 정적 배포 주소, PWA, Android 확장 방식
 - 다중 통화와 환율
+- 사용자 관리 Merchant Alias·성공 Cache의 저장·삭제 정책
+- 법인 wrapper·영업 suffix 정리와 Vector/Embedding 재검토 임계값
 
 이 결정들은 해당 Phase의 실제 요구와 검증 사례가 생기기 전에는 확정하지 않는다.
