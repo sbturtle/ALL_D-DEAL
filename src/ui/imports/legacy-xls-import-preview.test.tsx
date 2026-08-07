@@ -1,8 +1,9 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { applyCategoryRulesToLegacyXlsPreview } from '../../application/imports/apply-category-rules-to-legacy-xls-preview';
+import type { LegacyXlsImportConfirmationResult } from '../../application/imports/confirm-legacy-xls-import';
 import type { PlaceSearchResult } from '../../application/places/place-search';
 import { normalizeCategoryRuleDescription } from '../../domain/categories/category-rule';
 import type { ImportPreview } from '../../domain/imports/legacy-xls-preview';
@@ -252,6 +253,81 @@ describe('LegacyXlsImportPreview', () => {
     expect(await screen.findByText('1건을 이 기기에 저장했습니다.')).toBeVisible();
   });
 
+  it('does not let an older save result overwrite a newer file preview', async () => {
+    const user = userEvent.setup();
+    let resolveConfirmation: (
+      result: LegacyXlsImportConfirmationResult,
+    ) => void = () => {};
+    const confirmPreview = vi.fn(
+      () =>
+        new Promise<LegacyXlsImportConfirmationResult>((resolve) => {
+          resolveConfirmation = resolve;
+        }),
+    );
+    const previewFile = vi
+      .fn()
+      .mockResolvedValueOnce(accountPreview)
+      .mockResolvedValueOnce(multipleExpensePreview);
+    const onImportConfirmed = vi.fn();
+    render(
+      <LegacyXlsImportPreview
+        previewFile={previewFile}
+        confirmPreview={confirmPreview}
+        onImportConfirmed={onImportConfirmed}
+      />,
+    );
+
+    const input = screen.getByLabelText('XLS 파일 선택');
+    await user.upload(
+      input,
+      new File(['first'], 'first.xls', {
+        type: 'application/vnd.ms-excel',
+      }),
+    );
+    const clearAction = screen.getByRole('button', { name: '지우기' });
+    await user.click(screen.getByRole('button', { name: '1건 저장하기' }));
+
+    expect(clearAction).toBeDisabled();
+    expect(input).toBeDisabled();
+
+    input.removeAttribute('disabled');
+    fireEvent.change(input, {
+      target: {
+        files: [
+          new File(['second'], 'second.xls', {
+            type: 'application/vnd.ms-excel',
+          }),
+        ],
+      },
+    });
+
+    expect(await screen.findByText('가짜 대중교통')).toBeVisible();
+
+    await act(async () => {
+      resolveConfirmation({
+        isConfirmed: true,
+        batch: {
+          id: '550e8400-e29b-41d4-a716-446655440000',
+          importerId: 'LEGACY_XLS',
+          importerVersion: 1,
+          sourceType: 'ACCOUNT_LEDGER_XLS',
+          committedAt: '2026-08-07T00:00:00.000Z',
+          newCount: 0,
+          skippedCount: 0,
+          reviewedCount: 0,
+        },
+        transactions: [],
+      } as LegacyXlsImportConfirmationResult);
+      await Promise.resolve();
+    });
+
+    expect(document.querySelector('#import')).toHaveClass(
+      'legacy-import-preview--preview',
+    );
+    expect(screen.queryByText(/이 기기에 저장했습니다/)).not.toBeInTheDocument();
+    expect(onImportConfirmed).not.toHaveBeenCalled();
+  });
+
   it('defaults a possible duplicate to excluded and allows an individual re-include', async () => {
     const user = userEvent.setup();
     const confirmPreview = vi.fn().mockResolvedValue({
@@ -327,6 +403,37 @@ describe('LegacyXlsImportPreview', () => {
     expect(screen.getByRole('checkbox', { name: '중복 가능 후보 1 저장' })).toBeChecked();
     await user.click(screen.getByTestId('import-confirm-action'));
     expect(confirmPreview).toHaveBeenCalledWith(accountPreview, { skippedCount: 0 });
+  });
+
+  it('does not present a confirmed new count when duplicate lookup fails', async () => {
+    const user = userEvent.setup();
+    render(
+      <LegacyXlsImportPreview
+        previewFile={async () => accountPreview}
+        findPotentialDuplicates={async () => {
+          throw new Error('fabricated duplicate lookup failure');
+        }}
+        confirmPreview={async () => ({
+          isConfirmed: false,
+          code: 'nothing_to_save',
+        })}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+
+    expect(
+      screen.getByText(
+        '거래 후보 1건을 읽었지만 신규·중복 여부는 확인하지 못했습니다. 확인 필요 2건입니다.',
+      ),
+    ).toBeInTheDocument();
+    const summary = screen.getByLabelText('가져오기 결과 요약');
+    expect(within(summary).getByText('확인 보류')).toBeVisible();
+    expect(within(summary).getByText('확인 실패')).toBeVisible();
+    expect(screen.getByTestId('import-confirm-action')).toBeDisabled();
   });
 
   it('stores a changed category and a separately confirmed future rule', async () => {
@@ -442,9 +549,16 @@ describe('LegacyXlsImportPreview', () => {
     const picker = screen.getByRole('group', {
       name: '후보 1 카테고리 선택',
     });
-    expect(
-      screen.getByRole('dialog', { name: '어디에 사용하셨나요?' }),
-    ).toBeVisible();
+    const dialog = screen.getByRole('dialog', {
+      name: '어디에 사용하셨나요?',
+    });
+    expect(dialog).toBeVisible();
+    expect(dialog).toHaveAttribute(
+      'aria-describedby',
+      'candidate-category-context-0',
+    );
+    expect(within(dialog).getByText('가짜 식료품점')).toBeVisible();
+    expect(within(dialog).getByText('2026-08-01 · −15,000원')).toBeVisible();
     expect(picker).toContainElement(document.activeElement as HTMLElement);
 
     await user.keyboard('{Escape}');
@@ -562,6 +676,10 @@ describe('LegacyXlsImportPreview', () => {
     render(
       <LegacyXlsImportPreview
         previewFile={async () => expensePreview}
+        confirmPreview={async () => ({
+          isConfirmed: false,
+          code: 'nothing_to_save',
+        })}
         searchPlaces={searchPlaces}
       />,
     );
@@ -575,6 +693,12 @@ describe('LegacyXlsImportPreview', () => {
     expect(
       screen.getByText('1건을 처리 중입니다. 결과가 도착하면 자동으로 표시됩니다.'),
     ).toBeVisible();
+    const confirmAction = screen.getByTestId('import-confirm-action');
+    expect(confirmAction).toBeDisabled();
+    expect(confirmAction).toHaveTextContent('Kakao 분석을 기다리는 중');
+    expect(
+      screen.getByText('Kakao 장소 분석 1건이 끝나면 저장할 수 있어요.'),
+    ).toBeVisible();
 
     resolveSearch([]);
 
@@ -582,6 +706,8 @@ describe('LegacyXlsImportPreview', () => {
       await screen.findByText('일치하는 장소가 없어요. 결과는 저장하지 않습니다.'),
     ).toBeVisible();
     expect(screen.queryByText('Kakao 장소를 분석하고 있어요')).not.toBeInTheDocument();
+    await waitFor(() => expect(confirmAction).toBeEnabled());
+    expect(confirmAction).toHaveTextContent('1건 저장하기');
   });
 
   it('limits simultaneous candidate analyses while queued work remains visible', async () => {

@@ -286,6 +286,7 @@ export function LegacyXlsImportPreview({
   useEffect(
     () => () => {
       kakaoAbortControllerRef.current?.abort();
+      requestIdRef.current += 1;
     },
     [],
   );
@@ -481,10 +482,15 @@ export function LegacyXlsImportPreview({
   };
 
   const handleConfirm = async () => {
+    const hasPendingKakaoAnalysis = Array.from(
+      placeSearchByCandidateIndex.values(),
+    ).some((placeSearchState) => placeSearchState.status === 'SEARCHING');
+
     if (
       preview === null ||
       confirmPreview === undefined ||
-      duplicateCheckFailed
+      duplicateCheckFailed ||
+      hasPendingKakaoAnalysis
     ) {
       return;
     }
@@ -506,6 +512,7 @@ export function LegacyXlsImportPreview({
       return;
     }
 
+    const confirmationRequestId = requestIdRef.current;
     setStatus('SAVING');
     setSaveMessage(null);
     let result: LegacyXlsImportConfirmationResult;
@@ -535,8 +542,16 @@ export function LegacyXlsImportPreview({
         },
       );
     } catch {
+      if (confirmationRequestId !== requestIdRef.current) {
+        return;
+      }
+
       setStatus('PREVIEW');
       setSaveMessage('로컬 저장에 실패했습니다. 기존 저장 거래는 변경되지 않았습니다.');
+      return;
+    }
+
+    if (confirmationRequestId !== requestIdRef.current) {
       return;
     }
 
@@ -754,8 +769,8 @@ export function LegacyXlsImportPreview({
     duplicateCandidateMatches.map((match) => match.candidateIndex),
   ).size;
   const newCandidateCount =
-    preview === null
-      ? 0
+    preview === null || duplicateCheckFailed
+      ? null
       : Math.max(0, preview.candidates.length - duplicateCandidateCount);
   const reviewRequiredCount =
     preview === null
@@ -855,24 +870,30 @@ export function LegacyXlsImportPreview({
                   : SOURCE_LABELS[preview.source]}
               </p>
             </div>
-            <button type="button" className="import-clear-action" onClick={resetPreview}>
+            <button
+              type="button"
+              className="import-clear-action"
+              disabled={status === 'SAVING'}
+              onClick={resetPreview}
+            >
               지우기
             </button>
           </div>
 
           <p className="import-preview-announcement" role="status" aria-live="polite">
-            새 거래 {newCandidateCount}건, 중복 가능 {duplicateCandidateCount}건, 확인 필요{' '}
-            {reviewRequiredCount}건을 찾았습니다.
+            {duplicateCheckFailed
+              ? `거래 후보 ${preview.candidates.length}건을 읽었지만 신규·중복 여부는 확인하지 못했습니다. 확인 필요 ${reviewRequiredCount}건입니다.`
+              : `새 거래 ${newCandidateCount}건, 중복 가능 ${duplicateCandidateCount}건, 확인 필요 ${reviewRequiredCount}건을 찾았습니다.`}
           </p>
 
           <dl className="import-preview-stats" aria-label="가져오기 결과 요약">
             <div className="import-preview-stat import-preview-stat--new">
               <dt>새 거래</dt>
-              <dd>{newCandidateCount}건</dd>
+              <dd>{newCandidateCount === null ? '확인 보류' : `${newCandidateCount}건`}</dd>
             </div>
             <div className="import-preview-stat import-preview-stat--duplicate">
               <dt>중복 가능</dt>
-              <dd>{duplicateCandidateCount}건</dd>
+              <dd>{duplicateCheckFailed ? '확인 실패' : `${duplicateCandidateCount}건`}</dd>
             </div>
             <div className="import-preview-stat import-preview-stat--review">
               <dt>확인 필요</dt>
@@ -1130,6 +1151,7 @@ export function LegacyXlsImportPreview({
                           role="dialog"
                           aria-modal="true"
                           aria-labelledby={`candidate-category-title-${candidateIndex}`}
+                          aria-describedby={`candidate-category-context-${candidateIndex}`}
                         >
                           <div className="import-category-sheet-heading">
                             <span aria-hidden="true" />
@@ -1138,6 +1160,20 @@ export function LegacyXlsImportPreview({
                               <strong id={`candidate-category-title-${candidateIndex}`}>
                                 어디에 사용하셨나요?
                               </strong>
+                              <div
+                                className="import-candidate-copy"
+                                id={`candidate-category-context-${candidateIndex}`}
+                              >
+                                <strong>{candidate.draft.descriptionOriginal}</strong>
+                                <span className="import-candidate-meta">
+                                  {candidate.draft.occurredOn} ·{' '}
+                                  {candidate.draft.direction === 'INFLOW' ? '+' : '−'}
+                                  {formatWon(candidate.draft.amountMinor)}
+                                  {candidate.draft.paymentInstrumentLabel === undefined
+                                    ? ''
+                                    : ` · ${candidate.draft.paymentInstrumentLabel}`}
+                                </span>
+                              </div>
                             </div>
                             <button
                               type="button"
@@ -1261,10 +1297,16 @@ export function LegacyXlsImportPreview({
                 className="import-confirm-action"
                 data-testid="import-confirm-action"
                 onClick={handleConfirm}
+                aria-describedby={`import-selection-note import-confirmation-note${
+                  kakaoAnalysisPendingCount > 0
+                    ? ' import-kakao-confirmation-blocker'
+                    : ''
+                }`}
                 disabled={
                   status === 'SAVING' ||
                   status === 'SAVED' ||
                   duplicateCheckFailed ||
+                  kakaoAnalysisPendingCount > 0 ||
                   selectedCandidateCount === 0
                 }
               >
@@ -1272,13 +1314,25 @@ export function LegacyXlsImportPreview({
                   ? '선택한 거래를 저장하는 중'
                   : status === 'SAVED'
                     ? '저장 완료'
-                    : `${selectedCandidateCount}건 저장하기`}
+                    : kakaoAnalysisPendingCount > 0
+                      ? 'Kakao 분석을 기다리는 중'
+                      : `${selectedCandidateCount}건 저장하기`}
               </button>
-              <p className="import-selection-note">
+              {kakaoAnalysisPendingCount > 0 ? (
+                <p
+                  className="import-selection-note"
+                  id="import-kakao-confirmation-blocker"
+                  role="status"
+                >
+                  Kakao 장소 분석 {kakaoAnalysisPendingCount}건이 끝나면 저장할 수
+                  있어요.
+                </p>
+              ) : null}
+              <p className="import-selection-note" id="import-selection-note">
                 {selectedCandidateCount}건을 저장할 예정이에요. 중복 가능 거래는 직접
                 포함해야 저장돼요.
               </p>
-              <p className="import-confirmation-note">
+              <p className="import-confirmation-note" id="import-confirmation-note">
                 저장 후 거래 화면에서 기간별로 확인할 수 있어요.
               </p>
             </div>
