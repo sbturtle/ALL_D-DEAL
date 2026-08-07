@@ -1,5 +1,24 @@
 # Requirements History
 
+## 2026-08-07 — 모바일 앱 UI/UX 전면 개편
+
+### 확인된 문제
+
+기능별 경로는 이미 분리되어 있었지만 장부 요약과 상세 관리가 한 화면에 섞여 있었고, 상단 중심 탐색과 긴 폼은 360–430px에서 현재 위치와 다음 행동을 빠르게 파악하기 어려웠다. Import 검토, 급여 계산, 목표 설정도 각 기능은 완성되어 있으나 서로 다른 시각 계층과 조작 패턴을 사용했다.
+
+### 결정
+
+- `DESIGN.md`와 제공된 다섯 화면의 시각 방향을 바탕으로 차분한 인디고·민트 토큰, 카드 계층, tabular 금액, 44px 이상 터치 타깃을 공유한다. 외부 폰트·아이콘 CDN이나 원격 이미지는 추가하지 않는다.
+- 장부를 실제 로컬 요약 중심 `/home`과 기간 조회·편집 중심 `/transactions`로 나눈다. `/`는 Home, `/ledger`는 Transactions 호환 alias로 유지한다.
+- 모바일 하단 탐색은 Home, Transactions, Payroll, Settings만 두고, Import는 Home과 Transactions의 빠른 작업 시트에서 연다. 집중 입력 화면에는 FAB를 표시하지 않는다.
+- Home은 실제 저장 거래·정산·설정만 사용한다. 가상 금액은 Transactions에서 사용자가 명시적으로 Mock Data를 고른 경우에만 허용한다.
+- 거래 편집과 Import 카테고리 선택은 Escape, 포커스 순환·복귀를 지원하는 모바일 sheet로 통일한다. Import의 읽기·Kakao 분석·저장은 실제 비동기 상태와 실제 후보 수만 보여준다.
+- 급여 계산과 목표 설정의 도메인·저장 경계는 바꾸지 않고 입력, 결과, 경고, 근거의 시각 순서만 재구성한다.
+
+### 결과와 제한
+
+Home, Transactions, Import, Payroll, Settings는 360–430px 모바일을 기준으로 재구성하고 768·1280px까지 가운데 정렬 확장한다. 새 Insights·Assets·프로필·수동 거래·공유 기능은 만들지 않았고, private XLS 없이 빈 로컬 상태와 가짜 메모리 입력만으로 반응형·키보드 흐름을 검증했다. 최종 리뷰에서 확인 필요 거래의 의미를 Import와 통일하고, 느린 저장 결과가 새 Preview 상태를 덮지 못하도록 요청 세대 가드를 추가했다.
+
 ## 2026-08-07 — Vector Search보다 Merchant Entity Resolution 우선
 
 ### 확인된 문제

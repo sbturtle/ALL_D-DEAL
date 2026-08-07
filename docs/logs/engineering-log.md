@@ -1,5 +1,47 @@
 # Engineering Log
 
+## 2026-08-07 — Phase 8D Mobile App UI/UX Refresh
+
+### 구현
+
+- `DESIGN.md`와 사용자 제공 다섯 화면을 기준으로 인디고·민트 토큰, 모바일 카드, inline SVG 아이콘, sticky app bar, 4개 항목 하단 탐색을 적용했다. 외부 디자인 CDN·폰트·이미지는 추가하지 않았다.
+- `/home`과 `/transactions`를 분리하고 `/`는 Home, `/ledger`는 Transactions 호환 alias로 유지했다. Home은 실제 로컬 월 요약·목표·검토 수·7일 소비·최근 거래만 보여준다.
+- Transactions는 일·주·월·직접 기간, 명시적 Mock 모드, 유형 필터, 거래별 메모·카테고리 수정, 공동결제 정산을 유지했다. 거래 수정은 접근 가능한 modal sheet로 바꿨다.
+- Import는 파일 읽기·Kakao 분석·저장의 실제 상태, 실제 신규·중복·검토 수, 모바일 후보 카드와 카테고리 sheet, sticky 저장 행동을 제공한다. 사용자 규칙 동의와 접힌 분석 trace는 기존 계약을 유지한다.
+- Payroll은 입력 요약, 월 실수령 hero, 공제 상세·주의·정책 근거 순서로, Settings는 현재 목표와 한 개의 로컬 목표 입력 중심으로 재구성했다. 계산·검증·포커스·메모리 전용 및 설정 저장 생명주기는 바꾸지 않았다.
+
+### Review와 브라우저 검증
+
+- 390px Import에서 기존 소개 영역 grid가 남아 제목과 설명이 두 열로 갈리는 문제를 단일 열 reset으로 수정했다.
+- 360px Payroll에서 전역 FAB가 입력 모드 조작을 가리는 문제를 발견해 FAB를 Home과 Transactions에서만 표시하도록 제한하고 회귀 테스트를 추가했다.
+- Home과 Transactions의 확인 필요 판정을 Import 계약과 같은 `UNKNOWN` 또는 카테고리 없는 `EXPENSE`로 통일했다. 카테고리가 필요 없는 수입·이체는 실제 검토 수와 필터에서 제외한다.
+- Import 저장 요청에 세대 가드를 두고 저장 중 초기화와 Kakao 분석 중 확정을 차단했다. 중복 조회 실패 수치는 미확정으로 표시하고, 카테고리 sheet에는 현재 거래처·일자·금액·결제수단 맥락을 연결했다.
+- 360, 390, 430, 768, 1280px에서 가로 넘침, 44px 미만 주요 조작, 콘솔 오류가 없음을 확인했다. 빠른 작업 sheet는 첫 항목 포커스, Escape 닫기, FAB 포커스 복귀를 확인했다.
+- 브라우저 검증에는 빈 로컬 저장소와 임시 메모리 급여 값만 사용했으며 `samples/private/` 파일은 열거나 업로드하지 않았다.
+
+| Check | Result | Note |
+| --- | --- | --- |
+| `npm run lint` | PASS | warnings 0 |
+| `npm run typecheck` | PASS | TypeScript project build |
+| `npm test` | PASS | 39 files, 410 tests |
+| `npm run build` | PASS | existing >500 kB Vite chunk warning only |
+| Responsive browser check | PASS | 360, 390, 430, 768, 1280px; console errors 0 |
+| Privacy review | PASS | private XLS not opened; no external asset request added |
+
+### Function-sized commits
+
+- `63712c0` `[Docs] : Phase 8D 모바일 UI 개편 계획 추가`
+- `61a546d` `[Feat] : 모바일 홈과 거래 화면 분리`
+- `a106d8d` `[Feat] : 불러오기 검토 UX 개편`
+- `2d5f651` `[Style] : 급여와 목표 설정 화면 개편`
+- `afc4004` `[Fix] : 집중 화면의 모바일 겹침 해소`
+- `d686285` `[Fix] : 확인 필요 거래 판정 정정`
+- `92c9375` `[Fix] : 불러오기 저장 상태 충돌 방지`
+
+### 상태
+
+`DONE`
+
 ## 2026-08-07 — Phase 8C Deterministic Merchant Name Resolution
 
 ### 문제와 기존 기준선
