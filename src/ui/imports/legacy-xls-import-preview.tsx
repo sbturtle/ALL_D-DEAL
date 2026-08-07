@@ -38,6 +38,13 @@ type PlaceSearchState = Readonly<{
   userRuleCategoryId?: CategoryId;
 }>;
 
+type CandidatePlaceSearchRequest = Readonly<{
+  candidateIndex: number;
+  descriptionOriginal: string;
+}>;
+
+const MAX_CONCURRENT_KAKAO_ANALYSES = 3;
+
 export type LegacyXlsImportPreviewProps = Readonly<{
   previewFile: LegacyXlsPreviewReader;
   applyCategoryRules?: (preview: ImportPreview) => Promise<ImportPreview>;
@@ -321,6 +328,8 @@ export function LegacyXlsImportPreview({
         setDuplicateCheckFailed(didDuplicateCheckFail);
         setStatus('PREVIEW');
         if (searchPlaces !== undefined) {
+          const queuedSearches: CandidatePlaceSearchRequest[] = [];
+
           nextPreview.candidates.forEach((candidate, candidateIndex) => {
             if (candidate.draft.type !== 'EXPENSE') {
               return;
@@ -339,13 +348,17 @@ export function LegacyXlsImportPreview({
               return;
             }
 
-            void searchCandidatePlace(
+            queuedSearches.push({
               candidateIndex,
-              candidate.draft.descriptionOriginal,
-              requestId,
-              kakaoAbortController.signal,
-            );
+              descriptionOriginal: candidate.draft.descriptionOriginal,
+            });
           });
+
+          void searchCandidatePlaces(
+            queuedSearches,
+            requestId,
+            kakaoAbortController.signal,
+          );
         }
       }
     } catch {
@@ -582,6 +595,44 @@ export function LegacyXlsImportPreview({
         return next;
       });
     }
+  };
+
+  const searchCandidatePlaces = async (
+    requests: readonly CandidatePlaceSearchRequest[],
+    previewRequestId: number,
+    signal: AbortSignal,
+  ) => {
+    let nextRequestIndex = 0;
+
+    const runWorker = async () => {
+      while (
+        previewRequestId === requestIdRef.current &&
+        !signal.aborted
+      ) {
+        const request = requests[nextRequestIndex];
+        nextRequestIndex += 1;
+
+        if (request === undefined) {
+          return;
+        }
+
+        await searchCandidatePlace(
+          request.candidateIndex,
+          request.descriptionOriginal,
+          previewRequestId,
+          signal,
+        );
+      }
+    };
+
+    await Promise.all(
+      Array.from(
+        {
+          length: Math.min(MAX_CONCURRENT_KAKAO_ANALYSES, requests.length),
+        },
+        () => runWorker(),
+      ),
+    );
   };
 
   const duplicateCandidateMatches =

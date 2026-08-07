@@ -97,6 +97,18 @@ const aliasedExpensePreview: ImportPreview = {
   })),
 };
 
+const queuedExpensePreview: ImportPreview = {
+  ...expensePreview,
+  candidates: Array.from({ length: 5 }, (_, index) => ({
+    ...expensePreview.candidates[0],
+    rowNumber: index + 5,
+    draft: {
+      ...expensePreview.candidates[0]!.draft,
+      descriptionOriginal: `가짜 대기 상점 ${index + 1}`,
+    },
+  })),
+};
+
 describe('LegacyXlsImportPreview', () => {
   it('선택한 XLS의 후보와 원본 값 없는 확인 필요 사유를 미리보기로 보여준다', async () => {
     const user = userEvent.setup();
@@ -505,6 +517,35 @@ describe('LegacyXlsImportPreview', () => {
       await screen.findByText('일치하는 장소가 없어요. 결과는 저장하지 않습니다.'),
     ).toBeVisible();
     expect(screen.queryByText('Kakao 장소를 분석하고 있어요')).not.toBeInTheDocument();
+  });
+
+  it('limits simultaneous candidate analyses while queued work remains visible', async () => {
+    const user = userEvent.setup();
+    const pendingResolvers: Array<
+      (value: readonly PlaceSearchResult[]) => void
+    > = [];
+    const searchPlaces = vi.fn(
+      () =>
+        new Promise<readonly PlaceSearchResult[]>((resolve) => {
+          pendingResolvers.push(resolve);
+        }),
+    );
+    render(
+      <LegacyXlsImportPreview
+        previewFile={async () => queuedExpensePreview}
+        searchPlaces={searchPlaces}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+
+    await waitFor(() => expect(searchPlaces).toHaveBeenCalledTimes(3));
+    expect(screen.getByText('Kakao 장소를 분석하고 있어요')).toBeVisible();
+    pendingResolvers[0]?.([]);
+    await waitFor(() => expect(searchPlaces).toHaveBeenCalledTimes(4));
   });
 
   it('keeps a user-rule category ahead of Kakao and does not send it for lookup', async () => {
