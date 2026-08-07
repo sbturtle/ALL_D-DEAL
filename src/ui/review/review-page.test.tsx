@@ -1,8 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Transaction } from '../../domain/transactions/transaction';
+import type { KeywordCategoryRule } from '../../domain/categories/keyword-category-rule';
 import { ReviewPage, type ReviewLedgerRepository } from './review-page';
 
 const firstExpense: Transaction = {
@@ -43,19 +44,36 @@ const categorizedExpense: Transaction = {
 
 function createRepository(
   initialTransactions: readonly Transaction[],
-): ReviewLedgerRepository & { replaceTransaction: ReturnType<typeof vi.fn> } {
+): ReviewLedgerRepository & {
+  replaceTransaction: ReturnType<typeof vi.fn>;
+  saveKeywordCategoryRuleAndReplaceTransactions: ReturnType<typeof vi.fn>;
+} {
   let storedTransactions = [...initialTransactions];
   const replaceTransaction = vi.fn(async (transaction: Transaction) => {
     storedTransactions = storedTransactions.map((current) =>
       current.id === transaction.id ? transaction : current,
     );
   });
+  const saveKeywordCategoryRuleAndReplaceTransactions = vi.fn(
+    async (
+      _keywordCategoryRule: KeywordCategoryRule,
+      replacements: readonly Transaction[],
+    ) => {
+      const replacementsById = new Map(
+        replacements.map((transaction) => [transaction.id, transaction]),
+      );
+      storedTransactions = storedTransactions.map(
+        (transaction) => replacementsById.get(transaction.id) ?? transaction,
+      );
+    },
+  );
 
   return {
     listAllTransactions: async () => storedTransactions,
     getTransactionsByIds: async (transactionIds) =>
       storedTransactions.filter((transaction) => transactionIds.includes(transaction.id)),
     replaceTransaction,
+    saveKeywordCategoryRuleAndReplaceTransactions,
   };
 }
 
@@ -107,6 +125,82 @@ describe('ReviewPage', () => {
     ).toBeVisible();
   });
 
+  it('groups matching uncategorized expenses after an explicit keyword and category choice', async () => {
+    const user = userEvent.setup();
+    const firstCoupangExpense: Transaction = {
+      ...firstExpense,
+      descriptionOriginal: 'Fabricated 쿠팡 오더 first expense',
+    };
+    const secondCoupangExpense: Transaction = {
+      ...secondExpense,
+      descriptionOriginal: 'Fabricated 쿠팡 second expense',
+    };
+    const categorizedCoupangExpense: Transaction = {
+      ...categorizedExpense,
+      descriptionOriginal: 'Fabricated 쿠팡 categorized expense',
+    };
+    const repository = createRepository([
+      firstCoupangExpense,
+      secondCoupangExpense,
+      categorizedCoupangExpense,
+    ]);
+
+    render(<ReviewPage ledgerRepository={repository} />);
+
+    await user.click(
+      await screen.findByRole('button', { name: /비슷한 거래도 묶기/ }),
+    );
+    const dialog = screen.getByRole('dialog', { name: '비슷한 거래도 묶기' });
+    expect(within(dialog).getByRole('heading', { name: '비슷한 거래도 묶기' })).toBeVisible();
+    await user.click(within(dialog).getByRole('button', { name: '쿠팡' }));
+    expect(within(dialog).getByText('현재 미분류 지출 2건')).toBeVisible();
+    await user.click(within(dialog).getByRole('button', { name: '쇼핑' }));
+    await user.click(within(dialog).getByRole('button', { name: '미분류 2건 묶기' }));
+
+    await waitFor(() => {
+      expect(
+        repository.saveKeywordCategoryRuleAndReplaceTransactions,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ keywordNormalized: '쿠팡', categoryId: 'SHOPPING' }),
+        [
+          expect.objectContaining({ id: firstCoupangExpense.id, categoryId: 'SHOPPING' }),
+          expect.objectContaining({ id: secondCoupangExpense.id, categoryId: 'SHOPPING' }),
+        ],
+      );
+    });
+    expect(
+      await screen.findByRole('heading', {
+        name: '카테고리 분류가 모두 끝났어요',
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/“쿠팡” 포함 미분류 지출 2건을 쇼핑으로 묶었어요/),
+    ).toBeVisible();
+  });
+
+  it('closes the keyword grouping dialog with Escape and restores its trigger focus', async () => {
+    const user = userEvent.setup();
+    const repository = createRepository([
+      {
+        ...firstExpense,
+        descriptionOriginal: 'Fabricated 쿠팡 order',
+      },
+    ]);
+
+    render(<ReviewPage ledgerRepository={repository} />);
+
+    const trigger = await screen.findByRole('button', {
+      name: /비슷한 거래도 묶기/,
+    });
+    await user.click(trigger);
+    await user.keyboard('{Escape}');
+
+    expect(
+      screen.queryByRole('heading', { name: '비슷한 거래도 묶기' }),
+    ).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
   it('keeps UNKNOWN outside the category queue and explains its limitation', async () => {
     render(<ReviewPage ledgerRepository={createRepository([unknownTransaction])} />);
 
@@ -134,6 +228,7 @@ describe('ReviewPage', () => {
       listAllTransactions,
       getTransactionsByIds: async () => [],
       replaceTransaction: async () => undefined,
+      saveKeywordCategoryRuleAndReplaceTransactions: async () => undefined,
     };
     const user = userEvent.setup();
 
