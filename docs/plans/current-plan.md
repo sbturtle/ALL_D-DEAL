@@ -1,40 +1,59 @@
-# Phase 9A — Confirmed Local Ledger Reset
+# 9A단계 — 확인 후 로컬 장부 초기화
 
-- Status: `IN_PROGRESS`
-- Plan updated: 2026-08-07
-- Prerequisite: Phase 8F User-Confirmed Keyword Category Grouping `DONE`
+- 상태: `NEEDS_USER_INPUT`
+- 계획 갱신일: 2026-08-07
+- 선행 단계: 8F단계 사용자 확인형 키워드 카테고리 묶기 `DONE`
 
-## Goal
+## 목표
 
-Let the user deliberately reset the current browser's local household-ledger data from Settings, with a clear, accessible reconfirmation step.
+설정 화면에서 사용자가 현재 브라우저의 로컬 가계부 데이터를 의도적으로 초기화할 수 있게 하고, 범위가 명확한 재확인 절차를 제공한다.
 
-## Scope and decisions
+## 범위와 결정
 
-1. The Settings page will expose a visually separate local-ledger reset area and describe its scope before the user opens the dialog.
-2. Reset is unavailable without an explicit final confirmation. Cancel, backdrop dismissal, and Escape must not change stored data.
-3. One IndexedDB read-write transaction will clear transactions, import batches, budget settlements, exact category rules, keyword category rules, and local user settings while preserving the database schema.
-4. The dialog must state that the operation is irreversible and affects this browser's local ledger only. It must not delete source Excel files, samples, application code, environment variables, or any remote data.
-5. On storage failure, leave the dialog open with an actionable error; do not claim the reset completed.
-6. Keep all data local-first. No remote service, analytics, or private-sample access is added.
+1. 설정 화면에 별도의 로컬 장부 초기화 영역을 두고, 모달을 열기 전부터 초기화 범위를 설명한다.
+2. 최종 확인 없이는 초기화할 수 없다. 취소·배경 닫기·Escape는 저장 데이터를 변경하지 않는다.
+3. 하나의 IndexedDB 읽기·쓰기 트랜잭션에서 거래, 불러오기 이력, 공동결제 정산, 정확한 카테고리 규칙, 키워드 카테고리 규칙, 로컬 사용자 설정을 비우되 데이터베이스 스키마는 유지한다.
+4. 모달은 이 작업이 되돌릴 수 없고 현재 브라우저의 로컬 장부만 대상으로 한다고 알린다. 원본 Excel 파일, 샘플, 애플리케이션 코드, 환경 변수와 원격 데이터는 삭제하지 않는다.
+5. 저장소 오류가 발생하면 모달을 유지하고 다시 시도할 수 있는 오류를 보여준다. 초기화가 끝났다고 거짓으로 알리지 않는다.
+6. 모든 데이터는 계속 로컬 우선으로 처리하며 원격 서비스, 분석 수집, private 샘플 접근을 추가하지 않는다.
 
-## Completion criteria
+## 완료 조건
 
-1. Users can find and open the reset control in Settings at desktop and mobile widths.
-2. The confirmation dialog clearly lists the affected local data and supports keyboard-safe cancellation.
-3. Confirming clears every in-scope store atomically; repository and UI tests cover success, cancellation, and failure paths.
-4. After a successful reset, Settings reflects the cleared monthly goal and communicates success.
-5. Lint, typecheck, tests, build, focused browser review, documentation, engineering log, and functional-unit commits are complete.
+1. 데스크톱과 모바일 폭의 설정 화면에서 초기화 기능을 찾고 열 수 있다.
+2. 재확인 모달이 영향을 받는 로컬 데이터와 비가역성을 명확히 나열하며 키보드 취소를 지원한다.
+3. 확인하면 모든 대상 저장소가 원자적으로 비워지고 저장소·화면 테스트가 성공·취소·실패 경로를 검증한다.
+4. 성공 후 설정 화면의 월 생활비 목표가 비워지고 완료 안내가 보인다.
+5. lint, typecheck, test, build, 가능한 사용자 흐름 검증, 문서, 엔지니어링 로그와 기능 단위 커밋을 완료한다.
 
-## Vertical slices
+## 세로 슬라이스
 
-### Slice 1 — Local storage reset operation
+### 슬라이스 1 — 로컬 저장소 초기화 동작
 
-- Add and test a single transactional repository operation for clearing the local ledger stores.
+- 로컬 장부 저장소를 하나의 트랜잭션으로 비우는 저장소 메서드와 테스트를 추가한다.
 
-### Slice 2 — Settings reset confirmation
+### 슬라이스 2 — 설정 초기화 재확인
 
-- Add the settings danger area, focus-managed confirmation dialog, loading state, and safe error handling.
+- 설정 위험 영역, 포커스를 관리하는 재확인 모달, 실행 중 상태와 안전한 오류 처리를 추가한다.
 
-### Slice 3 — Verification and records
+### 슬라이스 3 — 검증과 기록
 
-- Run automated and focused responsive checks; record the reset boundary and results in product, architecture, ADR, plan, and engineering log documents.
+- 자동 검증과 가능한 반응형 점검을 실행하고 초기화 경계와 결과를 제품 요구사항, 아키텍처, ADR, 계획과 엔지니어링 로그에 기록한다.
+
+## 검증 결과
+
+| 검사 | 결과 | 비고 |
+| --- | --- | --- |
+| 저장소 초기화 테스트 | PASS | 가짜 IndexedDB 여섯 저장소의 데이터를 비운 뒤 데이터베이스를 계속 사용할 수 있음 |
+| 설정 상호작용 테스트 | PASS | 범위 안내, Escape 취소와 포커스 복귀, 최종 확인, 성공 상태, 저장소 실패 재시도 상태를 검증함 |
+| `npm run lint` | PASS | 경고 0개 |
+| `npm run typecheck` | PASS | TypeScript 프로젝트 빌드 성공 |
+| `npm test` | PASS | 43개 파일, 435개 테스트 |
+| `npm run build` | PASS | 기존 500 kB 초과 Vite 청크 경고만 존재 |
+| `git diff --check` | PASS | 공백 오류 0개 |
+| 브라우저 시각 점검 | 미실행 | 플랫폼 브라우저 보안 정책이 로컬 `127.0.0.1` 접근을 차단해 우회하지 않음. 컴포넌트 사용자 흐름 검증으로 보완함 |
+| 개인정보 점검 | PASS | private XLS·실제 거래·원본 파일을 열거나 쓰거나 Git에 추가하지 않음 |
+
+## 인계 사항
+
+- 구현·자동 검증·문서 갱신은 완료했다. 다만 플랫폼 실행 한도로 Git 인덱스 쓰기 권한 요청이 거절되어 이 문서와 관련 문서의 최종 커밋은 아직 만들지 못했다.
+- 반응형 점검을 위해 시작한 `npm run dev -- --host 127.0.0.1 --port 4174` 프로세스(PID `3368`)도 같은 이유로 종료하지 못했다. 실행 권한이 복구되면 정확한 PID를 다시 확인하고 종료한다.

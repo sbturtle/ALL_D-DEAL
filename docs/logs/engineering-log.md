@@ -1,6 +1,41 @@
-# Engineering Log
+# 엔지니어링 로그
 
-## 2026-08-07 — Phase 8F User-Confirmed Keyword Category Grouping
+## 2026-08-07 — 9A단계 확인 후 로컬 장부 초기화
+
+### 구현
+
+- Settings에 별도 `로컬 장부 초기화` 영역을 추가했다. 거래 내역·Import 이력·공동결제 정산·정확/키워드 카테고리 규칙·월 생활비 목표가 영향을 받으며, 원본 Excel·샘플·앱 코드·환경 설정은 대상이 아님을 화면과 모달에 표시한다.
+- 재확인 dialog는 Cancel·배경·Escape로는 저장소를 변경하지 않고 닫은 뒤 시작 버튼에 포커스를 돌려준다. 최종 버튼만 초기화를 실행하며, 실행 중에는 닫기와 중복 실행을 막는다.
+- `BrowserLedgerRepository.resetLocalLedger`는 여섯 IndexedDB store를 한 read-write transaction으로 비운다. DB 스키마는 유지하고 실패하면 UI는 dialog를 유지한 채 일반화된 오류를 보여 준다.
+
+### 검토와 검증
+
+- Fake IndexedDB에 거래, Batch, 정산, 정확 규칙, 키워드 규칙, 목표를 채운 뒤 초기화하여 모든 store가 비었고 DB를 계속 읽을 수 있음을 검증했다.
+- Settings UI는 범위 고지, Escape 취소와 포커스 복귀, 최종 확인 뒤 목표 입력 초기화, 저장소 실패 시 dialog·기존 목표 보존을 Testing Library로 검증했다.
+- 실제 브라우저 시각 점검은 플랫폼 보안 정책이 로컬 `127.0.0.1` 접근을 차단해 수행하지 못했다. 정책을 우회하지 않았고, 로컬 개발 서버 외의 대체 브라우저 자동화도 실행하지 않았다.
+- private XLS, 실제 거래, 원본 파일은 열거나 업로드·저장·커밋하지 않았다.
+
+| 검사 | 결과 | 비고 |
+| --- | --- | --- |
+| `npm run lint` | PASS | 경고 0개 |
+| `npm run typecheck` | PASS | TypeScript 프로젝트 빌드 성공 |
+| `npm test` | PASS | 43개 파일, 435개 테스트 |
+| `npm run build` | PASS | 기존 500 kB 초과 Vite 청크 경고만 존재 |
+| 컴포넌트 사용자 흐름 | PASS | 취소·Escape·확인·실패·포커스 복귀 |
+| 브라우저 시각 점검 | 미실행 | 플랫폼 보안 정책이 로컬 브라우저 접근을 거부함 |
+| 개인정보 점검 | PASS | private 데이터와 샘플을 열거나 쓰거나 커밋하지 않음 |
+
+### 기능 단위 커밋
+
+- `5bbd074` `[Docs] : Phase 9A 로컬 장부 초기화 계획 추가`
+- `344bc68` `[Feat] : 로컬 장부 전체 초기화 저장소 추가`
+- `be55e74` `[Feat] : 설정에 로컬 장부 초기화 확인 추가`
+
+### 상태
+
+`NEEDS_USER_INPUT` — 구현과 자동 검증은 완료했지만 플랫폼 실행 한도로 문서의 최종 Git 커밋과 점검용 개발 서버 종료 권한이 거절되었다.
+
+## 2026-08-07 — 8F단계 사용자 확인형 키워드 카테고리 묶기
 
 ### 구현
 
@@ -10,23 +45,23 @@
 - Browser IndexedDB를 v4로 올려 `keywordCategoryRules`를 독립 저장소로 추가했다. v1–v3의 거래·Batch·정산·정확 규칙·설정을 보존하고, 키워드 규칙 저장과 현재 미분류 일치 지출의 갱신은 한 read-write 트랜잭션으로 처리한다.
 - Review에 키워드·카테고리·실제 일치 건수를 확인하는 mobile dialog를 추가했다. 일치한 미분류 `EXPENSE`만 변경하고 이미 분류한 거래는 건드리지 않으며, 이후 예외 수정은 기존 Transactions 편집 흐름을 사용한다.
 
-### Review와 검증
+### 검토와 검증
 
 - Domain은 공백/기호 차이, 긴 키워드 우선, 사전순 tie-break, 안전하지 않은 키워드 거절, 사용자에게 보이는 추천어만 검증했다.
 - Application은 원장 필드 보존, 이미 분류된 거래·수입 제외, 일치 없음, 저장 실패를 가짜 Transaction fixture로 검증했다.
 - Storage는 v1·v2·v3 업그레이드와 키워드 규칙·거래 교체의 원자 저장을 fake IndexedDB로 검증했다. Import와 Review UI는 키워드 우선순위, 사용자 선택, Escape 포커스 복귀, 저장 후 완료 상태를 검증했다.
 - 360px 실제 브라우저에서 빈 `/review`는 문서 폭 360px으로 가로 넘침이 없었고 링크·하단 메뉴는 44px 이상이었다. 저장소 주입이 허용되지 않아 묶기 dialog의 데이터 동작은 가짜 UI fixture로만 검증했으며, 어떤 private XLS·실제 거래도 열거나 쓰지 않았다.
 
-| Check | Result | Note |
+| 검사 | 결과 | 비고 |
 | --- | --- | --- |
-| `npm run lint` | PASS | warnings 0 |
-| `npm run typecheck` | PASS | TypeScript project build |
-| `npm test` | PASS | 43 files, 431 tests |
-| `npm run build` | PASS | existing >500 kB Vite chunk warning only |
-| Responsive browser check | PASS | 360px empty `/review`; no horizontal overflow, primary targets ≥44px |
-| Privacy review | PASS | private XLS and actual financial data not opened, uploaded, written, or committed |
+| `npm run lint` | PASS | 경고 0개 |
+| `npm run typecheck` | PASS | TypeScript 프로젝트 빌드 성공 |
+| `npm test` | PASS | 43개 파일, 431개 테스트 |
+| `npm run build` | PASS | 기존 500 kB 초과 Vite 청크 경고만 존재 |
+| 반응형 브라우저 점검 | PASS | 360px 빈 `/review`, 가로 넘침 없음, 주요 조작 44px 이상 |
+| 개인정보 점검 | PASS | private XLS와 실제 금융 데이터를 열거나 업로드·저장·커밋하지 않음 |
 
-### Function-sized commits
+### 기능 단위 커밋
 
 - `13f240e` `[Docs] : Phase 8F 키워드 묶기 계획 추가`
 - `26d52c1` `[Feat] : 키워드 카테고리 규칙 저장 추가`
@@ -38,7 +73,7 @@
 
 `DONE`
 
-## 2026-08-07 — Phase 8E Review Queue and Transaction Direction Tone
+## 2026-08-07 — 8E단계 분류 검토 큐와 거래 방향 색상
 
 ### 구현
 
@@ -48,23 +83,22 @@
 - 로딩, 저장 중 오류, 저장소 읽기 오류 재시도, 건너뛰기, 빈 큐 완료, `UNKNOWN` 유형 검토 안내를 제공한다. 큐 건수·진행률·금액에는 mock 값을 사용하지 않는다.
 - Home, 실제 Transactions, 명시적 Mock Transactions의 거래 행에 공통 방향 클래스를 적용했다. 수입은 민트, 지출은 로즈 카드와 대비되는 금액·아이콘을 쓰되 `+`·`−` 부호를 함께 유지한다.
 
-### Review와 검증
+### 검토와 검증
 
 - Domain 규칙은 `UNKNOWN`이 카테고리를 가져도 유형 검토로 남고, 미분류 지출만 분류 큐로 들어가는 경우를 검증했다.
 - Review UI는 한 건 저장 뒤 자동 다음 건 이동과 필드 보존, 유형 검토 분리, 저장소 재시도, 저장 실패 후 현재 건 유지까지 가짜 Transaction fixture로 검증했다.
 - 360px 실제 브라우저에서 `/review` 빈 상태와 명시적 Mock Transactions를 확인했다. 문서 폭은 345px로 viewport 360px 안에 머물렀고, 행 높이는 96px였다. 수입은 `rgb(234, 247, 241)`, 지출은 `rgb(255, 240, 240)` 배경으로 렌더링됐다.
 - private XLS·거래 샘플을 열거나 업로드하지 않았고, 외부 자산·백엔드·원격 분석은 추가하지 않았다.
 
-| Check | Result | Note |
+| 검사 | 결과 | 비고 |
 | --- | --- | --- |
-| `npm run lint` | PASS | warnings 0 |
-| `npm run typecheck` | PASS | TypeScript project build |
-| `npm test` | PASS | 41 files, 419 tests |
-| `npm run build` | PASS | existing >500 kB Vite chunk warning only |
-| Responsive browser check | PASS | 360px `/review` and Transactions; no horizontal overflow |
-| Privacy review | PASS | private XLS not opened or committed |
+| `npm run lint` | PASS | 경고 0개 |
+| `npm run typecheck` | PASS | TypeScript 프로젝트 빌드 성공 |
+| `npm test` | PASS | 41개 파일, 419개 테스트 |
+| 반응형 브라우저 점검 | PASS | 360px `/review`·Transactions, 가로 넘침 없음 |
+| 개인정보 점검 | PASS | private XLS를 열거나 커밋하지 않음 |
 
-### Function-sized commits
+### 기능 단위 커밋
 
 - `856261c` `[Docs] : Phase 8E 분류 검토 큐 계획 추가`
 - `461e3ce` `[Refactor] : 거래 검토 판정 규칙 공통화`
@@ -75,7 +109,7 @@
 
 `DONE`
 
-## 2026-08-07 — Phase 8D Mobile App UI/UX Refresh
+## 2026-08-07 — 8D단계 모바일 앱 UI/UX 개편
 
 ### 구현
 
@@ -103,7 +137,7 @@
 | Responsive browser check | PASS | 360, 390, 430, 768, 1280px; console errors 0 |
 | Privacy review | PASS | private XLS not opened; no external asset request added |
 
-### Function-sized commits
+### 기능 단위 커밋
 
 - `63712c0` `[Docs] : Phase 8D 모바일 UI 개편 계획 추가`
 - `61a546d` `[Feat] : 모바일 홈과 거래 화면 분리`
@@ -117,7 +151,7 @@
 
 `DONE`
 
-## 2026-08-07 — Phase 8C Deterministic Merchant Name Resolution
+## 2026-08-07 — 8C단계 결정적 가맹점 이름 해석
 
 ### 문제와 기존 기준선
 
@@ -133,7 +167,7 @@ Phase 7B는 정확 사용자 `CategoryRule`이 없는 카드 지출 설명을 Ka
 - Import Preview는 original, normalized, 해석 출처, Alias, canonical query, 시도별 결과, Kakao 장소·카테고리와 최종 Review 이유를 기본적으로 접힌 상세 정보로 보여준다. 새 파일·지우기 시 기존 request를 무효화해 이미 시작한 SDK callback 뒤의 fallback·상태 반영을 중단하고, 한 파일의 동시 후보 분석을 3개 worker로 제한한다.
 - 화면에 상호명 검색어의 Kakao 전송 범위를 명시하고 `PHASE 8C`로 갱신했다. 390px 점검에서 발견한 큰 제목 잘림은 360px에서도 안전하게 줄바꿈하도록 보완했다.
 
-### Fixture measurement
+### 가짜 Fixture 측정
 
 실제 금융 데이터나 실제 Kakao 응답을 사용하지 않은 Fabricated Merchant Fixture v1 14건의 결과다.
 
@@ -145,7 +179,7 @@ Phase 7B는 정확 사용자 `CategoryRule`이 없는 카드 지출 설명을 Ka
 
 `4 → 12`는 각 fixture에 기대 가짜 장소 결과를 미리 공급한 classifier 비교다. 실제 Kakao 검색 성공률, private sample 분류율 또는 production 정확도가 아니다.
 
-### Review and verification
+### 검토와 검증
 
 - 독립 코드 리뷰에서 발견된 결제 중개자 punctuation 우회와 무제한 후보 동시 실행을 각각 정규화 차단과 3-worker queue로 수정했다.
 - 저장된 GS25 사용자 규칙의 Kakao 0회, Fuzzy → canonical → `MEDIUM`, PAYCO 변형 0회, raw/normalized/canonical 최대 3회를 통합 테스트로 보강했다.
@@ -160,7 +194,7 @@ Phase 7B는 정확 사용자 `CategoryRule`이 없는 카드 지출 설명을 Ka
 | Responsive browser check | PASS | desktop, 390px, 360px `/imports`; console errors 0 |
 | Privacy review | PASS | private XLS를 브라우저 검증·fixture·문서에 사용하지 않고 Kakao 전송 범위를 화면에 명시 |
 
-### Function-sized commits
+### 기능 단위 커밋
 
 - `d2e11dd` `[Docs] : Phase 8C Merchant Resolution 계획 추가`
 - `92765de` `[Feat] : Merchant 정규화와 Alias 해석 추가`
@@ -177,7 +211,7 @@ Phase 7B는 정확 사용자 `CategoryRule`이 없는 카드 지출 설명을 Ka
 
 `DONE`
 
-## 2026-08-05 — Phase 8B Local Monthly Living-Expense Goal
+## 2026-08-05 — 8B단계 로컬 월 생활비 목표
 
 - Added a validated `LocalUserSettings` singleton for one positive KRW monthly goal and a pure remaining/exceeded calculation. The record contains no transaction, payroll, account, or Kakao data.
 - Upgraded `household-ledger` IndexedDB from schema v2 to v3 with a `userSettings` store. Existing transactions, settlements, import batches, and category rules remain intact; the migration is covered by fabricated data tests.
@@ -185,7 +219,7 @@ Phase 7B는 정확 사용자 `CategoryRule`이 없는 카드 지출 설명을 Ka
 - The saved ledger now shows a monthly goal card using the existing shared-payment net living-expense summary. Day, week, and custom views intentionally do not allocate a monthly goal proportionally.
 - Updated the navigation phase label to `PHASE 8B · LOCAL` and visually checked the new settings page at desktop and 360px widths without entering any financial value.
 
-### Verification
+### 검증
 
 | Check | Result | Note |
 | --- | --- | --- |
@@ -196,27 +230,27 @@ Phase 7B는 정확 사용자 `CategoryRule`이 없는 카드 지출 설명을 Ka
 | IndexedDB v2 migration | PASS | fabricated transactions and category rules preserved |
 | Responsive visual check | PASS | desktop and 360px Settings layouts |
 
-### Function-sized commits
+### 기능 단위 커밋
 
 - `2440042` `[Docs] : Phase 8B 생활비 목표 계획 추가`
 - `99f3e12` `[Feat] : 월 생활비 목표 로컬 저장 추가`
 - `c715fbd` `[Feat] : 월 생활비 목표 설정과 장부 잔액 표시`
 - `158463c` `[Test] : IndexedDB v3 마이그레이션 보존 범위 강화`
 
-## 2026-08-05 — Phase 8A Saved Transaction Notes and Categories
+## 2026-08-05 — 8A단계 저장 거래 메모와 카테고리
 
 - Added a validated single-Transaction update flow that preserves amount, date, type, and Import trace fields while replacing only category, memo, and `updatedAt` in local IndexedDB.
 - Added inline ledger controls to edit or clear a category and optional memo, with local error feedback and immediate list refresh after a successful write.
 - Added fixed Unicode emoji presentations for every internal category; no external icon asset or network request is used.
 - Verified with fabricated application, IndexedDB, category-presentation, and UI fixtures plus lint, typecheck, tests, and production build.
 
-## 2026-08-05 — Phase 7C Kakao Analysis Progress Feedback
+## 2026-08-05 — 7C단계 Kakao 분석 진행 표시
 
 - Import Preview now counts candidates whose Kakao place lookup is `SEARCHING` and shows a sticky spinner with the pending count.
 - The notice is announced with `role="status"`, does not block Preview review, and disappears once all pending lookups settle.
 - Verified with a deferred fabricated lookup fixture, `npm run lint`, `npm run typecheck`, `npm test` (27 files, 316 tests), and `npm run build`.
 
-## 2026-08-05 — Phase 7B Kakao Category Enrichment
+## 2026-08-05 — 7B단계 Kakao 카테고리 보강
 
 ### 문제와 원인
 
@@ -242,7 +276,7 @@ Kakao 연동은 REST 주소 검색이 아니라 JavaScript SDK의 키워드 장�
 
 `DONE`
 
-## 2026-08-05 — Phase 7A Explicit Kakao Place Search
+## 2026-08-05 — 7A단계 명시적 Kakao 장소 검색
 
 ### 작업 목적
 
@@ -278,7 +312,7 @@ Kakao 연동은 REST 주소 검색이 아니라 JavaScript SDK의 키워드 장�
 
 `DONE`
 
-## 2026-08-05 — Phase 6B Account Transaction Type Classification
+## 2026-08-05 — 6B단계 계좌 거래 유형 분류
 
 ### 작업 목적
 
@@ -324,7 +358,7 @@ Kakao 연동은 REST 주소 검색이 아니라 JavaScript SDK의 키워드 장�
 
 `DONE`
 
-## 2026-08-05 — Phase 6A Workflow Pages and Category Review UX
+## 2026-08-05 — 6A단계 작업 페이지와 카테고리 검토 UX
 
 ### 작업 목적
 
@@ -371,7 +405,7 @@ Kakao 연동은 REST 주소 검색이 아니라 JavaScript SDK의 키워드 장�
 
 `DONE`
 
-## 2026-08-05 — Phase 5 Confirmed Category Rules
+## 2026-08-05 — 5단계 사용자 확인형 카테고리 규칙
 
 ### 작업 목적
 
