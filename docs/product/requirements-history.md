@@ -1,5 +1,22 @@
 # Requirements History
 
+## 2026-08-07 — 확인형 로컬 장부 초기화
+
+### 추가 요구
+
+사용자가 새로 시작할 수 있도록 초기화 버튼을 제공하되, 초기화 시에는 재확인 모달을 보여야 한다.
+
+### 결정
+
+- Settings에 별도 로컬 장부 초기화 영역을 두고, 모달을 열기 전과 연 뒤 모두 초기화 대상을 명시한다.
+- 최종 확인 전에는 어떤 IndexedDB 쓰기도 하지 않는다. 취소·배경 닫기·Escape는 dialog를 닫고 기존 포커스를 돌려줄 뿐 저장 데이터를 바꾸지 않는다.
+- 최종 확인은 `transactions`, `importBatches`, `budgetSettlements`, `categoryRules`, `keywordCategoryRules`, `userSettings`를 하나의 read-write transaction으로 비운다. 데이터베이스 스키마는 유지한다.
+- 원본 Excel·private 샘플·앱 코드·`.env`와 원격 데이터는 이 흐름의 대상이 아니며, 화면에서 이를 명확히 설명한다.
+
+### 결과와 제한
+
+사용자는 같은 브라우저 origin에 저장한 장부를 의도적으로 비울 수 있지만, 삭제된 장부 데이터는 복구하지 않는다. 백업·복원, 다른 브라우저 프로필의 데이터 삭제, 파일 시스템 삭제, 원격 동기화는 추가하지 않았다. 자세한 결정은 [ADR-0013](../adr/ADR-0013-confirmed-local-ledger-reset.md)을 따른다.
+
 ## 2026-08-07 — 사용자 확인형 포함 키워드 거래 묶기
 
 ### 추가 요구

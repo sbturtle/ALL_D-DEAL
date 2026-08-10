@@ -1,12 +1,12 @@
 # Local Transaction Storage Contract
 
-> Status: Phase 8B implemented
+> Status: Phase 9A implemented
 >
-> Updated: 2026-08-05
+> Updated: 2026-08-07
 
 ## Browser database
 
-The browser uses native IndexedDB database `household-ledger`, schema version `3`.
+The browser uses native IndexedDB database `household-ledger`, schema version `4`.
 
 | Store | Key | Index | Stored purpose |
 | --- | --- | --- | --- |
@@ -14,6 +14,7 @@ The browser uses native IndexedDB database `household-ledger`, schema version `3
 | `importBatches` | `id` | `committedAt` | Import provenance and counts |
 | `budgetSettlements` | `id` | `payerOutflowTransactionId` | Explicit group-payment links |
 | `categoryRules` | `matchDescriptionNormalized` | — | User-confirmed category choices for future Import Preview candidates |
+| `keywordCategoryRules` | `keywordNormalized` | — | User-confirmed included-keyword category choices for current Review grouping and future Import Preview candidates |
 | `userSettings` | `id` (`current`) | — | One local monthly living-expense goal and its update time |
 
 The source XLS blob, original file name, parser row arrays, preview state, full account/card numbers, and source financial identifiers are never stored.
@@ -48,3 +49,9 @@ For a selected period, ordinary `EXPENSE + OUTFLOW` records are summed. A linked
 `userSettings` is a singleton record keyed by `current`. It contains only a positive KRW safe-integer `monthlyLivingExpenseGoalMinor` and a UTC `updatedAt` value. Saving replaces that one record; clearing removes it. No default amount is stored or inferred.
 
 The saved ledger reads the goal only for its calendar-month view. It compares the goal with `calculateLivingExpenseSummary`, so linked shared payments contribute their net out-of-pocket spending. Day, week, and custom ranges show actual spending without proportional goal allocation. Payroll calculator inputs and results never enter this store. See [ADR-0011](../adr/ADR-0011-local-monthly-living-expense-goal.md).
+
+## Confirmed local-ledger reset
+
+`resetLocalLedger` opens one read-write transaction over all six stores and calls `clear()` on each. The schema, database name, browser origin, source files, and application configuration stay intact. An abort or request error rejects the operation, so the UI keeps its confirmation dialog open and never reports a successful reset.
+
+The Settings control opens an accessible confirmation dialog before calling this operation. The dialog lists the six affected data groups, states that the action cannot be undone, and says that original Excel files, samples, app code, and environment settings are not affected. Backdrop dismissal, Escape, and cancel never invoke the repository operation. See [ADR-0013](../adr/ADR-0013-confirmed-local-ledger-reset.md).

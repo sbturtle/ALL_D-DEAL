@@ -1,6 +1,6 @@
 # Architecture
 
-> 상태: Phase 8F Implemented Baseline
+> 상태: Phase 9A Implemented Baseline
 >
 > 기준일: 2026-08-07
 
@@ -8,11 +8,11 @@
 
 초기 애플리케이션은 백엔드가 없는 단일 사용자용 웹 앱이다. 이 문서는 구현을 앞서 확장하기 위한 설계가 아니라, 금융 파일 Parser와 UI의 결합을 막고 민감한 데이터를 사용자 기기 안에서 처리하기 위한 최소 경계를 정의한다.
 
-관련 결정은 [ADR-0001 파일 Import](../adr/ADR-0001-file-import-over-financial-api.md), [ADR-0002 local-first](../adr/ADR-0002-local-first-architecture.md), [ADR-0003 주 1회 Import](../adr/ADR-0003-weekly-import-instead-of-realtime.md), [ADR-0004 버전 지정 급여 추정](../adr/ADR-0004-versioned-local-payroll-estimation.md), [ADR-0008 클라이언트 경로](../adr/ADR-0008-client-routes-for-financial-workflows.md), [ADR-0010 Kakao 경계](../adr/ADR-0010-kakao-map-web-sdk-opt-in-boundary.md), [ADR-0012 Merchant Resolution](../adr/ADR-0012-merchant-entity-resolution-before-vector-search.md)을 따른다.
+관련 결정은 [ADR-0001 파일 Import](../adr/ADR-0001-file-import-over-financial-api.md), [ADR-0002 local-first](../adr/ADR-0002-local-first-architecture.md), [ADR-0003 주 1회 Import](../adr/ADR-0003-weekly-import-instead-of-realtime.md), [ADR-0004 버전 지정 급여 추정](../adr/ADR-0004-versioned-local-payroll-estimation.md), [ADR-0008 클라이언트 경로](../adr/ADR-0008-client-routes-for-financial-workflows.md), [ADR-0010 Kakao 경계](../adr/ADR-0010-kakao-map-web-sdk-opt-in-boundary.md), [ADR-0012 Merchant Resolution](../adr/ADR-0012-merchant-entity-resolution-before-vector-search.md), [ADR-0013 확인형 로컬 장부 초기화](../adr/ADR-0013-confirmed-local-ledger-reset.md)을 따른다.
 
 ## 현재와 목표 상태
 
-### Phase 1–8F 구현 상태
+### Phase 1–9A 구현 상태
 
 - React + TypeScript + Vite 실행 기반과 lint, typecheck, test, build 명령이 있다.
 - 급여 입력 UI가 버전 지정 2026년 정책을 사용하는 순수 `payroll-estimate` Domain을 직접 호출한다.
@@ -25,7 +25,7 @@
 - Import Preview는 실제 파일 읽기·Kakao 분석·저장 상태와 실제 신규·중복·확인 필요 수를 표시한다. 정확 설명 규칙 다음에는 사용자가 확인한 포함 키워드 규칙을 적용하고, 그 뒤에만 Merchant/Kakao fallback을 실행한다. 사용자는 모든 Preview 카테고리를 수정할 수 있다. 분석 trace는 기본적으로 접혀 있다. 카테고리는 새 `EXPENSE` 후보에만 적용하며, 계좌 분류 근거는 저장하지 않는다. 원본 파일·파일명·행은 저장하지 않는다.
 - 앱은 History API 기반의 작은 클라이언트 라우팅으로 `/home`, `/transactions`, `/imports`, `/payroll`, `/settings`, `/review`에서 한 번에 하나의 작업 화면만 렌더링한다. `/review`는 네 개 하단 탐색을 늘리지 않는 보조 경로이고, `/`는 Home, 기존 `/ledger`는 Transactions의 호환 alias다.
 - 모바일 앱 셸은 Home·Transactions·Payroll·Settings 하단 탐색과 Home·Transactions 전용 빠른 작업 시트를 제공한다. 시트는 Escape, 포커스 이동·순환·복귀를 지원하고 주요 터치 타깃은 44px 이상을 유지한다.
-- 저장 거래의 카테고리·메모 수정과 월 생활비 목표는 IndexedDB의 검증된 별도 흐름으로 관리한다. Review의 키워드 묶기는 확인한 키워드 규칙과 일치한 미분류 지출만 하나의 IndexedDB 트랜잭션에서 저장하고, 이후 개별 편집은 기존 흐름을 그대로 쓴다.
+- 저장 거래의 카테고리·메모 수정과 월 생활비 목표는 IndexedDB의 검증된 별도 흐름으로 관리한다. Review의 키워드 묶기는 확인한 키워드 규칙과 일치한 미분류 지출만 하나의 IndexedDB 트랜잭션에서 저장하고, 이후 개별 편집은 기존 흐름을 그대로 쓴다. Settings의 확인형 초기화는 여섯 로컬 저장소를 하나의 트랜잭션으로 비우지만 스키마와 파일 시스템은 유지한다.
 - Payroll과 Settings의 개편은 UI 정보 계층만 변경한다. 급여 값은 계속 메모리 전용이며 월 생활비 목표만 기존 IndexedDB 설정 계약으로 관리한다.
 - Kakao가 설정된 Import Preview는 정확 또는 포함 키워드 사용자 규칙이 없는 카드 지출 후보에 한해 Merchant를 정규화하고 중앙 Alias·제한적 Fuzzy로 canonical query를 만든다. 원문·정규화·canonical을 최대 3회 검색해 `category_name`을 카테고리 제안으로 쓰며, 분석 trace와 Kakao 메타데이터는 저장하지 않는다.
 
@@ -167,7 +167,7 @@ Adapter는 저장, Dashboard 집계, UI 렌더링, 사용자 카테고리 질문
 - Import 확정 시 Batch와 모든 Transaction을 하나의 IndexedDB 트랜잭션으로 저장한다.
 - Native IndexedDB를 첫 구현의 기본값으로 하며 DB 스키마 버전과 마이그레이션은 Phase 3 첫 영속 모델을 도입할 때 정의한다.
 - 복합 쿼리, 페이지네이션, 반응형 조회 또는 다단계 스키마 마이그레이션이 실제 요구가 되면 Dexie를 재평가한다.
-- IndexedDB는 배포 origin에 묶이며 브라우저 데이터 삭제나 주소 변경으로 유실될 수 있다. 실제 데이터 사용 전에 삭제 UX와 백업·복구 전략을 별도 계획한다.
+- IndexedDB는 배포 origin에 묶이며 브라우저 데이터 삭제나 주소 변경으로 유실될 수 있다. Settings에는 범위를 명시하고 재확인하는 전체 장부 초기화 UX가 있으나, 백업·복구 전략은 별도 계획한다.
 - local-first는 저장 데이터가 자동 암호화된다는 뜻이 아니다.
 
 ## 보안과 신뢰 경계

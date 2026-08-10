@@ -6,7 +6,7 @@
 
 ## 현재 개발 범위
 
-Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기, Phase 2 Transaction Domain Foundation, Phase 3A/3B Legacy XLS Preview·확정 저장, Phase 4 중복 후보 검토, Phase 5 확정 카테고리 규칙, Phase 6A 기능별 페이지 분리, Phase 6B 계좌 거래 유형 분류, Phase 7A/7B/7C Kakao 장소 분류·진행 표시, Phase 8A 저장 거래 메모·카테고리 편집, Phase 8B 월 생활비 목표 로컬 설정, Phase 8C 결정적 Merchant Entity Resolution, Phase 8D 모바일 앱 UI/UX 개편, Phase 8E 대량 분류 검토 큐와 거래 방향 색상 구분, Phase 8F 사용자 확인형 키워드 카테고리 묶기는 완료되었다. Git에서 제외한 private 카드 이용내역·계좌 거래내역은 이전 Phase의 실제 로컬 브라우저 Preview로 호환성을 확인했다. Phase 8D·8E·8F 반응형 검증에서는 private 파일을 열지 않았다. 저축 분석과 장기 자산 모델은 후속 Phase에서 작은 단위로 진행한다.
+Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 추정기, Phase 2 Transaction Domain Foundation, Phase 3A/3B Legacy XLS Preview·확정 저장, Phase 4 중복 후보 검토, Phase 5 확정 카테고리 규칙, Phase 6A 기능별 페이지 분리, Phase 6B 계좌 거래 유형 분류, Phase 7A/7B/7C Kakao 장소 분류·진행 표시, Phase 8A 저장 거래 메모·카테고리 편집, Phase 8B 월 생활비 목표 로컬 설정, Phase 8C 결정적 Merchant Entity Resolution, Phase 8D 모바일 앱 UI/UX 개편, Phase 8E 대량 분류 검토 큐와 거래 방향 색상 구분, Phase 8F 사용자 확인형 키워드 카테고리 묶기, Phase 9A 확인형 로컬 장부 초기화는 완료되었다. Git에서 제외한 private 카드 이용내역·계좌 거래내역은 이전 Phase의 실제 로컬 브라우저 Preview로 호환성을 확인했다. Phase 8D·8E·8F·9A 반응형 검증에서는 private 파일을 열지 않았다. 저축 분석과 장기 자산 모델은 후속 Phase에서 작은 단위로 진행한다.
 
 ## 기능 요구사항
 
@@ -53,6 +53,7 @@ Phase 1의 모바일 우선 Web Skeleton과 메모리 전용 급여 실수령 �
 | FR-037 | MUST | 사용자는 전용 검토 화면에서 로컬에 저장된 미분류 `EXPENSE`를 한 건씩 실제 남은 수와 함께 분류할 수 있어야 한다. 카테고리 선택은 해당 Transaction 하나에만 적용하고, 금액·일자·방향·유형·Import 추적정보·카테고리 규칙을 바꾸지 않은 채 다음 거래로 이동해야 한다. | 8E |
 | FR-038 | MUST | 거래 행은 수입과 지출을 색상뿐 아니라 `+`·`−` 부호와 방향 표기로 함께 구분해야 하며, 360–430px에서도 색상 처리로 인해 가로 넘침이나 44px 미만의 주요 조작을 만들지 않아야 한다. | 8E |
 | FR-039 | MUST | 사용자는 포함 키워드와 카테고리, 실제 미분류 지출 일치 건수를 확인한 뒤에만 해당 키워드의 거래를 묶을 수 있어야 한다. 묶기는 현재 저장된 미분류 `EXPENSE`만 변경하고 미래 Import Preview에도 적용하되, 정확 설명 규칙이 우선하며 이미 분류한 거래·원장 필드는 보존하고 사용자는 각 결과를 개별 수정할 수 있어야 한다. | 8F |
+| FR-040 | MUST | 사용자는 Settings에서 이 브라우저의 로컬 장부 데이터를 초기화할 수 있어야 한다. 초기화 전에 영향을 받는 저장 데이터와 비가역성을 명확히 보이고, 취소·Escape·배경 닫기는 데이터를 바꾸지 않아야 한다. 최종 확인은 거래, Import 이력, 정산, 정확·키워드 카테고리 규칙, 월 생활비 목표만 하나의 로컬 트랜잭션으로 지우며 원본 파일·샘플·앱 코드·환경 설정·원격 데이터는 지우지 않는다. | 9A |
 
 ## Import 요구사항
 
