@@ -1,57 +1,57 @@
 # Local Transaction Storage Contract
 
-> Status: Phase 9A implemented
+> 상태: 10A단계 구현 중
 >
-> Updated: 2026-08-07
+> 갱신일: 2026-08-10
 
-## Browser database
+## 브라우저 데이터베이스
 
-The browser uses native IndexedDB database `household-ledger`, schema version `4`.
+브라우저는 네이티브 IndexedDB 데이터베이스 `household-ledger`를 사용하며, 현재 스키마 버전은 `5`다.
 
-| Store | Key | Index | Stored purpose |
+| 저장소 | 키 | 인덱스 | 저장 목적 |
 | --- | --- | --- | --- |
-| `transactions` | `id` | `occurredOn`, `importBatchId` | Confirmed normalized transactions only |
-| `importBatches` | `id` | `committedAt` | Import provenance and counts |
-| `budgetSettlements` | `id` | `payerOutflowTransactionId` | Explicit group-payment links |
-| `categoryRules` | `matchDescriptionNormalized` | — | User-confirmed category choices for future Import Preview candidates |
-| `keywordCategoryRules` | `keywordNormalized` | — | User-confirmed included-keyword category choices for current Review grouping and future Import Preview candidates |
-| `userSettings` | `id` (`current`) | — | One local monthly living-expense goal and its update time |
+| `transactions` | `id` | `occurredOn`, `importBatchId` | 확정된 정규화 거래만 저장 |
+| `importBatches` | `id` | `committedAt` | Import 출처와 건수 저장 |
+| `budgetSettlements` | `id` | `outflowTransactionIds` | 명시적인 다대다 공동결제 연결 |
+| `categoryRules` | `matchDescriptionNormalized` | — | 이후 Import Preview에 재사용할 사용자 확인 카테고리 |
+| `keywordCategoryRules` | `keywordNormalized` | — | Review 묶기와 이후 Import Preview에 재사용할 사용자 확인 포함 키워드 |
+| `userSettings` | `id` (`current`) | — | 로컬 월 생활비 목표와 갱신 시각 하나 |
 
-The source XLS blob, original file name, parser row arrays, preview state, full account/card numbers, and source financial identifiers are never stored.
+원본 XLS blob, 원본 파일명, Parser 행 배열, Preview 상태, 전체 계좌·카드 번호와 금융기관 식별자는 저장하지 않는다.
 
-## Atomic import confirmation
+## 원자적 Import 확정
 
-`confirmLegacyXlsImport` converts valid Preview candidates into complete validated `Transaction` records. Each carries a generated UUID, one `ImportBatch` UUID, `LEGACY_XLS` importer ID, and UTC creation/update timestamps.
+`confirmLegacyXlsImport`는 유효한 Preview 후보를 완전하고 검증된 `Transaction` 레코드로 변환한다. 각 레코드에는 생성한 UUID, 하나의 `ImportBatch` UUID, `LEGACY_XLS` importer ID, UTC 생성·갱신 시각이 들어간다.
 
-The repository writes the `ImportBatch` and all transactions in one IndexedDB read-write transaction. Any add failure aborts the whole operation; no batch or partial transaction set remains. The UI receives a generic failure result and does not expose source data.
+저장소는 하나의 IndexedDB read-write transaction으로 `ImportBatch`와 모든 거래를 기록한다. 하나라도 추가에 실패하면 전체 작업을 중단해 Batch나 일부 거래만 남지 않는다. UI에는 일반화된 실패 결과만 전달하며 원본 데이터는 노출하지 않는다.
 
-## Period lookup
+## 기간 조회
 
-`occurredOn` is a date-only `YYYY-MM-DD` string. The `transactions.occurredOn` index is queried with inclusive bounds and results are sorted newest first.
+`occurredOn`은 날짜 전용 `YYYY-MM-DD` 문자열이다. `transactions.occurredOn` 인덱스를 양끝 포함 범위로 조회하고 최신순으로 정렬한다.
 
-| Control | Query range |
+| 컨트롤 | 조회 범위 |
 | --- | --- |
-| 하루 | selected date only |
-| 최근 1주 | selected date and previous six calendar dates |
-| 이번 달 | first through last date of selected date's calendar month |
-| 직접 선택 | selected start and end dates, inclusive |
+| 하루 | 선택한 날짜만 |
+| 최근 1주 | 선택한 날짜와 이전 6일 |
+| 이번 달 | 선택한 날짜가 속한 달의 첫날부터 마지막 날 |
+| 직접 선택 | 선택한 시작일과 종료일, 양끝 포함 |
 
-The anchor and display semantics use `Asia/Seoul`; no date-only value is converted through a UTC timestamp.
+기준일과 표시 의미는 `Asia/Seoul`을 사용하며 날짜 전용 값을 UTC timestamp로 변환하지 않는다.
 
-## Shared-payment settlement
+## 공동결제 정산
 
-`BudgetSettlement` stores one payer `OUTFLOW` transaction and one or more reimbursement `INFLOW` transactions. The save use case validates participant existence, direction, duplicate IDs, and that no participant already belongs to another settlement.
+`BudgetSettlement`는 `OUTFLOW` 지출 ID 배열 `outflowTransactionIds`와 `INFLOW` 정산금 ID 배열 `inflowTransactionIds`를 각각 하나 이상 저장한다. 저장 유스케이스는 참가자 존재 여부, 방향, 배열 중복·교차, 다른 정산과의 중복 연결을 검증한다. v4의 단일 원결제 필드는 스키마 버전 5 업그레이드에서 배열 하나로 변환한다.
 
-For a selected period, ordinary `EXPENSE + OUTFLOW` records are summed. A linked payer is replaced with `max(payer amount - all linked reimbursement amounts, 0)` when the payer date is in the period. Reimbursements may be later than the payer date; their amount remains attributed to the payer date for budget progress. The linked original transactions and normal inflow/outflow totals are not mutated. See [ADR-0005](../adr/ADR-0005-manual-shared-payment-settlements.md).
+선택 기간에는 일반 `EXPENSE + OUTFLOW`를 더하고, 정산에 연결된 지출 중 해당 기간의 금액 합계를 연결 입금 전체에서 차감해 `max(지출 합계 - 입금 합계, 0)`으로 반영한다. 입금이 이후 날짜여도 선택한 지출 기간에 귀속한다. 원본 거래와 일반 입출금 합계는 변경하지 않는다. 자세한 결정은 [ADR-0014](../adr/ADR-0014-many-to-many-shared-payment-settlements.md)와 기존 수동 연결 결정 [ADR-0005](../adr/ADR-0005-manual-shared-payment-settlements.md)를 따른다.
 
-## Local monthly living-expense goal
+## 로컬 월 생활비 목표
 
-`userSettings` is a singleton record keyed by `current`. It contains only a positive KRW safe-integer `monthlyLivingExpenseGoalMinor` and a UTC `updatedAt` value. Saving replaces that one record; clearing removes it. No default amount is stored or inferred.
+`userSettings`는 `current`를 키로 하는 단일 레코드다. 양의 KRW safe integer `monthlyLivingExpenseGoalMinor`와 UTC `updatedAt`만 담는다. 저장은 해당 레코드를 교체하고 비우기는 삭제한다. 기본 금액은 저장하거나 추정하지 않는다.
 
-The saved ledger reads the goal only for its calendar-month view. It compares the goal with `calculateLivingExpenseSummary`, so linked shared payments contribute their net out-of-pocket spending. Day, week, and custom ranges show actual spending without proportional goal allocation. Payroll calculator inputs and results never enter this store. See [ADR-0011](../adr/ADR-0011-local-monthly-living-expense-goal.md).
+저장 장부는 달력 월 보기에서만 목표를 읽는다. `calculateLivingExpenseSummary` 결과와 비교하므로 연결된 공동결제는 순지출만 기여한다. 하루·주·직접 선택 범위에는 목표를 임의로 배분하지 않고 실제 사용액만 보여 준다. 급여 계산기 입력과 결과는 이 저장소에 들어가지 않는다. 자세한 결정은 [ADR-0011](../adr/ADR-0011-local-monthly-living-expense-goal.md)을 따른다.
 
-## Confirmed local-ledger reset
+## 확인형 로컬 장부 초기화
 
-`resetLocalLedger` opens one read-write transaction over all six stores and calls `clear()` on each. The schema, database name, browser origin, source files, and application configuration stay intact. An abort or request error rejects the operation, so the UI keeps its confirmation dialog open and never reports a successful reset.
+`resetLocalLedger`는 여섯 저장소를 대상으로 하나의 read-write transaction을 열고 각각 `clear()`를 호출한다. 스키마, 데이터베이스 이름, 브라우저 origin, 원본 파일과 애플리케이션 설정은 유지한다. 중단이나 요청 오류가 나면 작업을 거부하므로 UI는 확인 dialog를 열어 둔 채 성공을 알리지 않는다.
 
-The Settings control opens an accessible confirmation dialog before calling this operation. The dialog lists the six affected data groups, states that the action cannot be undone, and says that original Excel files, samples, app code, and environment settings are not affected. Backdrop dismissal, Escape, and cancel never invoke the repository operation. See [ADR-0013](../adr/ADR-0013-confirmed-local-ledger-reset.md).
+Settings 컨트롤은 이 작업을 호출하기 전에 접근 가능한 확인 dialog를 연다. dialog에는 영향을 받는 여섯 데이터 그룹과 복구할 수 없다는 안내, 원본 Excel·샘플·앱 코드·환경 설정은 대상이 아니라는 안내를 표시한다. 배경 닫기·Escape·취소는 저장소 작업을 호출하지 않는다. 자세한 결정은 [ADR-0013](../adr/ADR-0013-confirmed-local-ledger-reset.md)을 따른다.

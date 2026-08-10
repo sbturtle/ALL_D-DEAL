@@ -118,6 +118,10 @@ Phase 8C는 Transaction 또는 IndexedDB 스키마를 변경하지 않는다. �
 
 정규화 표시값·comparison key, Alias/Fuzzy 출처, canonical query, Kakao 검색 시도, 장소·카테고리와 Review 이유는 모두 Import Preview 메모리에만 존재한다. 확정 저장에는 사용자가 확인한 기존 `Transaction.categoryId`만 남고 Merchant resolution trace나 Kakao DTO는 포함하지 않는다. 자세한 경계는 [Merchant Resolution Contract](merchant-resolution-contract.md)와 [ADR-0012](../adr/ADR-0012-merchant-entity-resolution-before-vector-search.md)를 따른다.
 
+### Phase 10A — 다대다 공동결제 정산
+
+`BudgetSettlement`는 원본 `Transaction`을 수정하지 않고 여러 지출과 여러 정산 입금을 하나의 생활비 정산 묶음으로 표현한다. `outflowTransactionIds`와 `inflowTransactionIds`는 모두 하나 이상의 고유 UUID이며, 같은 거래가 두 배열에 동시에 있거나 다른 정산에 다시 연결되면 저장하지 않는다. 선택 기간에 속한 연결 지출 합계에서 연결 입금 전체를 빼고 0 이상으로 제한한 값만 생활비 집계에 포함한다. 기존 v4 저장 레코드는 IndexedDB 버전 5에서 새 배열 모델로 변환한다. 자세한 저장 계약은 [Local Transaction Storage Contract](local-transaction-storage.md), 결정은 [ADR-0014](../adr/ADR-0014-many-to-many-shared-payment-settlements.md)를 따른다.
+
 ## ImportBatch 후보
 
 확정된 Import 작업을 추적하기 위한 최소 후보는 다음과 같다.

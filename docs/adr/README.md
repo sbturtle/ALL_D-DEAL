@@ -17,6 +17,7 @@ ADR은 기술 선택뿐 아니라 중요한 제품 요구가 왜 바뀌었는지
 | [ADR-0011](ADR-0011-local-monthly-living-expense-goal.md)                | Accepted | 월 생활비 목표는 단일 로컬 설정으로 저장하고 월간 순생활비와만 비교한다.  |
 | [ADR-0012](ADR-0012-merchant-entity-resolution-before-vector-search.md)  | Accepted | Vector Search보다 결정적 Merchant Entity Resolution을 먼저 적용한다.      |
 | [ADR-0013](ADR-0013-confirmed-local-ledger-reset.md)                     | Accepted | 범위를 고지하고 재확인한 뒤에만 브라우저 로컬 장부를 초기화한다.          |
+| [ADR-0014](ADR-0014-many-to-many-shared-payment-settlements.md)           | Accepted | 여러 지출과 여러 입금을 하나의 공동결제 정산으로 연결한다.                |
 
 ## 새 ADR 기본 구조
 
