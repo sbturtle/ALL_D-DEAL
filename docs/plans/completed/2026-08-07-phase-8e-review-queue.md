@@ -1,62 +1,62 @@
-# Phase 8E — Review Queue and Transaction Direction Tone
+# 8E단계 — 분류 검토 큐와 거래 방향 표현
 
-- Status: `DONE`
-- Plan updated: 2026-08-07
-- Prerequisite: Phase 8D Mobile App UI/UX Refresh `DONE`
+- 상태: `DONE`
+- 계획 갱신일: 2026-08-07
+- 선행 단계: 8D단계 모바일 앱 UI/UX 개편 `DONE`
 
-## Goal
+## 목표
 
-Let a user process a large local backlog of category-needed transactions one at a time in a dedicated, touch-first review queue, while making income and expense transaction cards immediately distinguishable.
+분류가 필요한 로컬 거래가 많아도 전용 검토 큐에서 한 건씩 터치 중심으로 처리할 수 있게 하고, 수입·지출 카드를 즉시 구분할 수 있게 한다.
 
-## Scope and decisions
+## 범위와 결정
 
-1. Add a canonical `/review` route. Keep the four-item primary bottom navigation unchanged; reach Review from the Home review summary and the Transactions review filter so the primary navigation does not become crowded.
-2. Move the definition of a review-needed transaction into a tested Domain helper: `UNKNOWN`, or an `EXPENSE` with no category. Dashboard and the new page must share it.
-3. The one-by-one queue auto-selects the next category-needed `EXPENSE`, shows real local remaining progress, merchant/date/amount/payment context, and provides large category choices. A chosen category saves only that Transaction and advances to the next queued transaction.
-4. Preserve FR-033: the review queue must not change a transaction's amount, date, direction, type, import trace, or any category rule. Category rule creation and transaction-type correction remain out of scope.
-5. `UNKNOWN` is a transaction-type review, not a category-needed expense. Show its real count and a direct path back to Transactions rather than falsely resolving it by attaching a category.
-6. Use no mock data, backend, analytics, remote asset, or private financial sample. Store no queue cursor or transaction data beyond the existing local Transaction update.
-7. Apply a semantic, accessible visual treatment to real and mock transaction rows: soft rose/red for OUTFLOW and soft mint/green for INFLOW, with text/icon contrast that does not rely on colour alone.
+1. 표준 `/review` 경로를 추가한다. 기본 하단 탐색 4개는 유지하고 Home 검토 요약과 Transactions 검토 필터에서 Review로 들어가도록 한다.
+2. 검토 필요 거래 정의를 테스트한 Domain 도우미로 옮긴다. `UNKNOWN` 또는 카테고리가 없는 `EXPENSE`를 대상으로 하며 Dashboard와 새 화면이 공유한다.
+3. 한 건씩 처리하는 큐는 다음 카테고리 미지정 `EXPENSE`를 자동 선택하고, 실제 남은 수·가맹점·날짜·금액·결제수단 맥락과 큰 카테고리 선택지를 보여준다. 선택한 카테고리는 해당 Transaction 하나에만 저장하고 다음 큐로 이동한다.
+4. FR-033을 보존한다. 검토 큐는 Transaction의 금액·날짜·방향·유형·Import 추적정보·카테고리 규칙을 바꾸지 않는다. 카테고리 규칙 생성과 거래 유형 수정은 범위 밖이다.
+5. `UNKNOWN`은 카테고리 미지정 지출이 아니라 거래 유형 검토 대상이다. 실제 건수와 Transactions로 돌아가는 경로를 보여주며 카테고리를 붙여 잘못 해소하지 않는다.
+6. Mock 데이터, 백엔드, 분석 수집, 원격 자산과 private 금융 샘플을 사용하지 않는다. 기존 로컬 Transaction 수정 외에는 큐 위치나 거래 데이터를 저장하지 않는다.
+7. 실제와 Mock 거래 행 모두에 의미 있고 접근 가능한 표현을 적용한다. `OUTFLOW`는 옅은 장미·빨강, `INFLOW`는 옅은 민트·초록을 사용하고 색상만으로 구분하지 않도록 글자·아이콘 대비를 함께 제공한다.
 
-## Vertical slices
+## 세로 슬라이스
 
-### Slice 1 — Shared review rule and route
+### 슬라이스 1 — 공통 검토 규칙과 경로
 
-- Add the Domain review-needed helper and tests.
-- Add `/review`, route tests, title, route focus behavior, and clear entry points from Home and Transactions.
+- Domain 검토 필요 도우미와 테스트를 추가한다.
+- `/review`, 경로 테스트, 제목, 경로 이동 후 포커스와 Home·Transactions의 명확한 진입점을 추가한다.
 
-### Slice 2 — One-by-one category review
+### 슬라이스 2 — 한 건씩 카테고리 검토
 
-- Load local transactions, queue only category-needed expenses, and render loading, empty, error/retry, active, save, and save-error states.
-- Save a selected category through the existing single-transaction update use case, announce progress, and advance to the next queued expense.
-- Make the active card and category buttons touch-friendly with merchant, date, signed amount, type, and payment context.
+- 로컬 거래를 불러오고 카테고리 미지정 지출만 큐에 넣어 로딩·빈 상태·오류/재시도·활성·저장·저장 오류 상태를 표시한다.
+- 기존 단일 Transaction 수정 사용 사례로 카테고리를 저장하고 진행 상황을 알린 뒤 다음 지출로 이동한다.
+- 활성 카드와 카테고리 버튼을 터치하기 쉽게 만들고 가맹점·날짜·부호가 있는 금액·유형·결제수단 맥락을 제공한다.
 
-### Slice 3 — Direction colour and finalisation
+### 슬라이스 3 — 방향 색상과 마무리
 
-- Apply direction classes to transaction rows and implement accessible income/expense colour tokens.
-- Run targeted tests, lint, typecheck, full tests, build, responsive browser checks without private XLS data, review, document, and make function-sized local commits.
+- 거래 행에 방향 클래스를 적용하고 접근 가능한 수입·지출 색상 토큰을 구현한다.
+- 대상 테스트, lint, typecheck, 전체 테스트, build, private XLS 없는 반응형 브라우저 점검, 검토, 문서와 기능 단위 로컬 커밋을 완료한다.
 
-## Acceptance criteria
+## 완료 기준
 
-1. `/review` is reachable from the Home review summary and Transactions review filter, works with History navigation, has a descriptive title, and returns focus to its main content after navigation.
-2. The page displays real local category-needed expense counts and never invents a 771-like number, progress value, or financial amount.
-3. Selecting a category updates exactly one local `EXPENSE` through the existing validation path, preserves all other Transaction fields, removes it from the active category queue, and advances to the next available expense.
-4. Empty, loading, save failure, repository failure, and no-more-category-needed-expenses states give a clear next action.
-5. `UNKNOWN` records are not treated as successfully category-classified; their count and limitation are explicit.
-6. Transaction cards visibly distinguish OUTFLOW from INFLOW with labels/signs as well as colour, at 360–430px without horizontal overflow or sub-44px primary targets.
-7. Existing Home, Transactions, Import, payroll, and local setting behaviors remain intact. No private sample is read or committed.
+1. Home 검토 요약과 Transactions 검토 필터에서 `/review`에 들어갈 수 있고 History 이동, 설명적인 제목과 이동 뒤 기본 콘텐츠 포커스가 동작한다.
+2. 실제 로컬 카테고리 미지정 지출 수를 보여주며 가상의 771건 같은 수, 진행률 또는 금액을 만들지 않는다.
+3. 카테고리를 고르면 기존 검증 경로로 로컬 `EXPENSE` 하나만 수정하고 다른 Transaction 필드를 보존하며 큐에서 제거한 뒤 다음 지출로 이동한다.
+4. 빈 상태, 로딩, 저장 실패, 저장소 오류와 남은 카테고리 지출 없음 상태에 명확한 다음 행동을 제공한다.
+5. `UNKNOWN`을 성공적인 카테고리 분류로 취급하지 않고 건수와 한계를 명시한다.
+6. 거래 카드는 360–430px에서 가로 넘침이나 44px 미만 주요 조작 없이 색상뿐 아니라 라벨·부호로 `OUTFLOW`와 `INFLOW`를 구분한다.
+7. 기존 Home, Transactions, Import, 급여와 로컬 설정 동작을 유지하며 private 샘플을 읽거나 커밋하지 않는다.
 
-## Completion record
+## 완료 기록
 
-- `/review` is a direct, History-compatible route with entry points from the Home review summary and Transactions review filter. The four-item primary navigation remains unchanged.
-- The shared Domain predicate keeps `UNKNOWN` as a transaction-type review. The queue loads only real local uncategorized `EXPENSE` transactions, saves one selected category through the existing single-Transaction use case, preserves all protected fields, and advances to the next transaction.
-- Loading, empty, retry, save failure, unknown-type limitation, progress, skip, and completion states are covered by UI tests with fabricated transactions only.
-- Income and expense rows now use semantic mint and rose cards respectively, while keeping `+`/`−` signs and contrast so direction is not encoded by colour alone.
-- Verification: targeted review and dashboard tests passed; `npm run lint`, `npm run typecheck`, `npm test` (41 files, 419 tests), and `npm run build` passed. Build retains only the pre-existing Vite >500 kB chunk warning.
-- Browser review: `/review` and mock Transactions were checked at 360px with no horizontal overflow; transaction rows measured 96px high and rendered as mint income / rose expense. No private XLS was opened, uploaded, or committed.
+- `/review`를 Home 검토 요약과 Transactions 검토 필터에서 진입할 수 있는 History 호환 경로로 추가했다. 기본 하단 탐색 4개는 유지했다.
+- 공통 Domain 판정은 `UNKNOWN`을 거래 유형 검토로 유지한다. 큐는 실제 로컬 카테고리 미지정 `EXPENSE`만 불러오고 기존 단일 Transaction 사용 사례로 선택 카테고리를 저장하며 보호 필드를 보존한 뒤 다음 거래로 이동한다.
+- 로딩·빈 상태·재시도·저장 실패·UNKNOWN 한계·진행·건너뛰기·완료 상태를 가짜 거래 Fixture만으로 UI 테스트했다.
+- 수입·지출 행은 의미 있는 민트·장미 카드를 사용하고 `+`·`−` 부호와 대비를 유지해 방향이 색상에만 의존하지 않게 했다.
+- 대상 검토·Dashboard 테스트, `npm run lint`, `npm run typecheck`, `npm test`(41개 파일, 419개 테스트), `npm run build`를 통과했다. 빌드에는 기존 500 kB 초과 Vite 청크 경고만 남아 있다.
+- 360px에서 `/review`와 Mock Transactions를 브라우저로 확인했으며 가로 넘침이 없고 거래 행은 96px 높이였다. 수입은 민트, 지출은 장미로 표시됐다. private XLS는 열거나 업로드·커밋하지 않았다.
 
-## Out of scope
+## 범위에서 제외한 항목
 
-- Changing a saved Transaction's type, direction, amount, date, import trace, or creating CategoryRules from this page
-- Batch category assignment, automatic/AI category suggestions, ranking, cloud sync, or backend work
-- Replacing the existing detailed transaction editor or adding a fifth primary bottom-navigation item
+- 저장 Transaction의 유형·방향·금액·날짜·Import 추적정보 변경과 이 화면에서 CategoryRule 생성
+- 일괄 카테고리 지정, 자동·AI 카테고리 제안, 순위화, 클라우드 동기화와 백엔드
+- 기존 상세 거래 편집기 교체와 기본 하단 탐색 항목 추가

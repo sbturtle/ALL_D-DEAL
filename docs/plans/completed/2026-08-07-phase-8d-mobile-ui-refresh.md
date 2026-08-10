@@ -1,89 +1,89 @@
-# Phase 8D — Mobile App UI/UX Refresh
+# 8D단계 — 모바일 앱 UI/UX 개편
 
-- Status: `DONE`
-- Plan updated: 2026-08-07
-- Prerequisite: Phase 8C Merchant Name Resolution `DONE`
-- Design sources: repository `DESIGN.md` and the user-provided five-screen HTML reference
+- 상태: `DONE`
+- 계획 갱신일: 2026-08-07
+- 선행 단계: 8C단계 가맹점 이름 해석 `DONE`
+- 디자인 출처: 저장소 `DESIGN.md`와 사용자가 제공한 5개 화면 HTML 참고 자료
 
-## Goal
+## 목표
 
-Rebuild the existing local-first ledger UI as a calm, friendly, touch-first mobile app without removing features, inventing financial data, or changing domain and persistence contracts.
+기존 local-first 가계부 UI를 차분하고 친근한 터치 중심 모바일 앱으로 다시 구성한다. 기능을 제거하거나 금융 데이터를 만들어내지 않으며 도메인·영속성 계약은 변경하지 않는다.
 
-The primary viewport is 360–430px. Desktop is a centered responsive extension, not a separate enterprise dashboard.
+기본 화면 폭은 360–430px이다. 데스크톱은 별도의 기업용 대시보드가 아니라 가운데 정렬된 반응형 확장으로 처리한다.
 
-## Repository findings and design decisions
+## 저장소 확인 결과와 디자인 결정
 
-1. The reference contains five visual directions: Home, Transactions, classification review, Import, and payroll result. `DESIGN.md` wins where the reference conflicts.
-2. Do not copy external Google fonts, Material Symbols, remote images, Tailwind CDN, `user-scalable=no`, hard-coded financial values, or simulated loading from the reference. Use Pretendard fallbacks, local CSS, inline SVG icons, real state, and existing calculations.
-3. Split the current combined ledger experience into canonical `/home` and `/transactions` routes. `/` maps to Home and the existing `/ledger` remains a backward-compatible alias for Transactions. Keep the small History API router.
-4. Mobile bottom navigation contains Home, Transactions, Payroll, and Settings. Import remains its own `/imports` workflow and is the primary FAB quick action on Home and Transactions; the FAB stays hidden on focused Import, Payroll, and Settings screens. Do not add empty Insights, Assets, profile, sharing, or manual-transaction features.
-5. Keep the existing Dashboard state and financial calculations. Separate only the Home and Transactions presentations so period filters, shared-payment net spending, transaction editing, Mock mode, and local settings remain intact.
-6. On Home and Transactions, the FAB opens an accessible bottom sheet containing only existing destinations. It must support Escape, an explicit close action, first-action focus, and focus return.
-7. Use semantic indigo/mint design tokens, 8-point spacing, 18–22px cards, 48px controls, 44px minimum targets, subtle shadows, tabular money, safe-area padding, visible focus, and reduced-motion support.
+1. 참고 화면은 Home, Transactions, 분류 검토, Import, 급여 결과의 5개 방향을 포함한다. 참고 자료와 충돌할 때는 저장소 `DESIGN.md`를 우선한다.
+2. 외부 Google 폰트, Material Symbols, 원격 이미지, Tailwind CDN, `user-scalable=no`, 하드코딩 금융값과 가짜 로딩을 복사하지 않는다. Pretendard 대체 글꼴, 로컬 CSS, 인라인 SVG, 실제 상태와 기존 계산을 사용한다.
+3. 기존 통합 장부 경험을 `/home`과 `/transactions`로 분리한다. `/`는 Home으로 연결하고 `/ledger`는 Transactions의 하위 호환 경로로 유지한다. 작은 History API 라우터도 유지한다.
+4. 모바일 하단 탐색은 Home, Transactions, Payroll, Settings로 구성한다. Import는 `/imports` 작업 흐름으로 유지하며 Home과 Transactions의 주요 빠른 작업 FAB에서 연다. 집중 화면인 Import·Payroll·Settings에서는 FAB를 숨긴다. 비어 있는 Insights, Assets, 프로필, 공유와 수동 거래 기능은 추가하지 않는다.
+5. 기존 Dashboard 상태와 금융 계산은 유지한다. Home과 Transactions 표현만 분리해 기간 필터, 공동결제 순지출, 거래 편집, Mock 모드와 로컬 설정을 보존한다.
+6. Home과 Transactions의 FAB는 기존 목적지만 담은 접근 가능한 하단 시트를 연다. Escape, 명시적 닫기, 첫 항목 포커스와 포커스 복귀를 지원해야 한다.
+7. 의미 있는 인디고·민트 디자인 토큰, 8포인트 간격, 18–22px 카드, 48px 조작부, 최소 44px 터치 타깃, 절제된 그림자, 숫자 정렬, 안전 영역 여백, 표시 포커스와 모션 줄이기 지원을 사용한다.
 
-## Vertical slices
+## 세로 슬라이스
 
-### Slice 1 — App shell and routes
+### 슬라이스 1 — 앱 셸과 경로
 
-- Add `/home` and `/transactions`, preserve `/ledger`, and update route tests.
-- Add inline SVG icons, sticky app bar, mobile bottom navigation, responsive desktop navigation, FAB and accessible quick-action sheet.
-- Remove the large marketing footer and developer Phase chip from the primary UI.
+- `/home`과 `/transactions`를 추가하고 `/ledger`를 유지하며 경로 테스트를 갱신한다.
+- 인라인 SVG 아이콘, 고정 앱 바, 모바일 하단 탐색, 반응형 데스크톱 탐색, FAB와 접근 가능한 빠른 작업 시트를 추가한다.
+- 기본 UI의 큰 홍보용 푸터와 개발용 Phase 칩을 제거한다.
 
-### Slice 2 — Home and Transactions
+### 슬라이스 2 — Home과 Transactions
 
-- Home shows actual monthly living expense, budget progress or setup guidance, real review count, weekly spending bars, recent transactions, and empty/error/loading states.
-- Transactions keeps day/week/month/custom ranges, real summaries, Mock mode, all stored rows, memo/category editing, and shared-payment settlement.
-- Add transaction filters for all, expense, income, and review-needed rows.
-- Present transaction editing as a mobile bottom sheet while preserving the current update contract.
+- Home은 실제 월 생활비, 예산 진행 또는 설정 안내, 실제 검토 수, 주간 소비 막대, 최근 거래와 빈 상태·오류·로딩 상태를 보여준다.
+- Transactions는 일·주·월·직접 기간, 실제 요약, Mock 모드, 저장된 모든 행, 메모·카테고리 편집과 공동결제 정산을 유지한다.
+- 전체·지출·수입·검토 필요 행을 위한 거래 필터를 추가한다.
+- 기존 수정 계약을 유지하면서 거래 편집을 모바일 하단 시트로 표현한다.
 
-### Slice 3 — Import and classification review
+### 슬라이스 3 — Import와 분류 검토
 
-- Turn the file picker into a clear `이번 주 소비 불러오기` flow with real reading, Kakao analysis, preview, duplicate, issue, selection, and save states.
-- Show real preview counts instead of invented totals.
-- Keep candidate rows touch-friendly and move category selection to an accessible mobile bottom sheet with all current categories.
-- Keep user-rule consent separate, debug metadata collapsed, stale-result protection intact, and the save action reachable above the safe area.
+- 파일 선택을 실제 읽기·Kakao 분석·Preview·중복·문제·선택·저장 상태가 드러나는 `이번 주 소비 불러오기` 흐름으로 바꾼다.
+- 만들어낸 합계가 아닌 실제 Preview 수를 보여준다.
+- 후보 행을 터치하기 쉽게 만들고 현재 모든 카테고리를 접근 가능한 모바일 하단 시트에서 선택하게 한다.
+- 사용자 규칙 동의, 접힌 분석 메타데이터, 오래된 결과 차단과 안전 영역 위 저장 동작을 유지한다.
 
-### Slice 4 — Payroll and Settings
+### 슬라이스 4 — Payroll과 Settings
 
-- Restyle payroll input and result hierarchy to match the reference: input summary, monthly take-home hero, deduction ratio/details, cautions, and policy details. Preserve every input, validation, result focus, and memory-only boundary.
-- Restyle Settings around the one real monthly living-expense goal and preserve load, retry, save, clear, and local-only states.
+- 급여 입력·결과 계층을 참고 화면에 맞춰 입력 요약, 월 실수령 영웅 영역, 공제 비율·상세, 주의와 정책 상세 순서로 정리한다. 모든 입력, 검증, 결과 포커스와 메모리 전용 경계를 유지한다.
+- Settings는 실제 월 생활비 목표 하나를 중심으로 다시 꾸미고 불러오기, 재시도, 저장, 비우기와 로컬 전용 상태를 유지한다.
 
-### Slice 5 — Verification and documentation
+### 슬라이스 5 — 검증과 문서
 
-- Run lint, typecheck, all tests, build, privacy review, and staged diff checks.
-- Browser-check 360, 390, 430, 768, and 1280px without uploading private XLS data.
-- Verify overflow, bottom-nav/FAB overlap, 44px targets, keyboard focus, sheet Escape/focus return, reduced motion, and console errors.
-- Update requirements/history, ADR-0008 or a follow-up ADR, architecture, engineering log, and this plan.
+- lint, typecheck, 전체 테스트, build, 개인정보 점검과 staged diff 검사를 실행한다.
+- private XLS를 업로드하지 않고 360, 390, 430, 768, 1280px을 브라우저에서 확인한다.
+- 넘침, 하단 탐색·FAB 겹침, 44px 타깃, 키보드 포커스, 시트 Escape·포커스 복귀, 모션 줄이기와 콘솔 오류를 검증한다.
+- 요구사항·변경 이력, ADR-0008 또는 후속 ADR, 아키텍처, 엔지니어링 로그와 이 계획을 갱신한다.
 
-## Acceptance criteria
+## 완료 기준
 
-1. The app opens Home at `/` and `/home`; `/transactions` is separate and `/ledger` still reaches the transactions experience.
-2. Mobile navigation, and the Home·Transactions FAB where present, remain reachable with one hand, respect safe areas, have 44px or larger targets, and expose correct accessible names/current state.
-3. No horizontal overflow or clipped primary amount occurs at 360, 390, or 430px.
-4. Home uses local transactions, settlements, and settings only and never displays fabricated financial values. Mock values appear only in the explicit Transactions Mock mode.
-5. Transactions retains all existing period, editing, and settlement behavior and gains understandable row filtering and a mobile edit sheet.
-6. Import retains every duplicate/category/rule/Kakao/trace/save behavior while presenting actual counts and a product-like review flow.
-7. Payroll retains all inputs, 2026 policy calculations, validation, result focus, source links, and the no-storage promise.
-8. Settings retains its complete local goal lifecycle.
-9. No external design CDN, analytics, remote icon/font, or reference-image request is added.
-10. Targeted tests, full quality commands, responsive browser checks, documentation, and function-sized local commits pass before `DONE`.
+1. `/`와 `/home`에서 Home이 열리고 `/transactions`는 별도 화면으로 열리며 `/ledger`는 Transactions 경험으로 연결된다.
+2. 모바일 탐색과 Home·Transactions의 FAB가 한 손 조작에 닿고 안전 영역을 지키며 44px 이상의 타깃과 올바른 접근성 이름·현재 상태를 제공한다.
+3. 360, 390, 430px에서 가로 넘침이나 주요 금액 잘림이 없다.
+4. Home은 로컬 거래·정산·설정만 사용하고 가짜 금융값을 표시하지 않는다. Mock 값은 Transactions에서 사용자가 명시적으로 Mock 모드를 고른 경우에만 보인다.
+5. Transactions의 기존 기간·편집·정산 동작을 유지하고 이해 가능한 행 필터와 모바일 편집 시트를 제공한다.
+6. Import의 중복·카테고리·규칙·Kakao·분석 과정·저장 동작을 유지하면서 실제 수와 제품 수준 검토 흐름을 제공한다.
+7. Payroll의 모든 입력, 2026 정책 계산, 검증, 결과 포커스, 출처 링크와 비저장 약속을 유지한다.
+8. Settings의 로컬 목표 전체 생명주기를 유지한다.
+9. 외부 디자인 CDN, 분석 수집, 원격 아이콘·폰트·참고 이미지 요청을 추가하지 않는다.
+10. 대상 테스트, 전체 품질 명령, 반응형 브라우저 점검, 문서와 기능 단위 로컬 커밋을 통과한 뒤 `DONE`으로 표시한다.
 
-## Completion record
+## 완료 기록
 
-- App shell/routes, Home/Transactions, Import/classification review, Payroll/Settings, and verification/documentation slices are complete.
-- `npm run lint`, `npm run typecheck`, `npm test` (39 files, 410 tests), `npm run build`, and `git diff --check` passed. The build retains only the pre-existing bundle-size warning for a chunk larger than 500 kB.
-- Browser checks passed at 360, 390, 430, 768, and 1280px with no horizontal overflow, undersized primary controls, or console errors.
-- The quick-action sheet and transaction/category sheets were checked for Escape close, focus movement, and focus return. The FAB is limited to Home and Transactions so it does not cover focused Import, Payroll, or Settings controls.
-- Browser verification used an empty local database and temporary in-memory payroll values only. No file from `samples/private/` was opened or uploaded.
-- Review found and fixed two responsive defects before completion: the Import intro inherited a legacy multi-column grid, and the global FAB could cover the Payroll input-mode control.
-- Final code review also unified Home and Transactions review-needed semantics with the Import contract, then guarded Import confirmation against stale save results, reset actions during saving, and confirmation while Kakao analysis is pending. Duplicate lookup failures no longer present an unverified new count, and the category sheet identifies the transaction being edited.
+- 앱 셸·경로, Home·Transactions, Import·분류 검토, Payroll·Settings와 검증·문서 슬라이스를 완료했다.
+- `npm run lint`, `npm run typecheck`, `npm test`(39개 파일, 410개 테스트), `npm run build`, `git diff --check`를 통과했다. 빌드에는 500 kB를 넘는 기존 청크 경고만 남아 있다.
+- 360, 390, 430, 768, 1280px에서 가로 넘침·작은 주요 조작·콘솔 오류가 없음을 확인했다.
+- 빠른 작업 시트와 거래·카테고리 시트에서 Escape 닫기, 포커스 이동과 복귀를 확인했다. FAB는 Home과 Transactions에만 두어 Import·Payroll·Settings의 집중 조작을 가리지 않는다.
+- 브라우저 검증에는 빈 로컬 데이터베이스와 임시 메모리 급여값만 사용했다. `samples/private/` 파일은 열거나 업로드하지 않았다.
+- 완료 전 두 가지 반응형 문제를 발견해 수정했다. Import 소개 영역의 기존 다중 열 배치와 Payroll 입력 모드를 가리는 전역 FAB 문제다.
+- 최종 코드 검토에서 Home·Transactions의 검토 필요 의미를 Import 계약과 통일하고, 저장 중 초기화·Kakao 분석 중 확정·오래된 Import 결과 반영을 차단했다. 중복 조회 실패는 확인되지 않은 새 수로 표시하지 않으며 카테고리 시트는 편집 중인 거래를 식별한다.
 
-## Out of scope
+## 범위에서 제외한 항목
 
-- New Insights, Assets, profile, manual transaction, sharing, authentication, or cloud features
-- Domain, parser, CategoryRule, Merchant Resolution, Kakao, payroll-policy, or IndexedDB redesign
-- PWA installation, Android implementation, backend, analytics, and remote design assets
+- 새 Insights, Assets, 프로필, 수동 거래, 공유, 인증과 클라우드 기능
+- 도메인, Parser, CategoryRule, Merchant 해석, Kakao, 급여 정책과 IndexedDB 재설계
+- PWA 설치, Android 구현, 백엔드, 분석 수집과 원격 디자인 자산
 
-## Archive
+## 보관
 
-- Archived on 2026-08-07 after Phase 8D reached `DONE`.
+- 8D단계가 `DONE`에 도달한 2026-08-07에 보관했다.

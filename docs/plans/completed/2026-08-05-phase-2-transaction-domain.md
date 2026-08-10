@@ -1,14 +1,14 @@
-# Phase 2 — Transaction Domain Foundation
+# 2단계 — Transaction Domain 기초
 
 - 상태: `DONE`
 - 시작일: 2026-08-05
 - 완료일: 2026-08-05
 
-## Goal
+## 목표
 
 금융기관별 파일 형식과 UI·저장 기술에 독립적인 최소 Transaction Domain을 구현하고, 이후 Import·중복 탐지·Dashboard가 공유할 금액·날짜·거래 유형·생활비 판정 불변식을 자동 테스트로 고정한다.
 
-## Completed Scope
+## 완료한 범위
 
 - 양의 KRW 원 단위 safe integer 금액 검증
 - 실제 달력에 존재하는 `YYYY-MM-DD` 전용 날짜 검증
@@ -36,7 +36,7 @@ Phase 2에는 사용 사례가 없는 저장 포트, DB 스키마와 새 의존�
 
 복합 쿼리, 페이지네이션, 반응형 조회 또는 여러 버전의 스키마 마이그레이션이 필요해지면 Dexie를 재평가한다. 근거 문서는 [MDN IndexedDB API](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API), [MDN IndexedDB 사용 안내](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API/Using_IndexedDB), [Dexie transaction](https://dexie.org/docs/Dexie/Dexie.transaction()), [Dexie schema upgrade](https://dexie.org/docs/Version/Version.upgrade())다.
 
-## Completed Tasks
+## 완료한 작업
 
 1. Data Model과 Phase 2 구현 계약을 확정했다.
 2. 금액과 CalendarDate의 정상·경계·오류 입력을 table-driven test로 고정했다.
@@ -47,7 +47,7 @@ Phase 2에는 사용 사례가 없는 저장 포트, DB 스키마와 새 의존�
 7. lint, typecheck, test, build와 정적 개인 정보 검사를 통과했다.
 8. 변경을 문서·금액/날짜·Transaction·생활비·보안 수정 단위의 로컬 커밋으로 나눴다.
 
-## Acceptance Criteria
+## 완료 기준
 
 | 기준 | 결과 | 근거 |
 | --- | --- | --- |
@@ -62,14 +62,14 @@ Phase 2에는 사용 사례가 없는 저장 포트, DB 스키마와 새 의존�
 | lint, typecheck, test, build | PASS | 아래 Verification 결과 |
 | 지정 형식의 기능 단위 로컬 커밋 | PASS | Git 제목·본문 검사 |
 
-## Verification
+## 검증
 
 | 검증 | 결과 | 비고 |
 | --- | --- | --- |
 | `npm run lint` | PASS | ESLint warning 0개 |
-| `npm run typecheck` | PASS | TypeScript project build 성공 |
-| `npm run test` | PASS | 8 files, 208 tests |
-| `npm run build` | PASS | Vite production build, 38 modules |
+| `npm run typecheck` | PASS | TypeScript 프로젝트 빌드 성공 |
+| `npm run test` | PASS | 8개 파일, 208개 테스트 |
+| `npm run build` | PASS | Vite 프로덕션 빌드, 38개 모듈 |
 | 독립 계약·코드 리뷰 | PASS | 모델 경계, plain object, 오류 정보 노출 검토 |
 | 저장·네트워크·급여 결합 검사 | PASS | Phase 2 Domain에 해당 의존성 0개 |
 | 실제 금융 fixture 검사 | PASS | 실제 개인 금융 데이터 0개 |
@@ -77,7 +77,7 @@ Phase 2에는 사용 사례가 없는 저장 포트, DB 스키마와 새 의존�
 | `git diff --check` | PASS | 공백 오류 0개 |
 | Git 메시지 제목·본문 | PASS | `[Type] : 제목`, 비어 있지 않은 본문 |
 
-## Review에서 발견하고 반영한 문제
+## 검토에서 발견하고 반영한 문제
 
 - 예상하지 않은 후보 필드명이 issue 경로에 노출되지 않도록 일반화된 `$root` 오류로 바꿨다.
 - 배열뿐 아니라 `Date`, `Map`, 클래스 인스턴스도 Transaction 루트로 통과하지 못하도록 plain object 경계를 추가했다.
@@ -113,6 +113,6 @@ Phase 2에는 사용 사례가 없는 저장 포트, DB 스키마와 새 의존�
 - `a837eb0` `[Fix] : 결제수단 금융 식별정보 저장 차단`
 - `[Docs] : Phase 2 검증 결과와 다음 계획 인계`
 
-## Outcome
+## 결과
 
 `DONE` — Phase 2 Transaction Domain과 생활비 판정 규칙을 구현하고 208개 자동 테스트와 독립 리뷰를 통과했다. 현재 계획은 Phase 3 Generic CSV Import로 전환했다.

@@ -1,60 +1,60 @@
-# Phase 8F — User-Confirmed Keyword Category Grouping
+# 8F단계 — 사용자 확인형 키워드 카테고리 묶기
 
-- Status: `DONE`
-- Plan updated: 2026-08-07
-- Prerequisite: Phase 8E Review Queue and Transaction Direction Tone `DONE`
+- 상태: `DONE`
+- 계획 갱신일: 2026-08-07
+- 선행 단계: 8E단계 분류 검토 큐와 거래 방향 표현 `DONE`
 
-## Goal
+## 목표
 
-Let a user group local transactions whose descriptions contain a confirmed keyword such as `네이버페이`, `오더`, or `쿠팡` into one category, while preserving one-by-one editing for exceptions.
+`네이버페이`, `오더`, `쿠팡`처럼 사용자가 확인한 키워드가 설명에 포함된 로컬 거래를 하나의 카테고리로 묶되, 예외 거래는 한 건씩 계속 수정할 수 있게 한다.
 
-## Scope and decisions
+## 범위와 결정
 
-1. Keep the existing exact `CategoryRule` contract and add a separate local `KeywordCategoryRule` contract/store. Exact description rules keep priority over user-confirmed keyword rules.
-2. A keyword rule is a normalized, user-entered substring. It is never inferred, learned, created from a payment intermediary, or applied without an explicit category and confirmation.
-3. On Review, provide a touch-friendly “similar transactions group” flow. It shows the real local count before saving, categorizes only matching uncategorized `EXPENSE` transactions, stores the keyword for future Imports, and leaves already categorized transactions untouched.
-4. Show only safe suggested chips when the current description contains a known user-facing payment/order marker (`네이버페이`, `오더`, `쿠팡`). The user can instead enter a different keyword, edit it, or cancel; suggestions do not save or classify anything by themselves.
-5. Imported Preview applies exact rules first, then the longest matching keyword rule. If same-length keyword rules overlap, a stable lexical tie-breaker is used. Users can still change every Preview category before confirmation.
-6. A batch group action is one explicit local operation. It preserves every changed Transaction field except `categoryId` and `updatedAt`, creates/replaces only the selected keyword rule, and does not create or change exact `CategoryRule` records.
-7. Reuse the existing detailed transaction editor for later corrections. Do not add remote services, AI classification, third-party assets, private sample access, or automatic historical reclassification.
+1. 기존 정확 `CategoryRule` 계약을 유지하고 별도의 로컬 `KeywordCategoryRule` 계약·저장소를 추가한다. 정확 설명 규칙은 사용자 확인 키워드 규칙보다 항상 우선한다.
+2. 키워드 규칙은 정규화된 사용자 입력 포함 문자열이다. 추론·학습·결제중개자 자동 생성이나 카테고리·확인 없는 적용은 하지 않는다.
+3. Review에서 터치하기 쉬운 “비슷한 거래 묶기” 흐름을 제공한다. 저장 전에 실제 로컬 일치 수를 보여주고, 일치한 카테고리 미지정 `EXPENSE`만 분류하며, 미래 Import용 키워드를 저장하고 이미 분류한 거래는 그대로 둔다.
+4. 현재 설명에 안전한 결제·주문 표식(`네이버페이`, `오더`, `쿠팡`)이 포함될 때만 추천 칩을 보여준다. 사용자는 다른 키워드를 입력·수정하거나 취소할 수 있으며 추천만으로 저장·분류하지 않는다.
+5. Import Preview는 정확 규칙을 먼저 적용하고 가장 긴 일치 키워드 규칙을 적용한다. 같은 길이 키워드가 겹치면 안정적인 사전순으로 결정하며 모든 Preview 카테고리는 저장 전에 수정할 수 있다.
+6. 묶기 작업은 사용자가 확인한 하나의 로컬 동작이다. 변경한 Transaction에서 `categoryId`와 `updatedAt` 외 모든 필드를 보존하고, 선택한 키워드 규칙만 생성·교체하며 정확 `CategoryRule`은 만들거나 바꾸지 않는다.
+7. 이후 예외 수정은 기존 상세 거래 편집기를 재사용한다. 원격 서비스, AI 분류, 제3자 자산, private 샘플 접근과 과거 거래 자동 재분류는 추가하지 않는다.
 
-## Vertical slices
+## 세로 슬라이스
 
-### Slice 1 — Keyword rule domain and local storage
+### 슬라이스 1 — 키워드 규칙 Domain과 로컬 저장
 
-- Add strict keyword normalization, validation, rule precedence, and fabricated tests.
-- Upgrade IndexedDB with an independent keyword-rule store while preserving schema v1–v3 stores and exact rules.
+- 엄격한 키워드 정규화·검증·규칙 우선순위와 가짜 테스트를 추가한다.
+- v1–v3 저장소와 정확 규칙을 보존하면서 독립 키워드 규칙 저장소를 추가하도록 IndexedDB를 업그레이드한다.
 
-### Slice 2 — Import and review group action
+### 슬라이스 2 — Import와 검토 묶기 동작
 
-- Apply stored keyword rules in Import Preview after exact rules.
-- Add an explicit Review modal that previews real matching count, lets the user choose keyword/category, atomically stores the rule and updates only matching uncategorized expenses.
+- 정확 규칙 적용 뒤 Import Preview에 저장된 키워드 규칙을 적용한다.
+- 실제 일치 수를 미리 보여주고 사용자가 키워드·카테고리를 선택한 뒤, 일치한 카테고리 미지정 거래만 원자적으로 갱신하는 명시적 Review 모달을 추가한다.
 
-### Slice 3 — Review, documentation, and completion
+### 슬라이스 3 — 검토·문서·완료
 
-- Verify error, empty, cancellation, overlap, field-preservation, and individual-exception paths.
-- Update requirements, category-rule contract, ADR, architecture, history, engineering log, and archive this plan after validation.
+- 오류, 빈 상태, 취소, 겹침, 필드 보존과 개별 예외 수정 경로를 검증한다.
+- 요구사항, 카테고리 규칙 계약, ADR, 아키텍처, 변경 이력, 엔지니어링 로그를 갱신하고 검증 후 이 계획을 보관한다.
 
-## Acceptance criteria
+## 완료 기준
 
-1. A user can enter or choose a suggested contained keyword, choose a category, see the actual local matching count, and explicitly apply the group without network access or mock counts.
-2. The group operation changes only currently uncategorized matching `EXPENSE` transactions; already categorized transactions remain unchanged and can still be edited individually.
-3. The stored keyword rule categorizes matching future Import Preview expenses after exact rules but before Merchant/Kakao fallback; every Preview result remains editable before saving.
-4. Empty, invalid, sensitive-looking, too-short, no-match, storage error, cancellation, and overlapping-keyword cases have safe, tested behavior.
-5. Existing exact rules, transaction import trace, amounts, dates, directions, types, settlements, review queue, local-first boundary, and privacy guarantees remain intact.
-6. Primary controls are accessible and work at 360–430px without horizontal overflow or sub-44px touch targets.
+1. 사용자는 포함 키워드를 입력하거나 추천에서 고르고 카테고리를 선택한 뒤 실제 로컬 일치 수를 확인하고 네트워크·가짜 수 없이 묶기를 명시적으로 실행할 수 있다.
+2. 묶기 동작은 현재 카테고리 미지정 일치 `EXPENSE`만 바꾸며 이미 분류한 거래는 유지하고 계속 개별 편집할 수 있다.
+3. 저장된 키워드 규칙은 정확 규칙 다음, Merchant/Kakao 대체 전의 미래 Import Preview 지출에 적용되며 모든 Preview 결과는 저장 전에 수정할 수 있다.
+4. 빈 상태, 잘못된 입력, 민감해 보이는 입력, 너무 짧은 입력, 일치 없음, 저장 오류, 취소와 키워드 겹침을 안전하게 처리하고 테스트한다.
+5. 기존 정확 규칙, 거래 Import 추적정보, 금액, 날짜, 방향, 유형, 정산, 검토 큐, local-first 경계와 개인정보 약속을 유지한다.
+6. 주요 조작은 접근 가능하고 360–430px에서 가로 넘침이나 44px 미만 터치 타깃 없이 동작한다.
 
-## Completion record
+## 완료 기록
 
-- Added a strict local `KeywordCategoryRule` with a two-character minimum, 80-character maximum, numeric-identifier rejection, space/punctuation-insensitive matching, and static opt-in suggestions for `네이버페이`, `오더`, and `쿠팡` only when present in the active description.
-- Exact `CategoryRule` remains first. Otherwise Import Preview applies the longest matching keyword rule with a stable lexical tie-breaker; users can still change every category before saving.
-- IndexedDB schema v4 adds an independent `keywordCategoryRules` store and keeps v1–v3 transactions, batches, settlements, exact rules, and settings intact. Rule creation and replacement of matching uncategorized expenses are one local read-write transaction.
-- The Review dialog previews only the actual number of matching uncategorized expenses, requires a keyword and category selection, supports cancel/Escape/focus return, and leaves already categorized transactions unchanged. Individual corrections remain in Transactions.
-- Verification: targeted domain, storage, Import, application, and Review UI tests passed; `npm run lint`, `npm run typecheck`, `npm test` (43 files, 431 tests), and `npm run build` passed. Build retains only the existing Vite >500 kB chunk warning.
-- Browser review: the empty `/review` screen at 360px had no horizontal overflow and primary link/navigation targets measured at least 44px. The grouping UI behavior was tested with fabricated fixtures; no private XLS or actual financial transaction was opened, uploaded, written, or committed.
+- 최소 2자·최대 80자, 숫자 식별자 거부, 공백·기호 차이 무시 매칭을 적용하는 로컬 `KeywordCategoryRule`을 추가했다. 활성 설명에 있을 때만 `네이버페이`, `오더`, `쿠팡` 추천을 정적으로 보여준다.
+- 정확 `CategoryRule`이 먼저 적용된다. 없으면 Import Preview가 가장 긴 일치 키워드 규칙을 안정적인 사전순으로 적용하며 저장 전 모든 카테고리를 수정할 수 있다.
+- IndexedDB v4에 독립 `keywordCategoryRules` 저장소를 추가하고 v1–v3의 거래·Batch·정산·정확 규칙·설정을 보존했다. 규칙 생성과 일치한 카테고리 미지정 지출 교체는 하나의 로컬 읽기·쓰기 트랜잭션이다.
+- Review 모달은 실제 일치 카테고리 미지정 지출 수만 보여주고 키워드·카테고리를 요구하며 취소·Escape·포커스 복귀를 지원한다. 이미 분류한 거래는 그대로 두고 개별 수정은 Transactions에서 수행한다.
+- Domain, 저장소, Import, Application, Review UI 대상 테스트와 `npm run lint`, `npm run typecheck`, `npm test`(43개 파일, 431개 테스트), `npm run build`를 통과했다. 빌드에는 기존 Vite 500 kB 초과 청크 경고만 남아 있다.
+- 360px 빈 `/review` 화면은 가로 넘침이 없고 주요 링크·탐색 조작이 44px 이상이었다. 묶기 UI 동작은 가짜 Fixture로 검증했으며 private XLS나 실제 금융 거래를 열거나 업로드·저장·커밋하지 않았다.
 
-## Out of scope
+## 범위에서 제외한 항목
 
-- Automatic keyword learning, silent grouping, remote/AI merchant classification, batch modification of already categorized transactions, and a full rule-management screen
-- Changing payment-intermediary Kakao blocking or treating a keyword rule as merchant identity proof
-- Reading, uploading, or committing `samples/private/` files
+- 자동 키워드 학습, 조용한 묶기, 원격·AI 가맹점 분류, 이미 분류한 거래의 일괄 변경과 전체 규칙 관리 화면
+- Kakao 결제중개자 차단 변경과 키워드 규칙을 가맹점 동일성 증명으로 취급하는 동작
+- `samples/private/` 파일 읽기·업로드·커밋

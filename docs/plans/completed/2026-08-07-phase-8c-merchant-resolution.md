@@ -1,86 +1,86 @@
-# Phase 8C — Deterministic Merchant Name Resolution
+# 8C단계 — 결정적 가맹점 이름 해석
 
-- Status: `DONE`
-- Plan updated: 2026-08-07
-- Completed: 2026-08-07
-- Archived: 2026-08-07
-- Prerequisite: Phase 8B Local Monthly Living-Expense Goal `DONE`
+- 상태: `DONE`
+- 계획 갱신일: 2026-08-07
+- 완료일: 2026-08-07
+- 보관일: 2026-08-07
+- 선행 단계: 8B단계 로컬 월 생활비 목표 `DONE`
 
-## Goal
+## 목표
 
-Improve Kakao-assisted category suggestions for Korean card merchant spelling variants without changing stored transactions or weakening the existing user-review boundary.
+한국 카드 가맹점 표기 변형에 대한 Kakao 카테고리 제안을 개선하되, 저장된 거래를 바꾸거나 기존 사용자 검토 경계를 약화하지 않는다.
 
-## Pipeline and priority
+## 처리 순서와 우선순위
 
 ```text
-Raw card merchant description
-  → exact confirmed user category rule
-  → payment-intermediary exclusion
-  → Merchant normalization
-  → centralized brand Alias resolution
-  → bounded Fuzzy fallback over safe known candidates
-  → Canonical Merchant
-  → Kakao raw / normalized / canonical query attempts (at most three, deduplicated)
-  → mapped category suggestion or review
+카드 원문 가맹점 설명
+  → 사용자가 확인한 정확 카테고리 규칙
+  → 결제중개자 제외
+  → Merchant 정규화
+  → 중앙 브랜드 Alias 해석
+  → 안전한 후보에 한정한 Fuzzy 대체
+  → 표준 Merchant
+  → Kakao 원문·정규화·표준 검색어 시도(중복 제거, 최대 3회)
+  → 매핑된 카테고리 제안 또는 검토
 ```
 
-Confirmed user rules remain the highest-priority category source and skip Kakao. `PAYCO오더`, 네이버페이, 카카오페이, 토스페이, and KG이니시스 remain unqueried and in review.
+사용자가 확인한 규칙은 가장 높은 우선순위의 카테고리 출처로 유지하고 Kakao 검색을 건너뛴다. `PAYCO오더`, 네이버페이, 카카오페이, 토스페이, KG이니시스는 검색하지 않고 검토 상태로 둔다.
 
-## Scope and decisions
+## 범위와 결정
 
-1. Add framework-independent Merchant normalization that performs Unicode NFKC, whitespace and case normalization, conservative punctuation handling, and comparison-key generation without changing the original value.
-2. Add a centralized alias registry for GS25, CU, 7-ELEVEN, and 메가MGC커피. Resolve only a leading brand alias and preserve the remaining branch name, for example `지에쓰이십오 대전법동점` → `GS25 대전법동점`.
-3. Add a deterministic fuzzy fallback only after exact and alias resolution. Restrict candidates to the alias registry in this slice, require a conservative threshold and a unique best match, preserve branch text, and return ambiguous/unsafe values for review.
-4. Do not add Fuse.js or another dependency unless the small deterministic matcher proves insufficient. Do not add vectors, embeddings, AI classification, backend services, cloud sync, or Android work.
-5. Keep the current confirmed CategoryRule store as the user-learning mechanism. Do not create persistent Merchant aliases, a Merchant cache, or automatic aliases from Kakao results in this slice because those repositories do not yet exist and require a separate privacy/storage decision.
-6. Search Kakao with a deduplicated sequence of the original, normalized display, and canonical Merchant values, stopping after a classified result and never exceeding three attempts. Kakao `category_name` remains the classification input; addresses remain verification-only metadata.
-7. Expose an in-memory resolution trace in Preview for review: original, normalized, resolution source, canonical query, attempted queries, matched Kakao place/category, internal category, and final review reason. Never persist or log this trace.
-8. Bind asynchronous fallback results to the active file-preview request so a cleared or replaced upload cannot receive stale Kakao results. Preserve the existing visible pending/failed states.
-9. Use only clearly fabricated test fixtures. Measure the baseline and enhanced resolution outcomes with explicit `EXACT`, `ALIAS`, `FUZZY`, `KAKAO`, `USER_RULE`, and `REVIEW` labels; do not claim production-data accuracy.
+1. 원문을 바꾸지 않고 Unicode NFKC, 공백·대소문자 정규화, 보수적인 기호 처리와 비교 키 생성을 수행하는 프레임워크 독립 Merchant 정규화를 추가한다.
+2. GS25, CU, 7-ELEVEN, 메가MGC커피의 중앙 Alias 목록을 추가한다. 선두 브랜드 Alias만 해석하고 나머지 지점명은 보존한다. 예를 들어 `지에쓰이십오 대전법동점`은 `GS25 대전법동점`이 된다.
+3. 정확 일치와 Alias 해석 뒤에만 결정적 Fuzzy 대체를 실행한다. 이 단계에서는 Alias 목록 후보만 사용하고, 보수적인 임계값과 단일 승자 조건을 요구하며 모호하거나 안전하지 않은 값은 검토로 보낸다.
+4. 작은 결정적 매처로 부족하다는 증거가 생기기 전에는 Fuse.js 등 새 의존성을 추가하지 않는다. 벡터, 임베딩, AI 분류, 백엔드 서비스, 클라우드 동기화와 Android 작업도 추가하지 않는다.
+5. 현재 확인형 `CategoryRule` 저장소를 사용자 학습 수단으로 유지한다. 영속 Merchant Alias, Merchant Cache와 Kakao 결과에서 자동으로 만드는 Alias는 별도 개인정보·저장 결정이 필요하므로 이 단계에서는 만들지 않는다.
+6. 원문, 정규화 표시값, 표준 Merchant 값을 중복 제거한 순서로 Kakao에 검색하고 분류 결과가 나오면 멈추되 후보당 최대 3회를 넘기지 않는다. Kakao `category_name`은 분류 입력으로 사용하고 주소는 검증용 메타데이터로만 사용한다.
+7. Preview에서 검토 가능한 메모리 전용 해석 과정을 보여준다. 원문, 정규화값, 해석 출처, 표준 검색어, 시도한 검색어, 일치 Kakao 장소·카테고리, 내부 카테고리와 최종 검토 이유를 포함하되 저장하거나 로그에 남기지 않는다.
+8. 비동기 대체 결과를 현재 파일 Preview 요청에 연결해, 업로드를 지우거나 바꾼 뒤 이전 Kakao 결과가 새 Preview에 들어가지 않게 한다. 기존 진행 중·실패 상태 표시는 유지한다.
+9. 명백한 가짜 테스트 Fixture만 사용한다. `EXACT`, `ALIAS`, `FUZZY`, `KAKAO`, `USER_RULE`, `REVIEW` 출처로 기준선과 개선 결과를 측정하되 실제 데이터 정확도라고 주장하지 않는다.
 
-## Acceptance criteria
+## 완료 기준
 
-1. `지에쓰이십오 대전법동점` resolves to `GS25 대전법동점`.
-2. `지에스25 한남대점` resolves to `GS25 한남대점`.
-3. `씨유 한남대점` resolves to `CU 한남대점`.
-4. `메가엠지씨커피 대전법동점` resolves to `메가MGC커피 대전법동점`.
-5. A pre-existing exact user CategoryRule for a GS25 description wins before fuzzy matching and Kakao, and no external lookup occurs.
-6. `PAYCO오더` is neither alias-resolved nor fuzzy-matched, is not sent to Kakao, and remains in review.
-7. Fuzzy matching runs only as a fallback, accepts one unambiguous high-similarity known brand, and sends low-confidence or tied candidates to review.
-8. Kakao receives canonical Merchant queries through the bounded fallback strategy, and a canonical-equivalent Kakao place can provide a mapped category suggestion while the user retains final control.
-9. Fabricated fixture measurement reports before/after source counts without using or exposing `samples/private/` values.
-10. Targeted tests, lint, typecheck, full tests, production build, privacy review, documentation, and function-sized local commits pass before the Phase is marked `DONE`.
+1. `지에쓰이십오 대전법동점`은 `GS25 대전법동점`으로 해석된다.
+2. `지에스25 한남대점`은 `GS25 한남대점`으로 해석된다.
+3. `씨유 한남대점`은 `CU 한남대점`으로 해석된다.
+4. `메가엠지씨커피 대전법동점`은 `메가MGC커피 대전법동점`으로 해석된다.
+5. GS25 설명에 대한 기존 정확 사용자 `CategoryRule`은 Fuzzy와 Kakao보다 먼저 적용되고 외부 검색은 발생하지 않는다.
+6. `PAYCO오더`는 Alias나 Fuzzy로 해석하지 않고 Kakao에 보내지 않으며 검토 상태로 남는다.
+7. Fuzzy는 대체 경로에서만 실행하고, 안전하고 유사도가 높은 단일 브랜드만 허용하며 낮은 신뢰도·동률 후보는 검토로 보낸다.
+8. Kakao는 제한된 대체 전략으로 표준 Merchant 검색어를 받고, 표준값이 같은 장소는 매핑된 카테고리 제안을 제공할 수 있다. 최종 선택권은 사용자에게 남는다.
+9. 가짜 Fixture 측정은 `samples/private/` 값을 사용하거나 노출하지 않고 전후 출처 수를 보고한다.
+10. 대상 테스트, lint, typecheck, 전체 테스트, 프로덕션 빌드, 개인정보 점검, 문서와 기능 단위 로컬 커밋을 통과한 뒤 단계 상태를 `DONE`으로 표시한다.
 
-## Out of scope
+## 범위에서 제외한 항목
 
-- Persistent Merchant cache or user-managed alias storage
-- Automatic alias learning from user edits or Kakao results
-- Reclassification of already stored Transactions
-- Vector search, embeddings, LLM classification, backend/API proxy, cloud sync, and Android implementation
+- 영속 Merchant Cache와 사용자 관리 Alias 저장소
+- 사용자 수정이나 Kakao 결과를 통한 자동 Alias 학습
+- 이미 저장한 Transaction의 재분류
+- 벡터 검색, 임베딩, LLM 분류, 백엔드·API 프록시, 클라우드 동기화와 Android 구현
 
-## Completion evidence
+## 완료 근거
 
-- Required GS25, CU, 7-ELEVEN and 메가MGC커피 aliases resolve to canonical brands while preserving safe branch names.
-- Exact stored CategoryRule wins end-to-end and produces zero Kakao calls. Payment-intermediary variants also produce zero calls and remain in review.
-- Fuzzy matching is a registry-only fallback with bounded edit distance, threshold and winner margin. Canonical Kakao fallback is deduplicated and capped at three sequential attempts per candidate.
-- Import Preview exposes a collapsed, memory-only resolution trace, invalidates stale upload results and further fallbacks after any in-flight SDK callback settles, and limits file-level candidate analysis to three workers.
-- Fabricated Merchant Fixture v1 has 14 cases: resolution `EXACT 4 / ALIAS 7 / FUZZY 1 / USER_RULE 1 / REVIEW 1`; supplied-place classifier baseline `KAKAO 4 / USER_RULE 1 / REVIEW 9`; enhanced `KAKAO 12 / USER_RULE 1 / REVIEW 1`. These are not actual Kakao API or production accuracy measurements.
-- Independent code and test reviews found no remaining blocking/high issue after intermediary punctuation guards, integration coverage and bounded concurrency were added.
+- GS25, CU, 7-ELEVEN, 메가MGC커피의 필수 Alias가 안전한 지점명을 보존하면서 표준 브랜드로 해석된다.
+- 저장된 정확 `CategoryRule`이 전체 흐름에서 우선하고 Kakao 호출을 0회로 만든다. 결제중개자 변형도 호출 없이 검토 상태로 남는다.
+- Fuzzy는 Alias 목록에 한정한 대체 경로이며 편집 거리·임계값·승자 차이를 제한한다. 표준 Kakao 대체 검색은 중복을 제거하고 후보마다 순차 3회로 제한한다.
+- Import Preview는 접힌 메모리 전용 해석 과정을 보여주고, 진행 중 SDK callback이 끝난 뒤에도 이전 업로드 결과와 추가 대체 검색을 무효화하며, 파일 단위 후보 분석을 3개 작업자로 제한한다.
+- 가짜 Merchant Fixture v1 14건의 결과는 해석 `EXACT 4 / ALIAS 7 / FUZZY 1 / USER_RULE 1 / REVIEW 1`, 제공 장소 기준선 `KAKAO 4 / USER_RULE 1 / REVIEW 9`, 개선 결과 `KAKAO 12 / USER_RULE 1 / REVIEW 1`이다. 실제 Kakao API나 운영 정확도 측정값이 아니다.
+- 결제중개자 문장부호 차단, 통합 범위와 동시성 제한을 반영한 뒤 독립 코드·테스트 검토에서 남은 차단·높은 우선순위 문제가 없었다.
 
-## Final verification
+## 최종 검증
 
-| Check | Result |
+| 검사 | 결과 |
 | --- | --- |
-| `npm run lint` | PASS, warnings 0 |
+| `npm run lint` | PASS, 경고 0개 |
 | `npm run typecheck` | PASS |
-| `npm test` | PASS, 37 files / 384 tests |
-| `npm run build` | PASS; existing >500 kB chunk warning only |
-| Browser `/imports` | PASS at desktop, 390px and 360px; console errors 0 |
-| Privacy | PASS; no private sample upload or fixture/document disclosure, and Kakao merchant-query boundary is visible before file selection |
+| `npm test` | PASS, 37개 파일 / 384개 테스트 |
+| `npm run build` | PASS, 기존 500 kB 초과 청크 경고만 존재 |
+| 브라우저 `/imports` | PASS, 데스크톱·390px·360px, 콘솔 오류 0개 |
+| 개인정보 | PASS, private 샘플 업로드·Fixture·문서 노출 없음, Kakao 가맹점 검색어 경계를 파일 선택 전에 표시 |
 
-## Documentation
+## 문서
 
-- Requirements and Requirements History include FR-034, priority, privacy boundary and fixture limitations.
-- [Merchant Resolution Contract](../architecture/merchant-resolution-contract.md) records normalization, aliases, Fuzzy thresholds, query strategy, trace and deferred storage.
-- [ADR-0012](../adr/ADR-0012-merchant-entity-resolution-before-vector-search.md) records why Vector/Embedding remains deferred and when to revisit it.
-- Engineering Log records implementation, review fixes, verification and function-sized commits.
+- 요구사항과 변경 이력에 FR-034, 우선순위, 개인정보 경계와 Fixture 제한을 기록했다.
+- [가맹점 이름 해석 계약](../../architecture/merchant-resolution-contract.md)에 정규화, Alias, Fuzzy 임계값, 검색 전략, 해석 과정과 저장 보류를 기록했다.
+- [ADR-0012](../../adr/ADR-0012-merchant-entity-resolution-before-vector-search.md)에 Vector·Embedding을 보류한 이유와 재검토 조건을 기록했다.
+- 엔지니어링 로그에 구현, 검토 수정, 검증과 기능 단위 커밋을 기록했다.

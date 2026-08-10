@@ -1,30 +1,30 @@
-# Phase 1 — Web Foundation & 급여 실수령 추정기
+# 1단계 — 웹 기반과 급여 실수령 추정기
 
 - 상태: `DONE`
 - 시작일: 2026-08-05
 - 완료일: 2026-08-05
 - 계산 정책 기준일: 2026-03-01 세액표, 2026-07-01 국민연금 상·하한
 
-## Goal
+## 목표
 
 React, TypeScript, Vite 기반의 모바일 우선 브라우저 앱을 만들고, 저장하지 않는 급여 실수령 추정기를 첫 번째 실제 기능으로 제공한다. Dashboard의 빈 상태와 명시적인 Mock Data 상태도 함께 실행·검증한다.
 
-## User Value
+## 사용자 가치
 
 - 세전 기본 연봉 또는 월급, 연간 상여금과 비과세액을 입력해 상여 포함 연간·월평균 예상 실수령액을 확인할 수 있다.
 - 국민연금, 건강보험, 장기요양보험, 고용보험, 근로소득세와 지방소득세의 예상 공제를 한 화면에서 이해할 수 있다.
 - 계산 정책 기준일, 공식 출처, 주요 가정과 실제 금액이 달라질 수 있는 이유를 결과와 함께 확인할 수 있다.
 - 입력값을 저장·전송하지 않고 계산기와 실제 거래 Dashboard의 개념을 분리한다.
 
-## Current State
+## 현재 상태
 
 작업 시작 시에는 Phase 0 문서 기반만 있었고 애플리케이션 코드, Node 의존성, 자동 검증 명령과 급여 계산 정책 데이터가 없었다.
 
 완료 시점에는 React 앱과 자동 검증 기반, 2026년 버전 급여 계산 Domain, 입력·결과 UX, Dashboard 빈 상태와 명시적인 Mock Data 모드가 준비되었다. 실제 금융 데이터, 브라우저 저장소, Transaction 구현과 Import Parser는 추가하지 않았다.
 
-## Completed Scope
+## 완료한 범위
 
-### Phase 1A — Web Skeleton
+### 1A단계 — 웹 뼈대
 
 - React 19 + TypeScript + Vite 프로젝트와 Node 20.10 호환 의존성
 - ESLint, Vitest, React Testing Library, jsdom 기반 자동 검증
@@ -32,7 +32,7 @@ React, TypeScript, Vite 기반의 모바일 우선 브라우저 앱을 만들고
 - 실제 거래가 없음을 설명하는 Dashboard와 명시적인 Mock Data 토글
 - Phase 3 Import 진입점의 비활성 준비 상태
 
-### Phase 1B — 급여 실수령 추정기
+### 1B단계 — 급여 실수령 추정기
 
 - 연봉·월급을 별도로 기억하는 입력 모드
 - 연간 상여금, 월 비과세액, 본인 포함 가족·자녀 수, 80%·100%·120% 원천징수 선택
@@ -53,7 +53,7 @@ React, TypeScript, Vite 기반의 모바일 우선 브라우저 앱을 만들고
 - 상여 지급대상기간과 기납부세액을 입력받지 않으므로 지급월별 세액과 실수령액을 제공하지 않는다.
 - 결과는 공식 급여명세서나 연말정산 결과가 아니다.
 
-## Out of Scope 결과
+## 범위에서 제외한 결과
 
 - 입력·결과를 IndexedDB, localStorage, Settings, URL에 저장하지 않았다.
 - 예상 급여를 Transaction 또는 `INCOME` 거래로 만들지 않았다.
@@ -61,7 +61,7 @@ React, TypeScript, Vite 기반의 모바일 우선 브라우저 앱을 만들고
 - 실제 금융 파일, Parser, 중복 탐지, Category, 실제 월간 집계를 구현하지 않았다.
 - 백엔드, 배포, PWA와 Android 앱을 추가하지 않았다.
 
-## Completed Tasks
+## 완료한 작업
 
 1. FR-015~FR-020, ADR-0004와 Phase 1A·1B 경계를 문서에 기록했다.
 2. React + TypeScript + Vite와 lint, typecheck, test, build 명령을 구성했다.
@@ -73,7 +73,7 @@ React, TypeScript, Vite 기반의 모바일 우선 브라우저 앱을 만들고
 8. 독립 Domain·UI 리뷰에서 발견된 정확성·접근성 문제를 반영했다.
 9. 구현 변경을 문서, Build, Domain, UI 기능 단위 로컬 커밋으로 나눴다.
 
-## Acceptance Criteria
+## 완료 기준
 
 | 기준 | 결과 | 근거 |
 | --- | --- | --- |
@@ -97,14 +97,14 @@ React, TypeScript, Vite 기반의 모바일 우선 브라우저 앱을 만들고
 
 `PASS*`: 자동 브라우저 시각 제어 없이 CSS 구조와 컴포넌트 상호작용을 검증했다. 실제 360px 브라우저의 시각 회귀 확인은 첫 수동 사용 시 추가한다.
 
-## Verification
+## 검증
 
 | 검증 | 결과 | 비고 |
 | --- | --- | --- |
 | `npm run lint` | PASS | ESLint warning 0개 |
-| `npm run typecheck` | PASS | TypeScript project build 성공 |
-| `npm run test` | PASS | 3 files, 34 tests |
-| `npm run build` | PASS | Vite production build, 38 modules |
+| `npm run typecheck` | PASS | TypeScript 프로젝트 빌드 성공 |
+| `npm run test` | PASS | 3개 파일, 34개 테스트 |
+| `npm run build` | PASS | Vite 프로덕션 빌드, 38개 모듈 |
 | 공식 세액표 추출 | PASS | 646개 연속 구간, 원문 SHA-256 `5307B1D45C8F946CA2D54F10B1731B2EC8CFD1A26EFB653673C13D660AE3B698` |
 | 공식 PDF 수동 대조 | PASS | 표 시작·중간·고액 계산식 페이지와 대표 예시 확인 |
 | Domain 독립 리뷰 | PASS | 중간 2개·낮음 2개 문제 반영 후 재검증 |
@@ -114,7 +114,7 @@ React, TypeScript, Vite 기반의 모바일 우선 브라우저 앱을 만들고
 | `git diff --check` | PASS | 공백 오류 0개 |
 | Git 메시지 제목·본문 | PASS | `[Type] : 제목`, 비어 있지 않은 본문 |
 
-## Review에서 발견하고 반영한 문제
+## 검토에서 발견하고 반영한 문제
 
 - 과세 월평균이 0원이 되는 입력이 보험 최저액을 우회하지 않도록 입력을 거부했다.
 - 월급의 연간 환산이 safe integer 범위를 넘을 때 일반 오류 대신 검증 오류로 보고한다.
@@ -145,6 +145,6 @@ React, TypeScript, Vite 기반의 모바일 우선 브라우저 앱을 만들고
 - `032ca83` `[Feat] : 급여 추정 입력과 계산 도메인 추가`
 - `3621fc2` `[Feat] : 실수령 추정 결과와 면책 UX 제공`
 
-## Outcome
+## 결과
 
 `DONE` — 요청한 연봉·월급·상여 기반 실수령 추정기와 Phase 1 Web Foundation을 구현하고 자동 검증·독립 리뷰를 완료했다. 현재 계획은 Phase 2 Transaction Domain Foundation으로 전환했다.
