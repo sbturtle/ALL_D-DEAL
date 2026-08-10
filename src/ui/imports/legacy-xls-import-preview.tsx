@@ -16,6 +16,7 @@ import {
   CATEGORY_IDS,
   type CategoryId,
 } from '../../domain/categories/category';
+import { getDefaultBudgetBucket } from '../../domain/budget-buckets/budget-bucket';
 import type { TransactionType } from '../../domain/transactions/transaction';
 import type { PlaceSearch, PlaceSearchResult } from '../../application/places/place-search';
 import {
@@ -976,6 +977,9 @@ export function LegacyXlsImportPreview({
                 const isCategoryPickerOpen = openCategoryPickerIndex === candidateIndex;
                 const isCandidateSelected = selectedCandidateIndexes.has(candidateIndex);
                 const isExpenseCandidate = candidate.draft.type === 'EXPENSE';
+                const budgetBucket = getDefaultBudgetBucket(
+                  candidate.draft.budgetBucketId,
+                );
                 const placeSearchState = placeSearchByCandidateIndex.get(candidateIndex);
 
                 return (
@@ -1016,6 +1020,10 @@ export function LegacyXlsImportPreview({
                       분류: {getClassificationLabel(candidate.accountTypeClassification)}
                     </small>
                   )}
+                  <small className="import-classification-meta">
+                    자금통: {budgetBucket?.icon ?? '🗂️'}{' '}
+                    {budgetBucket?.name ?? candidate.draft.budgetBucketId} · 기본 추천
+                  </small>
                   {isExpenseCandidate ? (
                     <>
                   {searchPlaces === undefined ? (

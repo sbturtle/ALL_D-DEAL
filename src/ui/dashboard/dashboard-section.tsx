@@ -12,13 +12,20 @@ import {
   CATEGORY_IDS,
   type CategoryId,
 } from '../../domain/categories/category';
+import type {
+  BudgetBucket,
+  BudgetBucketId,
+} from '../../domain/budget-buckets/budget-bucket';
 import { getCategoryPresentation } from '../../domain/categories/category-presentation';
 import { calculateMonthlyLivingExpenseGoalProgress } from '../../domain/settings/monthly-living-expense-goal-progress';
 import type { LocalUserSettings } from '../../domain/settings/local-user-settings';
 import { saveManualBudgetSettlement } from '../../application/ledger/save-manual-budget-settlement';
 import { updateTransactionDetails } from '../../application/ledger/update-transaction-details';
 import type { BudgetSettlement } from '../../domain/transactions/budget-settlement';
-import { calculateLivingExpenseSummary } from '../../domain/transactions/living-expense';
+import {
+  calculateBudgetBucketExpenseSummary,
+  calculateLivingExpenseSummary,
+} from '../../domain/transactions/living-expense';
 import { isReviewNeededTransaction } from '../../domain/transactions/review-needed';
 import {
   getTransactionDateRange,
@@ -49,6 +56,7 @@ export type LocalLedgerRepository = Pick<
   | 'removeBudgetSettlement'
   | 'replaceTransaction'
   | 'getLocalUserSettings'
+  | 'listBudgetBuckets'
 >;
 
 type DashboardSectionProps = Readonly<{
@@ -64,12 +72,18 @@ type SettlementNotice = Readonly<{
 type TransactionEditDraft = Readonly<{
   transactionId: string;
   categoryId: CategoryId | undefined;
+  budgetBucketId: BudgetBucketId;
   memo: string;
 }>;
 
 type WeeklySpendingDay = Readonly<{
   date: CalendarDate;
   weekdayLabel: string;
+  amountMinor: number;
+}>;
+
+type BudgetBucketSpendingItem = Readonly<{
+  bucket: BudgetBucket;
   amountMinor: number;
 }>;
 
@@ -217,6 +231,8 @@ function getSettlementSummary(
 
 type HomeDashboardProps = Readonly<{
   livingExpenseAmountMinor: number;
+  totalExpenseAmountMinor: number;
+  budgetBucketSpending: readonly BudgetBucketSpendingItem[];
   monthlyGoalProgress: ReturnType<
     typeof calculateMonthlyLivingExpenseGoalProgress
   >;
@@ -230,6 +246,8 @@ type HomeDashboardProps = Readonly<{
 
 function HomeDashboard({
   livingExpenseAmountMinor,
+  totalExpenseAmountMinor,
+  budgetBucketSpending,
   monthlyGoalProgress,
   reviewNeededCount,
   weeklySpending,
@@ -282,6 +300,25 @@ function HomeDashboard({
         <p id="home-spending-title">이번 달 생활비</p>
         <strong>{formatWon(livingExpenseAmountMinor)}</strong>
         <small>공동결제 정산을 반영한 실제 순지출이에요.</small>
+      </section>
+
+      <section className="home-budget-bucket-card" aria-labelledby="home-budget-bucket-title">
+        <div className="home-card-heading">
+          <div>
+            <p className="panel-kicker">이번 달 전체 소비</p>
+            <h3 id="home-budget-bucket-title">자금통별 소비</h3>
+          </div>
+          <strong>{formatWon(totalExpenseAmountMinor)}</strong>
+        </div>
+        <ul aria-label="자금통별 소비">
+          {budgetBucketSpending.map(({ bucket, amountMinor }) => (
+            <li key={bucket.id}>
+              <span aria-hidden="true">{bucket.icon}</span>
+              <strong>{bucket.name}</strong>
+              <small>{formatWon(amountMinor)}</small>
+            </li>
+          ))}
+        </ul>
       </section>
 
       {monthlyGoalProgress === undefined ? (
@@ -463,6 +500,7 @@ export function DashboardSection({
     [],
   );
   const [settlements, setSettlements] = useState<readonly BudgetSettlement[]>([]);
+  const [budgetBuckets, setBudgetBuckets] = useState<readonly BudgetBucket[]>([]);
   const [localUserSettings, setLocalUserSettings] = useState<
     LocalUserSettings | undefined
   >(undefined);
@@ -475,6 +513,9 @@ export function DashboardSection({
   const [inflowTransactionIds, setInflowTransactionIds] = useState<
     readonly string[]
   >([]);
+  const [settlementBudgetBucketId, setSettlementBudgetBucketId] = useState<
+    BudgetBucketId
+  >('LIVING');
   const [settlementNotice, setSettlementNotice] = useState<SettlementNotice | null>(
     null,
   );
@@ -590,6 +631,7 @@ export function DashboardSection({
       ledgerRepository.listAllTransactions(),
       ledgerRepository.listBudgetSettlements(),
       ledgerRepository.getLocalUserSettings(),
+      ledgerRepository.listBudgetBuckets(),
     ])
       .then(
         ([
@@ -597,6 +639,7 @@ export function DashboardSection({
           nextAllTransactions,
           nextSettlements,
           nextLocalUserSettings,
+          nextBudgetBuckets,
         ]) => {
           if (!isCurrent) {
             return;
@@ -605,6 +648,7 @@ export function DashboardSection({
           setAllTransactions(nextAllTransactions);
           setSettlements(nextSettlements);
           setLocalUserSettings(nextLocalUserSettings);
+          setBudgetBuckets(nextBudgetBuckets);
         },
       )
       .catch(() => {
@@ -615,6 +659,7 @@ export function DashboardSection({
         setAllTransactions([]);
         setSettlements([]);
         setLocalUserSettings(undefined);
+        setBudgetBuckets([]);
         setLoadError(true);
       })
       .finally(() => {
@@ -640,7 +685,25 @@ export function DashboardSection({
           sharedPaymentExpenseAmountMinor: 0,
           totalAmountMinor: 0,
           sharedPaymentCount: 0,
-        };
+      };
+  const budgetBucketSpending =
+    rangeResult.isValid
+      ? budgetBuckets
+          .filter((bucket) => !bucket.isArchived)
+          .map((bucket) => ({
+            bucket,
+            amountMinor: calculateBudgetBucketExpenseSummary(
+              allTransactions,
+              settlements,
+              rangeResult.value,
+              bucket.id,
+            ).totalAmountMinor,
+          }))
+      : [];
+  const totalBudgetBucketExpenseAmountMinor = budgetBucketSpending.reduce(
+    (total, item) => total + item.amountMinor,
+    0,
+  );
   const monthlyGoalProgress =
     !isMock &&
     (page === 'HOME' || preset === 'MONTH') &&
@@ -741,6 +804,7 @@ export function DashboardSection({
         id: createLocalId(),
         outflowTransactionIds,
         inflowTransactionIds,
+        budgetBucketId: settlementBudgetBucketId,
         createdAt: now,
         updatedAt: now,
       },
@@ -757,6 +821,7 @@ export function DashboardSection({
 
     setOutflowTransactionIds([]);
     setInflowTransactionIds([]);
+    setSettlementBudgetBucketId('LIVING');
     setSettlementNotice({ tone: 'success', message: '공동결제 정산을 연결했습니다.' });
     requestReload();
   };
@@ -782,6 +847,7 @@ export function DashboardSection({
     setTransactionEditDraft({
       transactionId: transaction.id,
       categoryId: transaction.categoryId,
+      budgetBucketId: transaction.budgetBucketId,
       memo: transaction.memo ?? '',
     });
     setTransactionEditError(null);
@@ -799,6 +865,7 @@ export function DashboardSection({
       {
         transactionId: transactionEditDraft.transactionId,
         categoryId: transactionEditDraft.categoryId,
+        budgetBucketId: transactionEditDraft.budgetBucketId,
         memo: memo.length === 0 ? undefined : memo,
         updatedAt: currentUtcIsoInstant(),
       },
@@ -945,6 +1012,8 @@ export function DashboardSection({
         {page === 'HOME' && !isMock ? (
           <HomeDashboard
             livingExpenseAmountMinor={livingExpenseSummary.totalAmountMinor}
+            totalExpenseAmountMinor={totalBudgetBucketExpenseAmountMinor}
+            budgetBucketSpending={budgetBucketSpending}
             monthlyGoalProgress={monthlyGoalProgress}
             reviewNeededCount={reviewNeededCount}
             weeklySpending={weeklySpending}
@@ -1247,6 +1316,24 @@ export function DashboardSection({
               </p>
 
               <div className="settlement-form">
+                <label>
+                  정산 순지출 자금통
+                  <select
+                    aria-label="공동결제 정산 자금통"
+                    value={settlementBudgetBucketId}
+                    onChange={(event) =>
+                      setSettlementBudgetBucketId(event.target.value)
+                    }
+                  >
+                    {budgetBuckets
+                      .filter((bucket) => !bucket.isArchived)
+                      .map((bucket) => (
+                        <option key={bucket.id} value={bucket.id}>
+                          {bucket.icon} {bucket.name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
                 <fieldset>
                   <legend>공동결제 지출 (1건 이상)</legend>
                   {outflowCandidates.length > 0 ? (
@@ -1443,6 +1530,34 @@ export function DashboardSection({
                   })}
                 </select>
               </label>
+              <label>
+                자금통
+                <select
+                  aria-label={`${editingTransaction.descriptionOriginal} 자금통`}
+                  value={transactionEditDraft.budgetBucketId}
+                  disabled={isSavingTransactionEdit}
+                  onChange={(event) =>
+                    setTransactionEditDraft((current) =>
+                      current === null
+                        ? current
+                        : {
+                            ...current,
+                            budgetBucketId: event.target.value,
+                          },
+                    )
+                  }
+                >
+                  {budgetBuckets.map((bucket) => (
+                    <option key={bucket.id} value={bucket.id}>
+                      {bucket.icon} {bucket.name}
+                      {bucket.isArchived ? ' (보관됨)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="transaction-edit-bucket-hint">
+                기존 거래와 새 불러오기는 생활비로 시작합니다. 실제 자금 목적에 맞게 바꿔 주세요.
+              </p>
               <label>
                 메모
                 <textarea

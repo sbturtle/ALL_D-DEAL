@@ -11,6 +11,7 @@ const existingTransaction: Transaction = {
   direction: 'OUTFLOW',
   type: 'EXPENSE',
   categoryId: 'FOOD_DINING',
+  budgetBucketId: 'LIVING',
   descriptionOriginal: 'Fabricated local meal',
   memo: 'Fabricated previous note',
   importBatchId: '550e8400-e29b-41d4-a716-446655440000',
@@ -26,6 +27,7 @@ describe('updateTransactionDetails', () => {
       {
         transactionId: existingTransaction.id,
         categoryId: 'CAFE',
+        budgetBucketId: 'IRREGULAR',
         memo: 'Fabricated updated note',
         updatedAt: '2026-08-05T01:00:00.000Z',
       },
@@ -40,6 +42,7 @@ describe('updateTransactionDetails', () => {
       transaction: {
         ...existingTransaction,
         categoryId: 'CAFE',
+        budgetBucketId: 'IRREGULAR',
         memo: 'Fabricated updated note',
         updatedAt: '2026-08-05T01:00:00.000Z',
       },
@@ -58,6 +61,7 @@ describe('updateTransactionDetails', () => {
       {
         transactionId: existingTransaction.id,
         categoryId: undefined,
+        budgetBucketId: 'LIVING',
         memo: undefined,
         updatedAt: '2026-08-05T01:00:00.000Z',
       },
@@ -87,6 +91,7 @@ describe('updateTransactionDetails', () => {
         {
           transactionId: existingTransaction.id,
           categoryId: 'CAFE',
+          budgetBucketId: 'LIVING',
           memo: undefined,
           updatedAt: '2026-08-05T01:00:00.000Z',
         },

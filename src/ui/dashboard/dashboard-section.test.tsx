@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { DEFAULT_BUDGET_BUCKETS } from '../../domain/budget-buckets/budget-bucket';
 import type { Transaction } from '../../domain/transactions/transaction';
 import type { LocalLedgerRepository } from './dashboard-section';
 import { DashboardSection } from './dashboard-section';
@@ -13,6 +14,7 @@ const payer: Transaction = {
   currency: 'KRW',
   direction: 'OUTFLOW',
   type: 'UNKNOWN',
+  budgetBucketId: 'LIVING',
   descriptionOriginal: 'Fabricated group payment',
   createdAt: '2026-08-05T00:00:00.000Z',
   updatedAt: '2026-08-05T00:00:00.000Z',
@@ -24,6 +26,7 @@ const reimbursement: Transaction = {
   currency: 'KRW',
   direction: 'INFLOW',
   type: 'UNKNOWN',
+  budgetBucketId: 'LIVING',
   descriptionOriginal: 'Fabricated reimbursement',
   createdAt: '2026-08-06T00:00:00.000Z',
   updatedAt: '2026-08-06T00:00:00.000Z',
@@ -48,6 +51,7 @@ const ordinaryExpense: Transaction = {
   direction: 'OUTFLOW',
   type: 'EXPENSE',
   categoryId: 'TRANSPORT',
+  budgetBucketId: 'LIVING',
   descriptionOriginal: 'Fabricated ordinary expense',
   importBatchId: '550e8400-e29b-41d4-a716-446655440000',
   importerId: 'LEGACY_XLS',
@@ -79,6 +83,7 @@ const uncategorizedExpense: Transaction = {
   currency: 'KRW',
   direction: 'OUTFLOW',
   type: 'EXPENSE',
+  budgetBucketId: 'LIVING',
   descriptionOriginal: 'Fabricated uncategorized expense',
   createdAt: '2026-08-02T00:00:00.000Z',
   updatedAt: '2026-08-02T00:00:00.000Z',
@@ -103,6 +108,7 @@ const repository: LocalLedgerRepository = {
       id: '550e8400-e29b-41d4-a716-446655440000',
       outflowTransactionIds: [payer.id],
       inflowTransactionIds: [reimbursement.id],
+      budgetBucketId: 'LIVING',
       createdAt: '2026-08-06T00:00:00.000Z',
       updatedAt: '2026-08-06T00:00:00.000Z',
     },
@@ -111,6 +117,7 @@ const repository: LocalLedgerRepository = {
   removeBudgetSettlement: vi.fn().mockResolvedValue(undefined),
   replaceTransaction: vi.fn().mockResolvedValue(undefined),
   getLocalUserSettings: vi.fn().mockResolvedValue(undefined),
+  listBudgetBuckets: vi.fn().mockResolvedValue(DEFAULT_BUDGET_BUCKETS),
 };
 
 function getTodayInSeoulForTest(): Transaction['occurredOn'] {
@@ -155,6 +162,7 @@ describe('DashboardSection', () => {
       occurredOn,
       amountMinor: 10_000,
       type: 'EXPENSE',
+      budgetBucketId: 'IRREGULAR',
       descriptionOriginal: 'Fabricated review needed',
     };
     const homeRepository = createHomeRepository(
@@ -179,11 +187,30 @@ describe('DashboardSection', () => {
         name: '이번 달 생활비를 한눈에 확인하세요',
       }),
     ).toBeVisible();
-    expect(await screen.findByText('30,000원')).toBeVisible();
-    expect(screen.getByText('20,000원 남았어요')).toBeVisible();
+    const livingExpenseCard = (
+      await screen.findByText('이번 달 생활비')
+    ).closest('section');
+    expect(livingExpenseCard).not.toBeNull();
+    expect(within(livingExpenseCard as HTMLElement).getByText('20,000원')).toBeVisible();
+    expect(screen.getByText('30,000원 남았어요')).toBeVisible();
     expect(
       screen.getByRole('progressbar', { name: '월 생활비 목표 사용률' }),
-    ).toHaveAttribute('aria-valuenow', '60');
+    ).toHaveAttribute('aria-valuenow', '40');
+    const budgetBucketCard = screen
+      .getByRole('heading', { name: '자금통별 소비' })
+      .closest('section');
+    expect(budgetBucketCard).not.toBeNull();
+    expect(
+      within(budgetBucketCard as HTMLElement).getByText('30,000원'),
+    ).toBeVisible();
+    const budgetBucketList = within(budgetBucketCard as HTMLElement).getByRole(
+      'list',
+      { name: '자금통별 소비' },
+    );
+    expect(within(budgetBucketList).getByText('생활비')).toBeVisible();
+    expect(within(budgetBucketList).getByText('비정기비')).toBeVisible();
+    expect(within(budgetBucketList).getByText('20,000원')).toBeVisible();
+    expect(within(budgetBucketList).getByText('10,000원')).toBeVisible();
     expect(screen.getByText('분류가 필요한 거래 2건')).toBeVisible();
     expect(screen.getByRole('link', { name: '분류 시작하기' })).toHaveAttribute(
       'href',
@@ -196,7 +223,7 @@ describe('DashboardSection', () => {
     ).toHaveLength(7);
     expect(
       screen.getByRole('listitem', {
-        name: `${occurredOn} 생활비 30,000원`,
+        name: `${occurredOn} 생활비 20,000원`,
       }),
     ).toBeVisible();
     expect(screen.getByText('Fabricated home expense')).toBeVisible();
@@ -307,6 +334,10 @@ describe('DashboardSection', () => {
 
     render(<DashboardSection ledgerRepository={manyRepository} />);
 
+    await user.selectOptions(
+      await screen.findByLabelText('공동결제 정산 자금통'),
+      'IRREGULAR',
+    );
     await user.click(
       await screen.findByRole('checkbox', {
         name: '공동결제 지출 Fabricated group payment',
@@ -336,6 +367,7 @@ describe('DashboardSection', () => {
         expect.objectContaining({
           outflowTransactionIds: [payer.id, secondPayer.id],
           inflowTransactionIds: [reimbursement.id, secondReimbursement.id],
+          budgetBucketId: 'IRREGULAR',
         }),
       );
     });
@@ -418,7 +450,7 @@ describe('DashboardSection', () => {
     expect(screen.queryByText('월 목표 잔액')).not.toBeInTheDocument();
   });
 
-  it('updates one saved transaction category and memo from the ledger', async () => {
+  it('updates one saved transaction category, budget bucket, and memo from the ledger', async () => {
     const user = userEvent.setup();
     const replaceTransaction = vi.fn().mockResolvedValue(undefined);
     const updateRepository: LocalLedgerRepository = {
@@ -434,9 +466,18 @@ describe('DashboardSection', () => {
         name: 'Fabricated ordinary expense 카테고리·메모 수정',
       }),
     );
+    expect(
+      screen.getByText(
+        '기존 거래와 새 불러오기는 생활비로 시작합니다. 실제 자금 목적에 맞게 바꿔 주세요.',
+      ),
+    ).toBeVisible();
     await user.selectOptions(
       screen.getByLabelText('Fabricated ordinary expense 카테고리'),
       'CAFE',
+    );
+    await user.selectOptions(
+      screen.getByLabelText('Fabricated ordinary expense 자금통'),
+      'IRREGULAR',
     );
     await user.type(
       screen.getByLabelText('Fabricated ordinary expense 메모'),
@@ -448,6 +489,7 @@ describe('DashboardSection', () => {
       expect.objectContaining({
         id: ordinaryExpense.id,
         categoryId: 'CAFE',
+        budgetBucketId: 'IRREGULAR',
         memo: 'Fabricated memo',
         importBatchId: ordinaryExpense.importBatchId,
       }),

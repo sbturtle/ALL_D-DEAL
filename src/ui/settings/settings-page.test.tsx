@@ -152,6 +152,11 @@ describe('SettingsPage', () => {
     ).toBeVisible();
     expect(screen.getByText('거래 내역과 불러오기 이력')).toBeVisible();
     expect(
+      screen.getByText(
+        '저장한 자금통 설정(초기화 뒤 기본 자금통 7개만 다시 만듭니다)',
+      ),
+    ).toBeVisible();
+    expect(
       screen.getByText('원본 엑셀 파일, 샘플 파일, 앱 코드와 환경 설정은 지우지 않습니다.'),
     ).toBeVisible();
 

@@ -27,6 +27,7 @@ const accountPreview: ImportPreview = {
         currency: 'KRW',
         direction: 'OUTFLOW',
         type: 'UNKNOWN',
+        budgetBucketId: 'LIVING',
         descriptionOriginal: '가짜 식료품점',
       },
     },
@@ -53,6 +54,7 @@ const expensePreview: ImportPreview = {
         currency: 'KRW',
         direction: 'OUTFLOW',
         type: 'EXPENSE',
+        budgetBucketId: 'LIVING',
         descriptionOriginal: '가짜 식료품점',
       },
     },
@@ -73,6 +75,7 @@ const multipleExpensePreview: ImportPreview = {
         currency: 'KRW',
         direction: 'OUTFLOW',
         type: 'EXPENSE',
+        budgetBucketId: 'LIVING',
         descriptionOriginal: '가짜 대중교통',
       },
     },
@@ -164,6 +167,7 @@ describe('LegacyXlsImportPreview', () => {
     expect(
       screen.getByText('카테고리는 지출 유형에서만 지정할 수 있어요.'),
     ).toBeVisible();
+    expect(screen.getByText('자금통: 🏠 생활비 · 기본 추천')).toBeVisible();
     expect(
       screen.queryByLabelText('후보 1 카테고리 열기'),
     ).not.toBeInTheDocument();

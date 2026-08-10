@@ -234,6 +234,7 @@ export function ReviewPage({ ledgerRepository }: ReviewPageProps) {
       {
         transactionId: activeTransaction.id,
         categoryId,
+        budgetBucketId: activeTransaction.budgetBucketId,
         memo: activeTransaction.memo,
         updatedAt: currentUtcIsoInstant(),
       },

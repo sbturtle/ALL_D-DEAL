@@ -1,4 +1,5 @@
 import type { CategoryId } from '../../domain/categories/category';
+import type { BudgetBucketId } from '../../domain/budget-buckets/budget-bucket';
 import type { Transaction } from '../../domain/transactions/transaction';
 import { validateTransaction } from '../../domain/transactions/transaction-validation';
 import type { UtcIsoInstant } from '../../domain/transactions/utc-iso-instant';
@@ -13,6 +14,7 @@ export type TransactionDetailsRepository = Readonly<{
 export type UpdateTransactionDetailsInput = Readonly<{
   transactionId: string;
   categoryId: CategoryId | undefined;
+  budgetBucketId: BudgetBucketId;
   memo: string | undefined;
   updatedAt: UtcIsoInstant;
 }>;
@@ -30,15 +32,18 @@ function applyEditableDetails(
 ): Transaction | undefined {
   const {
     categoryId: ignoredCategoryId,
+    budgetBucketId: ignoredBudgetBucketId,
     memo: ignoredMemo,
     ...transactionWithoutEditableDetails
   } = transaction;
   void ignoredCategoryId;
+  void ignoredBudgetBucketId;
   void ignoredMemo;
 
   const validation = validateTransaction({
     ...transactionWithoutEditableDetails,
     ...(input.categoryId === undefined ? {} : { categoryId: input.categoryId }),
+    budgetBucketId: input.budgetBucketId,
     ...(input.memo === undefined ? {} : { memo: input.memo }),
     updatedAt: input.updatedAt,
   });
