@@ -28,6 +28,18 @@ const reimbursement: Transaction = {
   createdAt: '2026-08-06T00:00:00.000Z',
   updatedAt: '2026-08-06T00:00:00.000Z',
 };
+const secondPayer: Transaction = {
+  ...payer,
+  id: '550e8400-e29b-41d4-a716-446655440008',
+  amountMinor: 40_000,
+  descriptionOriginal: 'Fabricated second group payment',
+};
+const secondReimbursement: Transaction = {
+  ...reimbursement,
+  id: '550e8400-e29b-41d4-a716-446655440009',
+  amountMinor: 20_000,
+  descriptionOriginal: 'Fabricated second reimbursement',
+};
 const ordinaryExpense: Transaction = {
   id: '550e8400-e29b-41d4-a716-446655440003',
   occurredOn: '2026-08-04',
@@ -80,15 +92,17 @@ const repository: LocalLedgerRepository = {
   ]),
   listAllTransactions: vi.fn().mockResolvedValue([
     reimbursement,
+    secondReimbursement,
     ordinaryExpense,
     payer,
+    secondPayer,
   ]),
   getTransactionsByIds: vi.fn().mockResolvedValue([]),
   listBudgetSettlements: vi.fn().mockResolvedValue([
     {
       id: '550e8400-e29b-41d4-a716-446655440000',
-      payerOutflowTransactionId: payer.id,
-      reimbursementInflowTransactionIds: [reimbursement.id],
+      outflowTransactionIds: [payer.id],
+      inflowTransactionIds: [reimbursement.id],
       createdAt: '2026-08-06T00:00:00.000Z',
       updatedAt: '2026-08-06T00:00:00.000Z',
     },
@@ -275,6 +289,56 @@ describe('DashboardSection', () => {
     await user.click(screen.getByRole('button', { name: '직접 선택' }));
     expect(screen.getByLabelText('기간 시작')).toBeVisible();
     expect(screen.getByLabelText('기간 종료')).toBeVisible();
+  });
+
+  it('saves a many-to-many shared-payment selection', async () => {
+    const user = userEvent.setup();
+    const saveBudgetSettlement = vi.fn().mockResolvedValue(undefined);
+    const manyRepository: LocalLedgerRepository = {
+      ...repository,
+      listBudgetSettlements: vi.fn().mockResolvedValue([]),
+      getTransactionsByIds: vi.fn().mockImplementation(async (ids: readonly string[]) =>
+        [payer, secondPayer, reimbursement, secondReimbursement].filter((transaction) =>
+          ids.includes(transaction.id),
+        ),
+      ),
+      saveBudgetSettlement,
+    };
+
+    render(<DashboardSection ledgerRepository={manyRepository} />);
+
+    await user.click(
+      await screen.findByRole('checkbox', {
+        name: '공동결제 지출 Fabricated group payment',
+      }),
+    );
+    await user.click(
+      screen.getByRole('checkbox', {
+        name: '공동결제 지출 Fabricated second group payment',
+      }),
+    );
+    await user.click(
+      screen.getByRole('checkbox', {
+        name: '정산 입금 Fabricated reimbursement',
+      }),
+    );
+    await user.click(
+      screen.getByRole('checkbox', {
+        name: '정산 입금 Fabricated second reimbursement',
+      }),
+    );
+
+    expect(screen.getByText('선택 2건 지출 · 2건 입금 · 순지출 50,000원')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '생활비 순지출로 연결' }));
+
+    await waitFor(() => {
+      expect(saveBudgetSettlement).toHaveBeenCalledWith(
+        expect.objectContaining({
+          outflowTransactionIds: [payer.id, secondPayer.id],
+          inflowTransactionIds: [reimbursement.id, secondReimbursement.id],
+        }),
+      );
+    });
   });
 
   it('filters saved transactions by outflow, inflow, and review-needed state', async () => {

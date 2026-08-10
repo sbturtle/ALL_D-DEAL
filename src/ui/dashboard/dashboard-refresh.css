@@ -961,6 +961,16 @@
   border-radius: var(--radius-button);
 }
 
+.mobile-app-shell .ledger-section .settlement-selection-summary {
+  margin: 0;
+  padding: 12px var(--space-3);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--surface-muted);
+  border-radius: var(--radius-input);
+}
+
 .mobile-app-shell .ledger-section .settlement-save-action:disabled {
   color: var(--text-tertiary);
   background: var(--surface-muted);

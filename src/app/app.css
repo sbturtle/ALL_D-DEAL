@@ -2386,10 +2386,18 @@ fieldset {
 }
 
 .settlement-empty,
-.settlement-notice {
+.settlement-notice,
+.settlement-selection-summary {
   margin: 0;
   font-size: 0.68rem;
   line-height: 1.5;
+}
+
+.settlement-selection-summary {
+  padding: 9px 10px;
+  color: var(--green-dark);
+  background: #edf2e9;
+  border-radius: 8px;
 }
 
 .settlement-notice {

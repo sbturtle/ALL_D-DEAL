@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 
 import {
   CATEGORY_IDS,
@@ -170,10 +178,10 @@ function getSettlementErrorMessage(code: Exclude<
   { isSaved: true }
 >['code']): string {
   const messages = {
-    invalid_settlement: '원결제 1건과 정산 입금 1건 이상을 다시 선택해 주세요.',
+    invalid_settlement: '공동결제 지출 1건 이상과 정산 입금 1건 이상을 다시 선택해 주세요.',
     missing_transaction: '선택한 거래를 찾을 수 없습니다. 목록을 새로 확인해 주세요.',
-    payer_must_be_outflow: '원결제는 출금 거래만 선택할 수 있습니다.',
-    reimbursements_must_be_inflow: '정산금은 입금 거래만 선택할 수 있습니다.',
+    outflows_must_be_outflow: '공동결제 지출은 출금 거래만 선택할 수 있습니다.',
+    inflows_must_be_inflow: '정산금은 입금 거래만 선택할 수 있습니다.',
     transaction_already_linked: '이미 다른 정산에 연결된 거래가 있습니다.',
     storage_failed: '정산을 저장하지 못했습니다. 기존 거래는 변경되지 않았습니다.',
   } as const;
@@ -188,11 +196,23 @@ function getSettlementSummary(
   const transactionById = new Map(
     transactions.map((transaction) => [transaction.id, transaction]),
   );
-  const payer = transactionById.get(settlement.payerOutflowTransactionId);
+  const outflows = settlement.outflowTransactionIds
+    .map((transactionId) => transactionById.get(transactionId))
+    .filter((transaction): transaction is Transaction => transaction !== undefined);
+  const inflows = settlement.inflowTransactionIds
+    .map((transactionId) => transactionById.get(transactionId))
+    .filter((transaction): transaction is Transaction => transaction !== undefined);
+  const firstOutflow = outflows[0];
+  if (firstOutflow === undefined) {
+    return '연결한 공동결제';
+  }
 
-  return payer === undefined
-    ? '연결한 원결제'
-    : `${payer.occurredOn} · ${payer.descriptionOriginal}`;
+  const outflowTotal = outflows.reduce((total, transaction) => total + transaction.amountMinor, 0);
+  const inflowTotal = inflows.reduce((total, transaction) => total + transaction.amountMinor, 0);
+  const extraOutflowLabel = outflows.length > 1 ? ` 외 ${outflows.length - 1}건` : '';
+  const extraInflowLabel = inflows.length > 1 ? ` 외 ${inflows.length - 1}건` : '';
+
+  return `${firstOutflow.occurredOn} · ${firstOutflow.descriptionOriginal}${extraOutflowLabel} · 지출 ${formatWon(outflowTotal)} · 수입 ${formatWon(inflowTotal)}${extraInflowLabel}`;
 }
 
 type HomeDashboardProps = Readonly<{
@@ -449,8 +469,10 @@ export function DashboardSection({
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [reloadVersion, setReloadVersion] = useState(0);
-  const [payerTransactionId, setPayerTransactionId] = useState('');
-  const [reimbursementTransactionIds, setReimbursementTransactionIds] = useState<
+  const [outflowTransactionIds, setOutflowTransactionIds] = useState<
+    readonly string[]
+  >([]);
+  const [inflowTransactionIds, setInflowTransactionIds] = useState<
     readonly string[]
   >([]);
   const [settlementNotice, setSettlementNotice] = useState<SettlementNotice | null>(
@@ -675,8 +697,8 @@ export function DashboardSection({
   }, [allTransactions, anchorOn, settlements]);
   const linkedTransactionIds = new Set(
     settlements.flatMap((settlement) => [
-      settlement.payerOutflowTransactionId,
-      ...settlement.reimbursementInflowTransactionIds,
+      ...settlement.outflowTransactionIds,
+      ...settlement.inflowTransactionIds,
     ]),
   );
   const outflowCandidates = allTransactions.filter(
@@ -687,11 +709,27 @@ export function DashboardSection({
     (transaction) =>
       transaction.direction === 'INFLOW' && !linkedTransactionIds.has(transaction.id),
   );
+  const selectedOutflowTotal = outflowCandidates
+    .filter((transaction) => outflowTransactionIds.includes(transaction.id))
+    .reduce((total, transaction) => total + transaction.amountMinor, 0);
+  const selectedInflowTotal = inflowCandidates
+    .filter((transaction) => inflowTransactionIds.includes(transaction.id))
+    .reduce((total, transaction) => total + transaction.amountMinor, 0);
+  const selectedSettlementNet = Math.max(
+    selectedOutflowTotal - selectedInflowTotal,
+    0,
+  );
 
-  const handleReimbursementChange = (transactionId: string, checked: boolean) => {
-    setReimbursementTransactionIds((current) =>
+  const handleSettlementTransactionChange = (
+    transactionId: string,
+    checked: boolean,
+    setSelectedIds: Dispatch<SetStateAction<readonly string[]>>,
+  ) => {
+    setSelectedIds((current) =>
       checked
-        ? [...current, transactionId]
+        ? current.includes(transactionId)
+          ? current
+          : [...current, transactionId]
         : current.filter((item) => item !== transactionId),
     );
   };
@@ -701,8 +739,8 @@ export function DashboardSection({
     const result = await saveManualBudgetSettlement(
       {
         id: createLocalId(),
-        payerOutflowTransactionId: payerTransactionId,
-        reimbursementInflowTransactionIds: reimbursementTransactionIds,
+        outflowTransactionIds,
+        inflowTransactionIds,
         createdAt: now,
         updatedAt: now,
       },
@@ -717,8 +755,8 @@ export function DashboardSection({
       return;
     }
 
-    setPayerTransactionId('');
-    setReimbursementTransactionIds([]);
+    setOutflowTransactionIds([]);
+    setInflowTransactionIds([]);
     setSettlementNotice({ tone: 'success', message: '공동결제 정산을 연결했습니다.' });
     requestReload();
   };
@@ -1205,25 +1243,39 @@ export function DashboardSection({
                 <span>{settlements.length}건 연결</span>
               </div>
               <p>
-                내가 먼저 낸 출금과 받은 정산 입금을 연결하면 생활비에는 실제 순지출만 반영됩니다. 원장과 잔액은 바뀌지 않습니다.
+                공동결제에 포함된 지출과 여러 사람이 보낸 정산 입금을 함께 연결하면 생활비에는 실제 순지출만 반영됩니다. 원장과 잔액은 바뀌지 않습니다.
               </p>
 
               <div className="settlement-form">
-                <label>
-                  원결제 출금
-                  <select
-                    aria-label="공동결제 원결제 출금"
-                    value={payerTransactionId}
-                    onChange={(event) => setPayerTransactionId(event.target.value)}
-                  >
-                    <option value="">출금 거래 선택</option>
-                    {outflowCandidates.map((transaction) => (
-                      <option value={transaction.id} key={transaction.id}>
-                        {transaction.occurredOn} · {transaction.descriptionOriginal} · {formatWon(transaction.amountMinor)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <fieldset>
+                  <legend>공동결제 지출 (1건 이상)</legend>
+                  {outflowCandidates.length > 0 ? (
+                    <div className="settlement-reimbursement-list">
+                      {outflowCandidates.map((transaction) => (
+                        <label key={transaction.id}>
+                          <input
+                            type="checkbox"
+                            aria-label={`공동결제 지출 ${transaction.descriptionOriginal}`}
+                            checked={outflowTransactionIds.includes(transaction.id)}
+                            onChange={(event) =>
+                              handleSettlementTransactionChange(
+                                transaction.id,
+                                event.target.checked,
+                                setOutflowTransactionIds,
+                              )
+                            }
+                          />
+                          <span>
+                            {transaction.occurredOn} · {transaction.descriptionOriginal} · −
+                            {formatWon(transaction.amountMinor)}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="settlement-empty">연결할 출금 거래가 없습니다.</p>
+                  )}
+                </fieldset>
 
                 <fieldset>
                   <legend>정산 입금 (1건 이상)</legend>
@@ -1233,9 +1285,14 @@ export function DashboardSection({
                         <label key={transaction.id}>
                           <input
                             type="checkbox"
-                            checked={reimbursementTransactionIds.includes(transaction.id)}
+                            aria-label={`정산 입금 ${transaction.descriptionOriginal}`}
+                            checked={inflowTransactionIds.includes(transaction.id)}
                             onChange={(event) =>
-                              handleReimbursementChange(transaction.id, event.target.checked)
+                              handleSettlementTransactionChange(
+                                transaction.id,
+                                event.target.checked,
+                                setInflowTransactionIds,
+                              )
                             }
                           />
                           <span>
@@ -1246,16 +1303,20 @@ export function DashboardSection({
                       ))}
                     </div>
                   ) : (
-                    <p className="settlement-empty">저장된 입금 거래가 없습니다.</p>
+                    <p className="settlement-empty">연결할 입금 거래가 없습니다.</p>
                   )}
                 </fieldset>
+
+                <p className="settlement-selection-summary" aria-live="polite">
+                  선택 {outflowTransactionIds.length}건 지출 · {inflowTransactionIds.length}건 입금 · 순지출 {formatWon(selectedSettlementNet)}
+                </p>
 
                 <button
                   type="button"
                   className="settlement-save-action"
                   disabled={
-                    payerTransactionId === '' ||
-                    reimbursementTransactionIds.length === 0
+                    outflowTransactionIds.length === 0 ||
+                    inflowTransactionIds.length === 0
                   }
                   onClick={handleSaveSettlement}
                 >
