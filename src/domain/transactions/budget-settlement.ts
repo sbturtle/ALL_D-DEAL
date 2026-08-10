@@ -1,10 +1,15 @@
 import { isUtcIsoInstant } from './utc-iso-instant';
 import type { UtcIsoInstant } from './utc-iso-instant';
+import {
+  isBudgetBucketId,
+  type BudgetBucketId,
+} from '../budget-buckets/budget-bucket';
 
 export type BudgetSettlement = Readonly<{
   id: string;
   outflowTransactionIds: readonly string[];
   inflowTransactionIds: readonly string[];
+  budgetBucketId: BudgetBucketId;
   createdAt: UtcIsoInstant;
   updatedAt: UtcIsoInstant;
 }>;
@@ -18,6 +23,7 @@ export type BudgetSettlementValidationIssue = Readonly<{
     | 'invalid_outflow_ids'
     | 'invalid_inflow_ids'
     | 'overlapping_transaction_ids'
+    | 'invalid_budget_bucket_id'
     | 'invalid_utc_instant'
     | 'invalid_timestamp_order'
     | 'unexpected_field';
@@ -37,6 +43,7 @@ const SETTLEMENT_FIELDS = [
   'id',
   'outflowTransactionIds',
   'inflowTransactionIds',
+  'budgetBucketId',
   'createdAt',
   'updatedAt',
 ] as const;
@@ -126,6 +133,12 @@ export function validateBudgetSettlement(
     'inflowTransactionIds',
     'invalid_inflow_ids',
   );
+  const budgetBucketId = isBudgetBucketId(candidate.budgetBucketId)
+    ? candidate.budgetBucketId
+    : null;
+  if (budgetBucketId === null) {
+    addIssue('budgetBucketId', 'invalid_budget_bucket_id');
+  }
 
   if (
     outflowTransactionIds !== null &&
@@ -157,6 +170,7 @@ export function validateBudgetSettlement(
     id === null ||
     outflowTransactionIds === null ||
     inflowTransactionIds === null ||
+    budgetBucketId === null ||
     createdAt === null ||
     updatedAt === null
   ) {
@@ -169,6 +183,7 @@ export function validateBudgetSettlement(
       id,
       outflowTransactionIds,
       inflowTransactionIds,
+      budgetBucketId,
       createdAt,
       updatedAt,
     },

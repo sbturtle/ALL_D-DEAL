@@ -14,6 +14,7 @@ const baseTransaction: Transaction = {
   currency: 'KRW',
   direction: 'OUTFLOW',
   type: 'EXPENSE',
+  budgetBucketId: 'LIVING',
   descriptionOriginal: 'Fabricated category review expense',
   createdAt: '2026-08-07T00:00:00.000Z',
   updatedAt: '2026-08-07T00:00:00.000Z',

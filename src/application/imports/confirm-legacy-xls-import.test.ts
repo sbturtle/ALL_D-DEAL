@@ -15,6 +15,7 @@ const preview: ImportPreview = {
         currency: 'KRW',
         direction: 'OUTFLOW',
         type: 'UNKNOWN',
+        budgetBucketId: 'LIVING',
         descriptionOriginal: 'Fabricated account transaction',
       },
     },
@@ -55,6 +56,7 @@ describe('confirmLegacyXlsImport', () => {
           id: '550e8400-e29b-41d4-a716-446655440001',
           importBatchId: '550e8400-e29b-41d4-a716-446655440000',
           importerId: 'LEGACY_XLS',
+          budgetBucketId: 'LIVING',
         }),
       ],
     );

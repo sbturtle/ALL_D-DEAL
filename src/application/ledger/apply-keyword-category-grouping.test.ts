@@ -15,6 +15,7 @@ const uncategorizedCouponOrder: Transaction = {
   currency: 'KRW',
   direction: 'OUTFLOW',
   type: 'EXPENSE',
+  budgetBucketId: 'LIVING',
   descriptionOriginal: 'Fabricated 쿠팡 오더',
   paymentInstrumentLabel: 'Fabricated card',
   memo: 'Fabricated original memo',

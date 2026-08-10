@@ -12,6 +12,7 @@ const settlement: BudgetSettlement = {
   id: '550e8400-e29b-41d4-a716-446655440000',
   outflowTransactionIds: [payerId, secondPayerId],
   inflowTransactionIds: [reimbursementId, secondReimbursementId],
+  budgetBucketId: 'LIVING',
   createdAt: '2026-08-05T00:00:00.000Z',
   updatedAt: '2026-08-05T00:00:00.000Z',
 };
@@ -27,6 +28,7 @@ function transaction(
     currency: 'KRW',
     direction,
     type: 'UNKNOWN',
+    budgetBucketId: 'LIVING',
     descriptionOriginal: `Fabricated ${id}`,
     createdAt: '2026-08-05T00:00:00.000Z',
     updatedAt: '2026-08-05T00:00:00.000Z',

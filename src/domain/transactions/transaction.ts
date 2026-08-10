@@ -2,6 +2,7 @@ import type { CalendarDate } from './calendar-date';
 import type { Money } from './money';
 import type { UtcIsoInstant } from './utc-iso-instant';
 import type { CategoryId } from '../categories/category';
+import type { BudgetBucketId } from '../budget-buckets/budget-bucket';
 
 export const TRANSACTION_DIRECTIONS = ['INFLOW', 'OUTFLOW'] as const;
 export const TRANSACTION_TYPES = [
@@ -30,6 +31,7 @@ export type Transaction = Readonly<
     direction: TransactionDirection;
     type: TransactionType;
     categoryId?: CategoryId;
+    budgetBucketId: BudgetBucketId;
     descriptionOriginal: string;
     merchantOriginal?: string;
     merchantNormalized?: string;

@@ -17,6 +17,7 @@ const draft: TransactionDraft = {
   currency: 'KRW',
   direction: 'OUTFLOW',
   type: 'EXPENSE',
+  budgetBucketId: 'LIVING',
   descriptionOriginal: 'Fabricated Cafe - Seoul!',
 };
 

@@ -5,6 +5,7 @@ import {
   TRANSACTION_TYPES,
 } from './transaction';
 import { CATEGORY_IDS } from '../categories/category';
+import { DEFAULT_BUDGET_BUCKETS } from '../budget-buckets/budget-bucket';
 import { validateTransaction } from './transaction-validation';
 
 const validTransaction = {
@@ -14,6 +15,7 @@ const validTransaction = {
   currency: 'KRW',
   direction: 'OUTFLOW',
   type: 'EXPENSE',
+  budgetBucketId: 'LIVING',
   descriptionOriginal: '명백한 가짜 식료품 예시',
   createdAt: '2026-08-05T07:30:00.000Z',
   updatedAt: '2026-08-05T07:30:00.000Z',
@@ -117,6 +119,7 @@ describe('validateTransaction', () => {
     'currency',
     'direction',
     'type',
+    'budgetBucketId',
     'descriptionOriginal',
     'createdAt',
     'updatedAt',
@@ -320,6 +323,32 @@ describe('validateTransaction', () => {
     expect(
       validateTransaction({ ...validTransaction, categoryId }).isValid,
     ).toBe(true);
+  });
+
+  it.each(DEFAULT_BUDGET_BUCKETS)(
+    '$name 자금통을 필수 선택 값으로 허용한다',
+    ({ id: budgetBucketId }) => {
+      expect(
+        validateTransaction({ ...validTransaction, budgetBucketId }).isValid,
+      ).toBe(true);
+    },
+  );
+
+  it('미래 사용자 자금통 ID를 허용한다', () => {
+    expect(
+      validateTransaction({
+        ...validTransaction,
+        budgetBucketId: 'travel-2026',
+      }).isValid,
+    ).toBe(true);
+  });
+
+  it('빈 자금통 ID를 거절한다', () => {
+    expectIssue(
+      { ...validTransaction, budgetBucketId: ' ' },
+      'budgetBucketId',
+      'unsupported_type',
+    );
   });
 
   it('지원하지 않는 카테고리를 거절한다', () => {

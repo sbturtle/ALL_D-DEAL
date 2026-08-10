@@ -9,6 +9,7 @@ import type {
   TransactionType,
 } from '../transactions/transaction';
 import type { CategoryId } from '../categories/category';
+import type { BudgetBucketId } from '../budget-buckets/budget-bucket';
 
 export const MAX_IMPORT_ROWS = 2_000;
 export const MAX_IMPORT_COLUMNS = 20;
@@ -28,6 +29,7 @@ export type TransactionDraft = Readonly<{
   direction: TransactionDirection;
   type: TransactionType;
   categoryId?: CategoryId;
+  budgetBucketId: BudgetBucketId;
   descriptionOriginal: string;
   paymentInstrumentLabel?: string;
 }>;
@@ -253,6 +255,7 @@ function createAccountLedgerPreview(rows: LegacyXlsRows): ImportPreview | null {
         currency: 'KRW',
         direction,
         type: accountTypeClassification.type,
+        budgetBucketId: 'LIVING',
         descriptionOriginal,
       },
     });
@@ -374,6 +377,7 @@ function createCardUsagePreview(rows: LegacyXlsRows): ImportPreview | null {
         currency: 'KRW',
         direction: 'OUTFLOW',
         type: 'EXPENSE',
+        budgetBucketId: 'LIVING',
         descriptionOriginal,
         paymentInstrumentLabel: toSafeCardLabel(row[3]),
       },

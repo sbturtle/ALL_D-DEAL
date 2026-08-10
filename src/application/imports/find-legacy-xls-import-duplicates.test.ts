@@ -16,6 +16,7 @@ const preview: ImportPreview = {
         currency: 'KRW',
         direction: 'OUTFLOW',
         type: 'UNKNOWN',
+        budgetBucketId: 'LIVING',
         descriptionOriginal: 'Fabricated account transaction',
       },
     },

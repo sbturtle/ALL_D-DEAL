@@ -2,6 +2,10 @@ import { isCalendarDate } from './calendar-date';
 import { isPositiveMinorAmount, isSupportedCurrency } from './money';
 import { isCategoryId, type CategoryId } from '../categories/category';
 import {
+  isBudgetBucketId,
+  type BudgetBucketId,
+} from '../budget-buckets/budget-bucket';
+import {
   isTransactionDirection,
   isTransactionImporterId,
   isTransactionType,
@@ -52,6 +56,7 @@ const TRANSACTION_FIELDS = [
   'direction',
   'type',
   'categoryId',
+  'budgetBucketId',
   'descriptionOriginal',
   'merchantOriginal',
   'merchantNormalized',
@@ -368,6 +373,28 @@ function readOptionalCategoryId(
   return candidate.categoryId;
 }
 
+function readBudgetBucketId(
+  candidate: CandidateRecord,
+  issues: TransactionValidationIssue[],
+): BudgetBucketId | null {
+  if (!hasOwnField(candidate, 'budgetBucketId') || candidate.budgetBucketId === undefined) {
+    addIssue(issues, 'budgetBucketId', 'required', '자금통을 선택해 주세요.');
+    return null;
+  }
+
+  if (!isBudgetBucketId(candidate.budgetBucketId)) {
+    addIssue(
+      issues,
+      'budgetBucketId',
+      'unsupported_type',
+      '지원하지 않는 자금통 ID입니다.',
+    );
+    return null;
+  }
+
+  return candidate.budgetBucketId;
+}
+
 function readUtcIsoInstant(
   candidate: CandidateRecord,
   field: 'createdAt' | 'updatedAt',
@@ -435,6 +462,7 @@ export function validateTransaction(
   const direction = readDirection(candidate, issues);
   const type = readTransactionType(candidate, issues);
   const categoryId = readOptionalCategoryId(candidate, issues);
+  const budgetBucketId = readBudgetBucketId(candidate, issues);
   const descriptionOriginal = readRequiredNonBlankText(
     candidate,
     'descriptionOriginal',
@@ -488,6 +516,7 @@ export function validateTransaction(
     currency === null ||
     direction === null ||
     type === null ||
+    budgetBucketId === null ||
     descriptionOriginal === null ||
     createdAt === null ||
     updatedAt === null
@@ -505,6 +534,7 @@ export function validateTransaction(
       direction,
       type,
       ...(categoryId === undefined ? {} : { categoryId }),
+      budgetBucketId,
       descriptionOriginal,
       ...(merchantOriginal === undefined ? {} : { merchantOriginal }),
       ...(merchantNormalized === undefined ? {} : { merchantNormalized }),

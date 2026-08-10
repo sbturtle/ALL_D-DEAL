@@ -12,6 +12,7 @@ const validSettlement = {
     '550e8400-e29b-41d4-a716-446655440003',
     '550e8400-e29b-41d4-a716-446655440004',
   ],
+  budgetBucketId: 'LIVING',
   createdAt: '2026-08-05T07:30:00.000Z',
   updatedAt: '2026-08-05T07:30:00.000Z',
 } as const;
@@ -57,6 +58,25 @@ describe('validateBudgetSettlement', () => {
         isValid: false,
         issues: expect.arrayContaining([
           expect.objectContaining({ code: 'overlapping_transaction_ids' }),
+        ]),
+      }),
+    );
+  });
+
+  it('requires a valid budget bucket ID for the shared-payment net expense', () => {
+    const result = validateBudgetSettlement({
+      ...validSettlement,
+      budgetBucketId: ' ',
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        isValid: false,
+        issues: expect.arrayContaining([
+          expect.objectContaining({
+            field: 'budgetBucketId',
+            code: 'invalid_budget_bucket_id',
+          }),
         ]),
       }),
     );
