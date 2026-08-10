@@ -5,11 +5,13 @@ import type { Transaction } from '../../domain/transactions/transaction';
 import { saveManualBudgetSettlement } from './save-manual-budget-settlement';
 
 const payerId = '550e8400-e29b-41d4-a716-446655440001';
-const reimbursementId = '550e8400-e29b-41d4-a716-446655440002';
+const secondPayerId = '550e8400-e29b-41d4-a716-446655440002';
+const reimbursementId = '550e8400-e29b-41d4-a716-446655440003';
+const secondReimbursementId = '550e8400-e29b-41d4-a716-446655440004';
 const settlement: BudgetSettlement = {
   id: '550e8400-e29b-41d4-a716-446655440000',
-  payerOutflowTransactionId: payerId,
-  reimbursementInflowTransactionIds: [reimbursementId],
+  outflowTransactionIds: [payerId, secondPayerId],
+  inflowTransactionIds: [reimbursementId, secondReimbursementId],
   createdAt: '2026-08-05T00:00:00.000Z',
   updatedAt: '2026-08-05T00:00:00.000Z',
 };
@@ -32,12 +34,14 @@ function transaction(
 }
 
 describe('saveManualBudgetSettlement', () => {
-  it('saves one explicit payer and reimbursement connection', async () => {
+  it('saves multiple explicit outflow and inflow connections', async () => {
     const saveBudgetSettlement = vi.fn().mockResolvedValue(undefined);
     const result = await saveManualBudgetSettlement(settlement, {
       getTransactionsByIds: async () => [
         transaction(payerId, 'OUTFLOW'),
+        transaction(secondPayerId, 'OUTFLOW'),
         transaction(reimbursementId, 'INFLOW'),
+        transaction(secondReimbursementId, 'INFLOW'),
       ],
       listBudgetSettlements: async () => [],
       saveBudgetSettlement,
@@ -51,7 +55,9 @@ describe('saveManualBudgetSettlement', () => {
     const result = await saveManualBudgetSettlement(settlement, {
       getTransactionsByIds: async () => [
         transaction(payerId, 'OUTFLOW'),
+        transaction(secondPayerId, 'OUTFLOW'),
         transaction(reimbursementId, 'INFLOW'),
+        transaction(secondReimbursementId, 'INFLOW'),
       ],
       listBudgetSettlements: async () => [
         {
@@ -68,11 +74,13 @@ describe('saveManualBudgetSettlement', () => {
     });
   });
 
-  it('rejects a reimbursement that is not an inflow', async () => {
+  it('rejects an inflow selection that is not an inflow', async () => {
     const result = await saveManualBudgetSettlement(settlement, {
       getTransactionsByIds: async () => [
         transaction(payerId, 'OUTFLOW'),
+        transaction(secondPayerId, 'OUTFLOW'),
         transaction(reimbursementId, 'OUTFLOW'),
+        transaction(secondReimbursementId, 'INFLOW'),
       ],
       listBudgetSettlements: async () => [],
       saveBudgetSettlement: vi.fn(),
@@ -80,7 +88,7 @@ describe('saveManualBudgetSettlement', () => {
 
     expect(result).toEqual({
       isSaved: false,
-      code: 'reimbursements_must_be_inflow',
+      code: 'inflows_must_be_inflow',
     });
   });
 });

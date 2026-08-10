@@ -3,8 +3,8 @@ import type { UtcIsoInstant } from './utc-iso-instant';
 
 export type BudgetSettlement = Readonly<{
   id: string;
-  payerOutflowTransactionId: string;
-  reimbursementInflowTransactionIds: readonly string[];
+  outflowTransactionIds: readonly string[];
+  inflowTransactionIds: readonly string[];
   createdAt: UtcIsoInstant;
   updatedAt: UtcIsoInstant;
 }>;
@@ -15,8 +15,9 @@ export type BudgetSettlementValidationIssue = Readonly<{
     | 'invalid_root'
     | 'required'
     | 'invalid_uuid'
-    | 'invalid_reimbursement_ids'
-    | 'payer_is_reimbursement'
+    | 'invalid_outflow_ids'
+    | 'invalid_inflow_ids'
+    | 'overlapping_transaction_ids'
     | 'invalid_utc_instant'
     | 'invalid_timestamp_order'
     | 'unexpected_field';
@@ -34,8 +35,8 @@ const UUID_PATTERN =
 const NIL_UUID = '00000000-0000-0000-0000-000000000000';
 const SETTLEMENT_FIELDS = [
   'id',
-  'payerOutflowTransactionId',
-  'reimbursementInflowTransactionIds',
+  'outflowTransactionIds',
+  'inflowTransactionIds',
   'createdAt',
   'updatedAt',
 ] as const;
@@ -73,7 +74,7 @@ export function validateBudgetSettlement(
     field: BudgetSettlementValidationIssue['field'],
     code: BudgetSettlementValidationIssue['code'],
   ) => issues.push({ field, code });
-  const readUuid = (field: 'id' | 'payerOutflowTransactionId') => {
+  const readUuid = (field: 'id') => {
     const value = candidate[field];
     if (value === undefined) {
       addIssue(field, 'required');
@@ -98,26 +99,42 @@ export function validateBudgetSettlement(
     return value;
   };
 
-  const id = readUuid('id');
-  const payerOutflowTransactionId = readUuid('payerOutflowTransactionId');
-  const reimbursementCandidate = candidate.reimbursementInflowTransactionIds;
-  const reimbursementInflowTransactionIds =
-    Array.isArray(reimbursementCandidate) &&
-    reimbursementCandidate.length > 0 &&
-    reimbursementCandidate.every(isUuid) &&
-    new Set(reimbursementCandidate).size === reimbursementCandidate.length
-      ? reimbursementCandidate
-      : null;
+  const readTransactionIds = (
+    field: 'outflowTransactionIds' | 'inflowTransactionIds',
+    code: 'invalid_outflow_ids' | 'invalid_inflow_ids',
+  ): readonly string[] | null => {
+    const value = candidate[field];
+    if (
+      !Array.isArray(value) ||
+      value.length === 0 ||
+      !value.every(isUuid) ||
+      new Set(value).size !== value.length
+    ) {
+      addIssue(field, code);
+      return null;
+    }
 
-  if (reimbursementInflowTransactionIds === null) {
-    addIssue('reimbursementInflowTransactionIds', 'invalid_reimbursement_ids');
-  }
+    return value;
+  };
+
+  const id = readUuid('id');
+  const outflowTransactionIds = readTransactionIds(
+    'outflowTransactionIds',
+    'invalid_outflow_ids',
+  );
+  const inflowTransactionIds = readTransactionIds(
+    'inflowTransactionIds',
+    'invalid_inflow_ids',
+  );
 
   if (
-    payerOutflowTransactionId !== null &&
-    reimbursementInflowTransactionIds?.includes(payerOutflowTransactionId)
+    outflowTransactionIds !== null &&
+    inflowTransactionIds !== null &&
+    outflowTransactionIds.some((transactionId) =>
+      inflowTransactionIds.includes(transactionId),
+    )
   ) {
-    addIssue('reimbursementInflowTransactionIds', 'payer_is_reimbursement');
+    addIssue('$root', 'overlapping_transaction_ids');
   }
 
   const createdAt = readInstant('createdAt');
@@ -138,8 +155,8 @@ export function validateBudgetSettlement(
   if (
     issues.length > 0 ||
     id === null ||
-    payerOutflowTransactionId === null ||
-    reimbursementInflowTransactionIds === null ||
+    outflowTransactionIds === null ||
+    inflowTransactionIds === null ||
     createdAt === null ||
     updatedAt === null
   ) {
@@ -150,8 +167,8 @@ export function validateBudgetSettlement(
     isValid: true,
     value: {
       id,
-      payerOutflowTransactionId,
-      reimbursementInflowTransactionIds,
+      outflowTransactionIds,
+      inflowTransactionIds,
       createdAt,
       updatedAt,
     },

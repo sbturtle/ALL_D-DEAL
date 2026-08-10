@@ -24,8 +24,8 @@ export function calculateLivingExpenseSummary(
   range: TransactionDateRange,
 ): LivingExpenseSummary {
   const transactionById = new Map(transactions.map((transaction) => [transaction.id, transaction]));
-  const payerIds = new Set(
-    settlements.map((settlement) => settlement.payerOutflowTransactionId),
+  const linkedOutflowIds = new Set(
+    settlements.flatMap((settlement) => settlement.outflowTransactionIds),
   );
   let unlinkedExpenseAmountMinor = 0;
   let sharedPaymentExpenseAmountMinor = 0;
@@ -35,34 +35,39 @@ export function calculateLivingExpenseSummary(
     if (
       isDateInTransactionRange(transaction.occurredOn, range) &&
       isLivingExpense(transaction) &&
-      !payerIds.has(transaction.id)
+      !linkedOutflowIds.has(transaction.id)
     ) {
       unlinkedExpenseAmountMinor += transaction.amountMinor;
     }
   }
 
   for (const settlement of settlements) {
-    const payer = transactionById.get(settlement.payerOutflowTransactionId);
-    if (
-      payer === undefined ||
-      payer.direction !== 'OUTFLOW' ||
-      !isDateInTransactionRange(payer.occurredOn, range)
-    ) {
+    const outflowTotal = settlement.outflowTransactionIds.reduce(
+      (total, transactionId) => {
+        const outflow = transactionById.get(transactionId);
+        return outflow?.direction === 'OUTFLOW' &&
+          isDateInTransactionRange(outflow.occurredOn, range)
+          ? total + outflow.amountMinor
+          : total;
+      },
+      0,
+    );
+    if (outflowTotal === 0) {
       continue;
     }
 
-    const reimbursementTotal = settlement.reimbursementInflowTransactionIds.reduce(
+    const inflowTotal = settlement.inflowTransactionIds.reduce(
       (total, transactionId) => {
-        const reimbursement = transactionById.get(transactionId);
-        return reimbursement?.direction === 'INFLOW'
-          ? total + reimbursement.amountMinor
+        const inflow = transactionById.get(transactionId);
+        return inflow?.direction === 'INFLOW'
+          ? total + inflow.amountMinor
           : total;
       },
       0,
     );
 
     sharedPaymentExpenseAmountMinor += Math.max(
-      payer.amountMinor - reimbursementTotal,
+      outflowTotal - inflowTotal,
       0,
     );
     sharedPaymentCount += 1;

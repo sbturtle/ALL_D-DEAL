@@ -64,7 +64,7 @@ function transaction(
 }
 
 describe('calculateLivingExpenseSummary', () => {
-  it('uses the payer date and net amount for a linked group payment', () => {
+  it('sums multiple linked outflows and nets later inflows', () => {
     const payer = transaction(
       '550e8400-e29b-41d4-a716-446655440001',
       '2026-08-03',
@@ -79,6 +79,20 @@ describe('calculateLivingExpenseSummary', () => {
       'INFLOW',
       'UNKNOWN',
     );
+    const secondPayer = transaction(
+      '550e8400-e29b-41d4-a716-446655440004',
+      '2026-08-03',
+      40_000,
+      'OUTFLOW',
+      'EXPENSE',
+    );
+    const secondReimbursement = transaction(
+      '550e8400-e29b-41d4-a716-446655440005',
+      '2026-08-07',
+      20_000,
+      'INFLOW',
+      'UNKNOWN',
+    );
     const ordinaryExpense = transaction(
       '550e8400-e29b-41d4-a716-446655440003',
       '2026-08-03',
@@ -89,12 +103,12 @@ describe('calculateLivingExpenseSummary', () => {
 
     expect(
       calculateLivingExpenseSummary(
-        [payer, reimbursement, ordinaryExpense],
+        [payer, reimbursement, secondPayer, secondReimbursement, ordinaryExpense],
         [
           {
             id: '550e8400-e29b-41d4-a716-446655440004',
-            payerOutflowTransactionId: payer.id,
-            reimbursementInflowTransactionIds: [reimbursement.id],
+            outflowTransactionIds: [payer.id, secondPayer.id],
+            inflowTransactionIds: [reimbursement.id, secondReimbursement.id],
             createdAt: '2026-08-06T00:00:00.000Z',
             updatedAt: '2026-08-06T00:00:00.000Z',
           },
@@ -103,8 +117,8 @@ describe('calculateLivingExpenseSummary', () => {
       ),
     ).toEqual({
       unlinkedExpenseAmountMinor: 20_000,
-      sharedPaymentExpenseAmountMinor: 30_000,
-      totalAmountMinor: 50_000,
+      sharedPaymentExpenseAmountMinor: 50_000,
+      totalAmountMinor: 70_000,
       sharedPaymentCount: 1,
     });
   });
@@ -131,8 +145,8 @@ describe('calculateLivingExpenseSummary', () => {
         [
           {
             id: '550e8400-e29b-41d4-a716-446655440013',
-            payerOutflowTransactionId: payer.id,
-            reimbursementInflowTransactionIds: [reimbursement.id],
+            outflowTransactionIds: [payer.id],
+            inflowTransactionIds: [reimbursement.id],
             createdAt: '2026-08-04T00:00:00.000Z',
             updatedAt: '2026-08-04T00:00:00.000Z',
           },

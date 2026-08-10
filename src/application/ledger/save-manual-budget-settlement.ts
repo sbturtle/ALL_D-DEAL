@@ -15,17 +15,14 @@ export type SaveManualBudgetSettlementResult =
       code:
         | 'invalid_settlement'
         | 'missing_transaction'
-        | 'payer_must_be_outflow'
-        | 'reimbursements_must_be_inflow'
+        | 'outflows_must_be_outflow'
+        | 'inflows_must_be_inflow'
         | 'transaction_already_linked'
         | 'storage_failed';
     }>;
 
 function getParticipantIds(settlement: BudgetSettlement): readonly string[] {
-  return [
-    settlement.payerOutflowTransactionId,
-    ...settlement.reimbursementInflowTransactionIds,
-  ];
+  return [...settlement.outflowTransactionIds, ...settlement.inflowTransactionIds];
 }
 
 export async function saveManualBudgetSettlement(
@@ -48,19 +45,24 @@ export async function saveManualBudgetSettlement(
     const participantById = new Map(
       participants.map((transaction) => [transaction.id, transaction]),
     );
-    const payer = participantById.get(settlement.payerOutflowTransactionId);
-    const reimbursements = settlement.reimbursementInflowTransactionIds.map(
-      (transactionId) => participantById.get(transactionId),
+    const outflows = settlement.outflowTransactionIds.map((transactionId) =>
+      participantById.get(transactionId),
+    );
+    const inflows = settlement.inflowTransactionIds.map((transactionId) =>
+      participantById.get(transactionId),
     );
 
-    if (payer === undefined || reimbursements.some((item) => item === undefined)) {
+    if (
+      outflows.some((item) => item === undefined) ||
+      inflows.some((item) => item === undefined)
+    ) {
       return { isSaved: false, code: 'missing_transaction' };
     }
-    if (payer.direction !== 'OUTFLOW') {
-      return { isSaved: false, code: 'payer_must_be_outflow' };
+    if (outflows.some((item) => item?.direction !== 'OUTFLOW')) {
+      return { isSaved: false, code: 'outflows_must_be_outflow' };
     }
-    if (reimbursements.some((item) => item?.direction !== 'INFLOW')) {
-      return { isSaved: false, code: 'reimbursements_must_be_inflow' };
+    if (inflows.some((item) => item?.direction !== 'INFLOW')) {
+      return { isSaved: false, code: 'inflows_must_be_inflow' };
     }
 
     const linkedTransactionIds = new Set(
