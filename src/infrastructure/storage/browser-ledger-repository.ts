@@ -1,4 +1,9 @@
 import type { ImportBatch } from '../../domain/imports/import-batch';
+import {
+  DEFAULT_BUDGET_BUCKETS,
+  validateBudgetBucket,
+  type BudgetBucket,
+} from '../../domain/budget-buckets/budget-bucket';
 import type { CategoryRule } from '../../domain/categories/category-rule';
 import { validateCategoryRule } from '../../domain/categories/category-rule';
 import type { KeywordCategoryRule } from '../../domain/categories/keyword-category-rule';
@@ -15,7 +20,7 @@ import type { Transaction } from '../../domain/transactions/transaction';
 import { validateTransaction } from '../../domain/transactions/transaction-validation';
 
 export const LOCAL_LEDGER_DATABASE_NAME = 'household-ledger';
-const LOCAL_LEDGER_DATABASE_VERSION = 5;
+const LOCAL_LEDGER_DATABASE_VERSION = 6;
 export const INDEXED_DB_OPEN_TIMEOUT_MS = 5_000;
 const TRANSACTIONS_STORE = 'transactions';
 const IMPORT_BATCHES_STORE = 'importBatches';
@@ -23,6 +28,7 @@ const BUDGET_SETTLEMENTS_STORE = 'budgetSettlements';
 const CATEGORY_RULES_STORE = 'categoryRules';
 const KEYWORD_CATEGORY_RULES_STORE = 'keywordCategoryRules';
 const USER_SETTINGS_STORE = 'userSettings';
+const BUDGET_BUCKETS_STORE = 'budgetBuckets';
 
 type KeyRangeFactory = Readonly<{
   bound: (lower: string, upper: string) => IDBKeyRange;
@@ -97,6 +103,15 @@ function validateStoredLocalUserSettings(value: unknown): LocalUserSettings {
   const validation = validateLocalUserSettings(value);
   if (!validation.isValid) {
     throw new Error('Stored local user settings are invalid.');
+  }
+
+  return validation.value;
+}
+
+function validateStoredBudgetBucket(value: unknown): BudgetBucket {
+  const validation = validateBudgetBucket(value);
+  if (!validation.isValid) {
+    throw new Error('Stored budget bucket is invalid.');
   }
 
   return validation.value;
@@ -329,6 +344,22 @@ export class BrowserLedgerRepository {
     await transactionAsPromise(transaction);
   }
 
+  async listBudgetBuckets(): Promise<readonly BudgetBucket[]> {
+    const database = await this.getDatabase();
+    const transaction = database.transaction(BUDGET_BUCKETS_STORE, 'readonly');
+    const values = await requestAsPromise(
+      transaction.objectStore(BUDGET_BUCKETS_STORE).getAll(),
+    );
+    await transactionAsPromise(transaction);
+
+    return values
+      .map(validateStoredBudgetBucket)
+      .sort(
+        (left, right) =>
+          left.order - right.order || left.name.localeCompare(right.name),
+      );
+  }
+
   async resetLocalLedger(): Promise<void> {
     const database = await this.getDatabase();
     const transaction = database.transaction(
@@ -339,6 +370,7 @@ export class BrowserLedgerRepository {
         CATEGORY_RULES_STORE,
         KEYWORD_CATEGORY_RULES_STORE,
         USER_SETTINGS_STORE,
+        BUDGET_BUCKETS_STORE,
       ],
       'readwrite',
     );
@@ -349,6 +381,11 @@ export class BrowserLedgerRepository {
     transaction.objectStore(CATEGORY_RULES_STORE).clear();
     transaction.objectStore(KEYWORD_CATEGORY_RULES_STORE).clear();
     transaction.objectStore(USER_SETTINGS_STORE).clear();
+    const budgetBuckets = transaction.objectStore(BUDGET_BUCKETS_STORE);
+    budgetBuckets.clear();
+    for (const bucket of DEFAULT_BUDGET_BUCKETS) {
+      budgetBuckets.put(bucket);
+    }
     await transactionAsPromise(transaction);
   }
 
@@ -429,11 +466,32 @@ export class BrowserLedgerRepository {
               keyPath: 'id',
             });
           }
+          if (!database.objectStoreNames.contains(BUDGET_BUCKETS_STORE)) {
+            const budgetBuckets = database.createObjectStore(BUDGET_BUCKETS_STORE, {
+              keyPath: 'id',
+            });
+            budgetBuckets.createIndex('order', 'order', { unique: false });
+          }
 
           if (
-            (event as IDBVersionChangeEvent).oldVersion < 5 &&
+            (event as IDBVersionChangeEvent).oldVersion < 6 &&
             request.transaction !== null
           ) {
+            const transactions = request.transaction.objectStore(TRANSACTIONS_STORE);
+            const transactionCursorRequest = transactions.openCursor();
+            transactionCursorRequest.addEventListener('success', () => {
+              const cursor = transactionCursorRequest.result;
+              if (cursor === null) {
+                return;
+              }
+
+              const value = cursor.value as Record<string, unknown>;
+              if (value.budgetBucketId === undefined) {
+                cursor.update({ ...value, budgetBucketId: 'LIVING' });
+              }
+              cursor.continue();
+            });
+
             const settlements = request.transaction.objectStore(
               BUDGET_SETTLEMENTS_STORE,
             );
@@ -453,6 +511,7 @@ export class BrowserLedgerRepository {
               }
 
               const value = cursor.value as Record<string, unknown>;
+              let nextValue = value;
               if (
                 value.outflowTransactionIds === undefined &&
                 typeof value.payerOutflowTransactionId === 'string' &&
@@ -463,14 +522,27 @@ export class BrowserLedgerRepository {
                   reimbursementInflowTransactionIds,
                   ...rest
                 } = value;
-                cursor.update({
+                nextValue = {
                   ...rest,
                   outflowTransactionIds: [payerOutflowTransactionId],
                   inflowTransactionIds: reimbursementInflowTransactionIds,
-                });
+                };
+              }
+              if (nextValue.budgetBucketId === undefined) {
+                nextValue = { ...nextValue, budgetBucketId: 'LIVING' };
+              }
+              if (nextValue !== value) {
+                cursor.update(nextValue);
               }
               cursor.continue();
             });
+
+            const budgetBuckets = request.transaction.objectStore(
+              BUDGET_BUCKETS_STORE,
+            );
+            for (const bucket of DEFAULT_BUDGET_BUCKETS) {
+              budgetBuckets.put(bucket);
+            }
           }
         },
         { once: true },

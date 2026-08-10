@@ -2,6 +2,7 @@ import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ImportBatch } from '../../domain/imports/import-batch';
+import { DEFAULT_BUDGET_BUCKETS } from '../../domain/budget-buckets/budget-bucket';
 import type { CategoryRule } from '../../domain/categories/category-rule';
 import type { KeywordCategoryRule } from '../../domain/categories/keyword-category-rule';
 import type { LocalUserSettings } from '../../domain/settings/local-user-settings';
@@ -50,6 +51,7 @@ function transaction(id: string, occurredOn: string): Transaction {
     currency: 'KRW',
     direction: 'OUTFLOW',
     type: 'EXPENSE',
+    budgetBucketId: 'LIVING',
     descriptionOriginal: `Fabricated ${id}`,
     importBatchId: batch.id,
     importerId: 'LEGACY_XLS',
@@ -198,6 +200,7 @@ describe('BrowserLedgerRepository', () => {
       inflowTransactionIds: [
         '550e8400-e29b-41d4-a716-446655440022',
       ],
+      budgetBucketId: 'LIVING',
       createdAt: '2026-08-05T00:00:00.000Z',
       updatedAt: '2026-08-05T00:00:00.000Z',
     } as const;
@@ -207,6 +210,18 @@ describe('BrowserLedgerRepository', () => {
 
     await repository.removeBudgetSettlement(settlement.id);
     await expect(repository.listBudgetSettlements()).resolves.toEqual([]);
+  });
+
+  it('seeds the default budget buckets and restores them after a ledger reset', async () => {
+    const repository = createRepository();
+
+    await expect(repository.listBudgetBuckets()).resolves.toEqual(
+      DEFAULT_BUDGET_BUCKETS,
+    );
+    await repository.resetLocalLedger();
+    await expect(repository.listBudgetBuckets()).resolves.toEqual(
+      DEFAULT_BUDGET_BUCKETS,
+    );
   });
 
   it('stores, replaces, and removes one validated local monthly goal', async () => {
@@ -242,6 +257,7 @@ describe('BrowserLedgerRepository', () => {
       inflowTransactionIds: [
         '550e8400-e29b-41d4-a716-446655440082',
       ],
+      budgetBucketId: 'LIVING',
       createdAt: '2026-08-07T00:00:00.000Z',
       updatedAt: '2026-08-07T00:00:00.000Z',
     } as const;
@@ -303,6 +319,9 @@ describe('BrowserLedgerRepository', () => {
       '550e8400-e29b-41d4-a716-446655440060',
       '2026-08-05',
     );
+    const { budgetBucketId: ignoredBudgetBucketId, ...legacyTransaction } =
+      storedTransaction;
+    void ignoredBudgetBucketId;
     const storedSettlement = {
       id: '550e8400-e29b-41d4-a716-446655440061',
       payerOutflowTransactionId: storedTransaction.id,
@@ -316,6 +335,7 @@ describe('BrowserLedgerRepository', () => {
       id: storedSettlement.id,
       outflowTransactionIds: [storedSettlement.payerOutflowTransactionId],
       inflowTransactionIds: storedSettlement.reimbursementInflowTransactionIds,
+      budgetBucketId: 'LIVING',
       createdAt: storedSettlement.createdAt,
       updatedAt: storedSettlement.updatedAt,
     } as const;
@@ -359,7 +379,7 @@ describe('BrowserLedgerRepository', () => {
       ['transactions', 'importBatches', 'budgetSettlements', 'categoryRules'],
       'readwrite',
     );
-    writeTransaction.objectStore('transactions').add(storedTransaction);
+    writeTransaction.objectStore('transactions').add(legacyTransaction);
     writeTransaction.objectStore('importBatches').add(batch);
     writeTransaction.objectStore('budgetSettlements').add(storedSettlement);
     writeTransaction.objectStore('categoryRules').put(categoryRule);
@@ -465,6 +485,107 @@ describe('BrowserLedgerRepository', () => {
     await expect(repository.listCategoryRules()).resolves.toEqual([categoryRule]);
     await expect(repository.getLocalUserSettings()).resolves.toEqual(localUserSettings);
     await expect(repository.listKeywordCategoryRules()).resolves.toEqual([]);
+  });
+
+  it('upgrades a v5 local database by assigning legacy records to LIVING and seeding buckets', async () => {
+    const databaseName = `v5-ledger-${crypto.randomUUID()}`;
+    const databaseFactory = new IDBFactory();
+    const storedTransaction = transaction(
+      '550e8400-e29b-41d4-a716-446655440090',
+      '2026-08-08',
+    );
+    const { budgetBucketId: ignoredBudgetBucketId, ...legacyTransaction } =
+      storedTransaction;
+    void ignoredBudgetBucketId;
+    const storedSettlement = {
+      id: '550e8400-e29b-41d4-a716-446655440091',
+      outflowTransactionIds: [storedTransaction.id],
+      inflowTransactionIds: [
+        '550e8400-e29b-41d4-a716-446655440092',
+      ],
+      createdAt: '2026-08-08T00:00:00.000Z',
+      updatedAt: '2026-08-08T00:00:00.000Z',
+    } as const;
+    const migratedSettlement = {
+      ...storedSettlement,
+      budgetBucketId: 'LIVING',
+    } as const;
+    const request = databaseFactory.open(databaseName, 5);
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.addEventListener(
+        'upgradeneeded',
+        () => {
+          const v5Database = request.result;
+          const transactions = v5Database.createObjectStore('transactions', {
+            keyPath: 'id',
+          });
+          transactions.createIndex('occurredOn', 'occurredOn', { unique: false });
+          transactions.createIndex('importBatchId', 'importBatchId', {
+            unique: false,
+          });
+          const importBatches = v5Database.createObjectStore('importBatches', {
+            keyPath: 'id',
+          });
+          importBatches.createIndex('committedAt', 'committedAt', { unique: false });
+          const settlements = v5Database.createObjectStore('budgetSettlements', {
+            keyPath: 'id',
+          });
+          settlements.createIndex(
+            'outflowTransactionIds',
+            'outflowTransactionIds',
+            { unique: false, multiEntry: true },
+          );
+          v5Database.createObjectStore('categoryRules', {
+            keyPath: 'matchDescriptionNormalized',
+          });
+          v5Database.createObjectStore('keywordCategoryRules', {
+            keyPath: 'keywordNormalized',
+          });
+          v5Database.createObjectStore('userSettings', { keyPath: 'id' });
+        },
+        { once: true },
+      );
+      request.addEventListener('success', () => resolve(request.result), {
+        once: true,
+      });
+      request.addEventListener('error', () => reject(request.error), {
+        once: true,
+      });
+    });
+    const writeTransaction = database.transaction(
+      ['transactions', 'budgetSettlements'],
+      'readwrite',
+    );
+    writeTransaction.objectStore('transactions').add(legacyTransaction);
+    writeTransaction.objectStore('budgetSettlements').add(storedSettlement);
+    await new Promise<void>((resolve, reject) => {
+      writeTransaction.addEventListener('complete', () => resolve(), {
+        once: true,
+      });
+      writeTransaction.addEventListener('abort', () => reject(writeTransaction.error), {
+        once: true,
+      });
+      writeTransaction.addEventListener('error', () => reject(writeTransaction.error), {
+        once: true,
+      });
+    });
+    database.close();
+
+    const repository = new BrowserLedgerRepository(
+      databaseName,
+      databaseFactory,
+      IDBKeyRange,
+    );
+
+    await expect(repository.listAllTransactions()).resolves.toEqual([
+      storedTransaction,
+    ]);
+    await expect(repository.listBudgetSettlements()).resolves.toEqual([
+      migratedSettlement,
+    ]);
+    await expect(repository.listBudgetBuckets()).resolves.toEqual(
+      DEFAULT_BUDGET_BUCKETS,
+    );
   });
 
   it('fails safely instead of waiting forever when another tab blocks a v1 upgrade', async () => {
