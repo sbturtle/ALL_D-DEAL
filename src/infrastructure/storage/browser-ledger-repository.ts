@@ -15,7 +15,7 @@ import type { Transaction } from '../../domain/transactions/transaction';
 import { validateTransaction } from '../../domain/transactions/transaction-validation';
 
 export const LOCAL_LEDGER_DATABASE_NAME = 'household-ledger';
-const LOCAL_LEDGER_DATABASE_VERSION = 4;
+const LOCAL_LEDGER_DATABASE_VERSION = 5;
 export const INDEXED_DB_OPEN_TIMEOUT_MS = 5_000;
 const TRANSACTIONS_STORE = 'transactions';
 const IMPORT_BATCHES_STORE = 'importBatches';
@@ -385,7 +385,7 @@ export class BrowserLedgerRepository {
 
       request.addEventListener(
         'upgradeneeded',
-        () => {
+        (event) => {
           const database = request.result;
           if (!database.objectStoreNames.contains(TRANSACTIONS_STORE)) {
             const transactions = database.createObjectStore(TRANSACTIONS_STORE, {
@@ -409,9 +409,9 @@ export class BrowserLedgerRepository {
               keyPath: 'id',
             });
             settlements.createIndex(
-              'payerOutflowTransactionId',
-              'payerOutflowTransactionId',
-              { unique: false },
+              'outflowTransactionIds',
+              'outflowTransactionIds',
+              { unique: false, multiEntry: true },
             );
           }
           if (!database.objectStoreNames.contains(CATEGORY_RULES_STORE)) {
@@ -427,6 +427,49 @@ export class BrowserLedgerRepository {
           if (!database.objectStoreNames.contains(USER_SETTINGS_STORE)) {
             database.createObjectStore(USER_SETTINGS_STORE, {
               keyPath: 'id',
+            });
+          }
+
+          if (
+            (event as IDBVersionChangeEvent).oldVersion < 5 &&
+            request.transaction !== null
+          ) {
+            const settlements = request.transaction.objectStore(
+              BUDGET_SETTLEMENTS_STORE,
+            );
+            if (!settlements.indexNames.contains('outflowTransactionIds')) {
+              settlements.createIndex(
+                'outflowTransactionIds',
+                'outflowTransactionIds',
+                { unique: false, multiEntry: true },
+              );
+            }
+
+            const cursorRequest = settlements.openCursor();
+            cursorRequest.addEventListener('success', () => {
+              const cursor = cursorRequest.result;
+              if (cursor === null) {
+                return;
+              }
+
+              const value = cursor.value as Record<string, unknown>;
+              if (
+                value.outflowTransactionIds === undefined &&
+                typeof value.payerOutflowTransactionId === 'string' &&
+                Array.isArray(value.reimbursementInflowTransactionIds)
+              ) {
+                const {
+                  payerOutflowTransactionId,
+                  reimbursementInflowTransactionIds,
+                  ...rest
+                } = value;
+                cursor.update({
+                  ...rest,
+                  outflowTransactionIds: [payerOutflowTransactionId],
+                  inflowTransactionIds: reimbursementInflowTransactionIds,
+                });
+              }
+              cursor.continue();
             });
           }
         },

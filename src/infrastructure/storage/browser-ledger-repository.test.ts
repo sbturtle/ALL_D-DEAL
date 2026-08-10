@@ -194,8 +194,8 @@ describe('BrowserLedgerRepository', () => {
     const repository = createRepository();
     const settlement = {
       id: '550e8400-e29b-41d4-a716-446655440020',
-      payerOutflowTransactionId: '550e8400-e29b-41d4-a716-446655440021',
-      reimbursementInflowTransactionIds: [
+      outflowTransactionIds: ['550e8400-e29b-41d4-a716-446655440021'],
+      inflowTransactionIds: [
         '550e8400-e29b-41d4-a716-446655440022',
       ],
       createdAt: '2026-08-05T00:00:00.000Z',
@@ -238,8 +238,8 @@ describe('BrowserLedgerRepository', () => {
     );
     const settlement = {
       id: '550e8400-e29b-41d4-a716-446655440081',
-      payerOutflowTransactionId: storedTransaction.id,
-      reimbursementInflowTransactionIds: [
+      outflowTransactionIds: [storedTransaction.id],
+      inflowTransactionIds: [
         '550e8400-e29b-41d4-a716-446655440082',
       ],
       createdAt: '2026-08-07T00:00:00.000Z',
@@ -312,6 +312,13 @@ describe('BrowserLedgerRepository', () => {
       createdAt: '2026-08-05T00:00:00.000Z',
       updatedAt: '2026-08-05T00:00:00.000Z',
     } as const;
+    const migratedSettlement = {
+      id: storedSettlement.id,
+      outflowTransactionIds: [storedSettlement.payerOutflowTransactionId],
+      inflowTransactionIds: storedSettlement.reimbursementInflowTransactionIds,
+      createdAt: storedSettlement.createdAt,
+      updatedAt: storedSettlement.updatedAt,
+    } as const;
     const request = databaseFactory.open(databaseName, 2);
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       request.addEventListener(
@@ -378,7 +385,7 @@ describe('BrowserLedgerRepository', () => {
     ]);
     await expect(repository.listImportBatches()).resolves.toEqual([batch]);
     await expect(repository.listBudgetSettlements()).resolves.toEqual([
-      storedSettlement,
+      migratedSettlement,
     ]);
     await expect(repository.listCategoryRules()).resolves.toEqual([categoryRule]);
     await expect(repository.listKeywordCategoryRules()).resolves.toEqual([]);
