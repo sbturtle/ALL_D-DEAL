@@ -93,7 +93,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    document.title = `${APP_ROUTE_TITLES[route]} · 내 가계부`;
+    document.title = `${APP_ROUTE_TITLES[route]} · ALL D·DEAL · 알뜰`;
   }, [route]);
 
   const handleNavigation = (

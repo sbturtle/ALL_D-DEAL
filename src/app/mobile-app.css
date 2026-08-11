@@ -1,7 +1,7 @@
 :root {
   color-scheme: light;
-  color: #1e2028;
-  background: #f7f8fa;
+  color: var(--brand-ink);
+  background: var(--brand-cream);
   font-family:
     Pretendard,
     -apple-system,
@@ -13,19 +13,27 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 
-  --background: #f7f8fa;
-  --background-soft: #fafafc;
-  --surface: #ffffff;
-  --surface-muted: #f1f2f6;
-  --surface-pressed: #e9eaf0;
-  --primary: #6c7ff2;
-  --primary-strong: #5265d8;
-  --primary-soft: #eef0ff;
-  --secondary: #63c7a5;
-  --secondary-soft: #eaf8f3;
-  --text-primary: #1e2028;
-  --text-secondary: #6c707c;
-  --text-tertiary: #9a9da7;
+  --brand-ink: #1b261f;
+  --brand-forest: #174735;
+  --brand-forest-strong: #0f3226;
+  --brand-lime: #d9f26f;
+  --brand-lime-soft: rgb(217 242 111 / 28%);
+  --brand-cream: #f5f1e8;
+  --brand-paper: #fffdf7;
+  --brand-mint: #e8f1e8;
+  --background: var(--brand-cream);
+  --background-soft: #faf8f1;
+  --surface: var(--brand-paper);
+  --surface-muted: #eef1ea;
+  --surface-pressed: #e1e8df;
+  --primary: var(--brand-forest);
+  --primary-strong: var(--brand-forest-strong);
+  --primary-soft: var(--brand-mint);
+  --secondary: #78aa87;
+  --secondary-soft: #edf5ed;
+  --text-primary: var(--brand-ink);
+  --text-secondary: #5f6b63;
+  --text-tertiary: #87938a;
   --on-primary: #ffffff;
   --positive: #45a77a;
   --positive-soft: #eaf7f1;
@@ -266,6 +274,45 @@ button:disabled,
   background: var(--primary);
   border-radius: 50%;
   place-items: center;
+}
+
+.mobile-app-bar .brand-lockup {
+  display: flex;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 96px;
+  height: auto;
+  gap: 2px;
+  align-items: flex-start;
+  padding: var(--space-2) var(--space-3);
+  color: var(--brand-forest-strong);
+  text-decoration: none;
+  background: var(--brand-lime);
+  border-radius: var(--radius-chip);
+  flex-direction: column;
+  place-items: initial;
+}
+
+.brand-lockup__wordmark {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.brand-lockup__subline {
+  color: var(--brand-forest);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.mobile-app-bar .brand-lockup:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: var(--space-1);
+  border-radius: var(--radius-chip);
 }
 
 .app-top-bar__brand-mark,
@@ -907,5 +954,78 @@ button:disabled,
   .app-top-bar__nav-link[aria-current="page"] {
     outline: 2px solid Highlight;
     outline-offset: -2px;
+  }
+}
+
+.mobile-app-shell .ledger-section--home .ledger-heading {
+  position: relative;
+  align-items: flex-start;
+  padding: var(--space-4) 0 var(--space-5);
+}
+
+.mobile-app-shell .ledger-section--home .ledger-heading::before {
+  position: absolute;
+  top: calc(var(--space-6) * -1);
+  left: calc(var(--space-6) * -1);
+  width: min(320px, 76vw);
+  height: 220px;
+  background: radial-gradient(circle, var(--brand-lime-soft), transparent 68%);
+  content: "";
+  pointer-events: none;
+}
+
+.mobile-app-shell .ledger-section--home .ledger-heading > div {
+  position: relative;
+  z-index: 1;
+}
+
+.mobile-app-shell .ledger-section--home .ledger-heading .eyebrow {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  margin: 0 0 var(--space-3);
+  padding: 6px var(--space-3);
+  color: var(--brand-forest-strong);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  background: var(--brand-lime);
+  border-radius: var(--radius-chip);
+}
+
+.mobile-app-shell .ledger-section--home .ledger-heading h2 {
+  max-width: 17ch;
+  color: var(--brand-ink);
+  font-size: clamp(30px, 6vw, 56px);
+  line-height: 1.05;
+  letter-spacing: -0.07em;
+  text-wrap: balance;
+}
+
+.mobile-app-shell .ledger-section--home .ledger-heading > div > p:last-child {
+  max-width: 38rem;
+  margin-top: var(--space-4);
+  color: var(--text-secondary);
+}
+
+.mobile-app-shell .mobile-app-fab {
+  color: var(--brand-forest-strong);
+  background: var(--brand-lime);
+  box-shadow: 0 8px 24px rgb(15 50 38 / 20%);
+}
+
+.mobile-app-shell .mobile-app-fab[aria-expanded="true"],
+.mobile-app-shell .mobile-app-fab:active {
+  color: var(--on-primary);
+  background: var(--brand-forest-strong);
+}
+
+@media (max-width: 370px) {
+  .mobile-app-bar__title {
+    font-size: 19px;
+  }
+
+  .brand-lockup__wordmark {
+    font-size: 12px;
   }
 }

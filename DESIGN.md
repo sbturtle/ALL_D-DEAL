@@ -1,28 +1,71 @@
-# DESIGN.md
+# ALL D·DEAL 디자인 시스템
 
-## 1. Product Identity
+## 1. 브랜드 정체성
 
-This product is a personal finance and household bookkeeping application designed for a single user.
+`ALL D·DEAL`은 흩어진 금융 기록과 모든 거래를 한곳에서 정리하는 로컬 우선 서비스다. 제품을 ‘가계부’라고 부르지 않고, 사용자가 자신의 데이터를 알뜰하게 바라보고 다음 결정을 내리도록 돕는 기록 도구로 포지셔닝한다.
 
-It should feel like a lightweight personal mobile app rather than an enterprise financial dashboard.
+로고 락업은 아래 두 줄을 고정으로 사용한다.
 
-Primary personality:
+```text
+ALL D·DEAL
+알뜰
+```
 
-- Clean
-- Calm
-- Friendly
-- Personal
-- Slightly playful
-- Trustworthy
-- Mobile-native
+브랜드 문장:
 
-The UI must never feel like:
+```text
+흩어진 금융 기록을 알뜰하게.
+```
 
-- Enterprise admin software
-- Accounting ERP
-- Banking back-office software
-- Spreadsheet UI
-- Bootstrap dashboard
+제품 성격:
+
+- 또렷함
+- 차분함
+- 영리함
+- 친근함
+- 신뢰감
+- 모바일 우선
+
+화면은 기업용 관리자 도구, 회계 ERP, 은행 백오피스, 스프레드시트처럼 보이지 않아야 한다.
+
+## 2. 브랜드 전환 토큰
+
+2026-08-11 브랜드 전환부터 아래 토큰을 기존 생활비 중심 표현보다 우선한다. 기능명과 금융 도메인 용어는 사용성을 위해 유지하되, 제품명과 첫 인상에는 `ALL D·DEAL`과 `알뜰`을 사용한다.
+
+| 역할 | 토큰 | 값 | 사용처 |
+| --- | --- | --- | --- |
+| 잉크 | `--brand-ink` | `#1b261f` | 본문과 제목 |
+| 숲색 | `--brand-forest` | `#174735` | 주요 버튼, 활성 상태, 로고 보조 |
+| 짙은 숲색 | `--brand-forest-strong` | `#0f3226` | 눌림 상태, 어두운 표면 |
+| 알뜰 라임 | `--brand-lime` | `#d9f26f` | 워드마크 강조, 선택 표시 |
+| 크림 바탕 | `--brand-cream` | `#f5f1e8` | 앱 배경 |
+| 종이 표면 | `--brand-paper` | `#fffdf7` | 카드와 시트 |
+| 옅은 민트 | `--brand-mint` | `#e8f1e8` | 보조 표면 |
+
+워드마크는 대문자 고정, 자간을 약간 넓게 사용한다. `알뜰`은 작은 보조 라벨로 두어 로고의 위계를 흐리지 않는다. 색상은 라임과 숲색 두 가지를 중심으로 사용하고, 화면마다 새로운 강조색을 추가하지 않는다.
+
+## 3. 브랜드 컴포넌트
+
+### 브랜드 락업
+
+- **구조**: `ALL D·DEAL` 워드마크 위에 `알뜰` 보조 라벨을 배치한다.
+- **상태**: 기본, 포커스, 축소 화면에서의 말줄임을 지원한다.
+- **접근성**: 로고 링크의 접근 가능한 이름은 `ALL D·DEAL 알뜰 홈`으로 제공한다.
+- **레이아웃**: 앱 상단 바의 고정 영역 안에서 화면 제목과 나란히 배치한다.
+
+### 브랜드 홈 히어로
+
+- **구조**: 브랜드 킥커, 한 문장 제목, 로컬 데이터 설명, 금액 요약으로 구성한다.
+- **상태**: 기본, 로딩, 오류, 빈 데이터 상태를 기존 대시보드 컴포넌트가 담당한다.
+- **모션**: 기존의 짧은 전환과 `prefers-reduced-motion` 규칙을 유지한다.
+
+## 4. 접근성 제약과 허용된 부채
+
+- 본문 대비는 WCAG 2.2 AA를 목표로 하며, 본문은 4.5:1 이상을 유지한다.
+- 로고·현재 화면명·하단 메뉴는 색상만으로 구분하지 않는다.
+- 터치 대상은 최소 44px, 기본 48px을 유지한다.
+- `prefers-reduced-motion`을 존중한다.
+- 현재 범위에서는 기존 세부 화면의 생활비 관련 기능명은 도메인 명확성을 위해 유지한다. 다음 브랜딩 슬라이스에서 거래·가져오기·설정 화면의 첫 문장까지 같은 톤으로 통일한다.
 
 ---
 

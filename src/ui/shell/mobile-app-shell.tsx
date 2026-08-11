@@ -167,9 +167,15 @@ export function MobileAppShell({
 
       <header className="mobile-app-bar">
         <div className="mobile-app-bar__inner">
-          <span className="mobile-app-bar__brand" aria-hidden="true">
-            <AppIcon name="wallet" size={20} />
-          </span>
+          <a
+            aria-label="ALL D·DEAL 알뜰 홈"
+            className="mobile-app-bar__brand brand-lockup"
+            href={getAppRoutePath('HOME')}
+            onClick={(event) => onNavigate(event, 'HOME')}
+          >
+            <span className="brand-lockup__wordmark">ALL D·DEAL</span>
+            <span className="brand-lockup__subline">알뜰</span>
+          </a>
           <span className="mobile-app-bar__title">
             {APP_ROUTE_TITLES[currentRoute]}
           </span>

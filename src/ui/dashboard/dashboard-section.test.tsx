@@ -184,7 +184,7 @@ describe('DashboardSection', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: '이번 달 생활비를 한눈에 확인하세요',
+        name: '흩어진 금융 기록을 알뜰하게.',
       }),
     ).toBeVisible();
     const livingExpenseCard = (

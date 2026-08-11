@@ -902,16 +902,16 @@ export function DashboardSection({
       <div className="section-heading ledger-heading">
         <div>
           <p className="eyebrow">
-            {page === 'HOME' ? '이번 달 한눈에' : '내 장부'}
+            {page === 'HOME' ? 'ALL D·DEAL · 알뜰' : '저장한 기록'}
           </p>
           <h2 id="ledger-title">
             {page === 'HOME'
-              ? '이번 달 생활비를 한눈에 확인하세요'
-              : '저장한 거래를 기간별로 확인하세요'}
+              ? '흩어진 금융 기록을 알뜰하게.'
+              : '모든 거래를 한곳에서 확인하세요'}
           </h2>
           <p>
             {page === 'HOME'
-              ? '이 기기에 저장한 거래만으로 생활비와 목표 현황을 정리합니다.'
+              ? '카드·계좌 파일을 이 기기에만 정리하고, 중요한 거래를 한눈에 확인합니다.'
               : 'XLS를 확인한 뒤 저장한 거래만 이 기기에서 조회합니다. 원본 파일과 파일명은 저장하지 않습니다.'}
           </p>
         </div>

@@ -6,8 +6,7 @@ export type AppIconName =
   | 'review'
   | 'settings'
   | 'transactions'
-  | 'upload'
-  | 'wallet';
+  | 'upload';
 
 type AppIconProps = Readonly<{
   name: AppIconName;
@@ -70,13 +69,6 @@ function IconPaths({ name }: Readonly<{ name: AppIconName }>) {
           <path d="M12 15V3" />
           <path d="m7.5 7.5 4.5-4.5 4.5 4.5" />
           <path d="M5 12v7h14v-7" />
-        </>
-      );
-    case 'wallet':
-      return (
-        <>
-          <path d="M4 7.5h14.5A1.5 1.5 0 0 1 20 9v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11" />
-          <path d="M15 12h5v4h-5a2 2 0 0 1 0-4Z" />
         </>
       );
     case 'review':

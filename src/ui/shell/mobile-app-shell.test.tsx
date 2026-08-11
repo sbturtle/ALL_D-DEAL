@@ -21,6 +21,8 @@ describe('MobileAppShell', () => {
     );
 
     expect(screen.getByText('이번 달 생활비')).toBeVisible();
+    expect(screen.getByText('ALL D·DEAL')).toBeVisible();
+    expect(screen.getByText('알뜰')).toBeVisible();
     expect(screen.getByText('홈', { selector: '.mobile-app-bar__title' })).toBeVisible();
 
     const navigation = screen.getByRole('navigation', {

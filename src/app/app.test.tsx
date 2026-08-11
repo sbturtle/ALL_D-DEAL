@@ -34,7 +34,7 @@ describe('App', () => {
 
       expect(
         screen.getByRole('heading', {
-          name: '이번 달 생활비를 한눈에 확인하세요',
+          name: '흩어진 금융 기록을 알뜰하게.',
         }),
       ).toBeInTheDocument();
       expect(screen.getByRole('link', { name: '홈' })).toHaveAttribute(
@@ -49,7 +49,7 @@ describe('App', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: '저장한 거래를 기간별로 확인하세요',
+        name: '모든 거래를 한곳에서 확인하세요',
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '거래' })).toHaveAttribute(
@@ -65,7 +65,7 @@ describe('App', () => {
     expect(
       screen.getByRole('heading', { name: '분류 검토', level: 1 }),
     ).toBeInTheDocument();
-    expect(document.title).toBe('분류 검토 · 내 가계부');
+    expect(document.title).toBe('분류 검토 · ALL D·DEAL · 알뜰');
   });
 
   it('하단 메뉴로 거래 내역을 연다', async () => {
@@ -76,7 +76,7 @@ describe('App', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: '저장한 거래를 기간별로 확인하세요',
+        name: '모든 거래를 한곳에서 확인하세요',
       }),
     ).toBeInTheDocument();
     expect(window.location.pathname).toBe('/transactions');
