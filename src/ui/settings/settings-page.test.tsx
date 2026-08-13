@@ -153,7 +153,7 @@ describe('SettingsPage', () => {
     expect(screen.getByText('거래 내역과 불러오기 이력')).toBeVisible();
     expect(
       screen.getByText(
-        '저장한 자금통 설정(초기화 뒤 기본 자금통 7개만 다시 만듭니다)',
+        '저장한 돈의 목적 설정(초기화 뒤 기본 목적 7개만 다시 만듭니다)',
       ),
     ).toBeVisible();
     expect(

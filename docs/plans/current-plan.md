@@ -34,8 +34,8 @@
 
 # 10B단계 — 거래별 자금통과 자금통별 지출 집계
 
-- 상태: `IN_PROGRESS`
-- 계획 갱신일: 2026-08-10
+- 상태: `DONE`
+- 계획 갱신일: 2026-08-13
 - 선행 단계: 10A단계 다대다 공동결제 정산 `DONE`
 
 ## 목표
@@ -44,21 +44,39 @@
 
 ## 범위와 결정
 
-1. `BudgetBucket`은 카테고리와 별도 Domain 모델이다. 초기 기본값은 `LIVING`, `IRREGULAR`, `EMERGENCY`, `SAVING`, `HOUSING_MARRIAGE`, `INVESTMENT`, `OTHER`이며, Transaction에는 미래 사용자 정의 ID도 수용할 수 있는 문자열 ID를 둔다.
-2. 이번 MVP는 Transaction 하나에 `budgetBucketId` 하나만 저장한다. `TransactionAllocation[]` 금액 분할, 자금통 생성·보관·예산 목표 관리와 자동 Merchant 규칙은 후속 단계로 남긴다.
-3. 새 `EXPENSE + OUTFLOW` Import 후보는 추천 기본값 `LIVING`을 가진다. 사용자는 저장된 거래의 편집 시트에서 카테고리와 독립적으로 자금통을 바꿀 수 있다. 수입에도 같은 선택 필드를 둘 수 있어 향후 수입 배분을 막지 않는다.
-4. IndexedDB v6 업그레이드는 자금통이 없는 기존 `EXPENSE + OUTFLOW` 거래에 `LIVING`을 넣는다. 그 외 기존 거래는 값을 추정하지 않고 그대로 보존한다.
-5. 자금통별 집계는 일반 지출을 별도로 계산하고, 기존 생활비 카드·목표·주간 그래프는 `LIVING`만 사용한다. 다대다 공동결제에 여러 자금통이 섞인 경우의 정산금 배분은 자동 추정하지 않고, 이번 슬라이스에서는 기존 생활비 정산 동작을 보존한다.
+1. `BudgetBucket`은 카테고리와 별도 Domain·IndexedDB 모델이다. 초기 기본값은 `LIVING`, `IRREGULAR`, `EMERGENCY`, `SAVING`, `HOUSING_MARRIAGE`, `INVESTMENT`, `OTHER`이며, 이후 사용자 정의 자금통을 저장할 수 있도록 문자열 ID와 `budgetBuckets` 저장소를 사용한다.
+2. 이번 MVP는 Transaction 하나에 필수 `budgetBucketId` 하나만 저장한다. `TransactionAllocation[]` 금액 분할, 자금통 관리 화면·예산 목표 관리와 자동 Merchant 규칙은 후속 단계로 남긴다.
+3. 새 Import 후보와 기존 Transaction은 기본값 `LIVING`을 가진다. 사용자는 저장된 거래의 편집 시트에서 카테고리와 독립적으로 자금통을 바꿀 수 있으며, 수입에도 같은 단일 필드를 둬 향후 수입 배분을 막지 않는다.
+4. IndexedDB v6 업그레이드는 자금통이 없는 기존 모든 Transaction과 기존 공동결제 정산에 `LIVING`을 넣고, 기본 자금통 7개를 seed한다. 데이터의 실제 목적을 단정하지 않는 legacy 기본값임을 UI·문서에 고지한다.
+5. 자금통별 집계는 일반 지출을 별도로 계산하고, 기존 생활비 카드·목표·주간 그래프는 `LIVING`만 사용한다. 다대다 공동결제에는 별도 `budgetBucketId`를 두어 순지출을 사용자가 선택한 하나의 자금통에 귀속하며, 정산금의 자동 분할 배분은 하지 않는다.
 6. Home에는 대규모 재설계 대신 자금통별 지출의 작은 요약 목록을 추가한다. Import Preview는 기본 자금통을 표시하되, Preview별 변경 UI는 후속 단계로 남긴다.
 
 ## 완료 조건
 
 1. 카테고리와 자금통은 별도 타입·검증·표현을 갖는다.
-2. Transaction마다 `budgetBucketId`를 저장·검증하고 기존 데이터는 v6에서 안전하게 읽힌다.
+2. Transaction과 공동결제 정산마다 `budgetBucketId`를 저장·검증하고 기존 데이터는 v6에서 안전하게 읽힌다.
 3. 기본 지출은 `LIVING`으로 추천되지만 편집 시트에서 `IRREGULAR`, `EMERGENCY` 등으로 변경할 수 있다.
 4. 예시의 카페·식사·축의금·병원비는 전체 소비와 생활비·비정기비·비상금이 각각 올바르게 집계된다.
 5. Home의 생활비 표시는 모든 지출이 아니라 `LIVING` 자금통만 사용하며, 자금통별 작은 요약을 확인할 수 있다.
 6. 관련 요구사항, ADR, 아키텍처·데이터 모델, 엔지니어링 로그를 한국어로 갱신하고 기능 단위 커밋과 검증 결과를 남긴다.
+
+## 다음 수직 슬라이스 — 10B 전체 연결 검증 및 완료
+
+현재 코드에는 Domain, IndexedDB v6, Import 기본값, 거래 편집, 공동결제 귀속과 Home 요약이 구현되어 있다. 다음 슬라이스는 새 기능을 추가하지 않고 10B 요구사항의 실제 연결을 확인해 완료 상태로 전환한다.
+
+### 범위
+
+1. 기존 10B 도메인·저장소·UI 테스트를 현재 코드 기준으로 재실행하고 실패 시 원인을 분리한다.
+2. Home과 거래 편집의 자금통 표시·변경, 자금통별 집계, legacy v6 마이그레이션을 실제 브라우저 흐름으로 확인한다.
+3. lint, typecheck, test, build, 공백 검사를 실행하고 결과를 엔지니어링 로그에 기록한다.
+4. 관련 문서와 현재 계획의 상태를 `DONE`으로 갱신한다.
+
+### 완료 조건
+
+1. `npm test`에서 10B Domain·Application·Infrastructure·UI 테스트가 모두 통과한다.
+2. `npm run lint`, `npm run typecheck`, `npm run build`, `git diff --check`가 모두 성공한다.
+3. 브라우저에서 자금통별 지출 요약과 거래 편집의 자금통 변경이 확인되고, 360px 이상 화면에서 주요 컨트롤이 잘리지 않는다.
+4. 10B 요구사항·ADR·아키텍처·데이터 모델·엔지니어링 로그가 현재 구현과 일치하며 상태가 `DONE`이다.
 
 ## 작업 순서
 
@@ -69,8 +87,8 @@
 
 ### 슬라이스 2 — 저장소 마이그레이션과 Import 기본값
 
-- IndexedDB를 v6으로 올리고 기존 일반 지출에 `LIVING`을 안전하게 추가한다.
-- 새 Import `EXPENSE` 후보의 기본 자금통 표시를 보존한다.
+- IndexedDB를 v6으로 올리고 자금통이 없는 기존 모든 거래와 공동결제 정산에 `LIVING`을 안전하게 추가한다.
+- 새 Import 후보의 기본 자금통 `LIVING` 표시를 보존한다.
 
 ### 슬라이스 3 — 거래 편집과 최소 Dashboard 연결
 
@@ -86,7 +104,44 @@
 
 | 검증 항목 | 결과 | 비고 |
 | --- | --- | --- |
-| Domain·집계 테스트 | 대기 | 구현 후 실행 |
-| IndexedDB v6 마이그레이션 | 대기 | 구현 후 실행 |
-| Import·거래 편집·Home UI 테스트 | 대기 | 구현 후 실행 |
-| lint·typecheck·test·build | 대기 | 구현 후 실행 |
+| Domain·집계 테스트 | PASS | 10B 관련 5개 테스트 파일, 61개 테스트 통과 |
+| IndexedDB v6 마이그레이션 | PASS | `browser-ledger-repository.test.ts` 15개 테스트 통과 |
+| Import·거래 편집·Home UI 테스트 | PASS | 관련 Application·UI 테스트 통과 |
+| lint·typecheck·test·build | PASS | lint, typecheck, 전체 44개 파일·454개 테스트, build 통과 |
+| 브라우저 실행 흐름 | PASS | Vite 개발 서버 HTTP 200, 문서 제목 `ALL D·DEAL · 알뜰` 확인 후 서버 종료 |
+| 공백 검사 | PASS | `git diff --check` 통과; 기존 줄바꿈 경고만 확인 |
+
+---
+
+# 다음 작업 — 돈의 목적 명칭 정리
+
+- 상태: `DONE`
+- 계획 갱신일: 2026-08-13
+- 작업 유형: 사용자-facing 용어 수직 슬라이스
+
+## 목표
+
+코드와 저장 계약의 `BudgetBucket`·`budgetBucketId`는 유지하면서, 화면에서 딱딱하게 느껴지는 `자금통`을 **돈의 목적**이라는 표현으로 통일한다.
+
+## 범위
+
+1. Home, Transactions 편집, 공동결제 정산, Import Preview, Settings 안내의 사용자-facing 문구를 `돈의 목적` 중심으로 바꾼다.
+2. 카테고리와의 차이는 “무엇을 샀는지”와 “어느 목적의 돈인지”로 설명한다.
+3. 코드 식별자, IndexedDB 저장소, 데이터 모델 필드명은 변경하지 않는다.
+4. 이번 Slice에서는 사용자 정의 목적 생성·이름 변경 기능을 추가하지 않는다. 해당 기능은 용어 확정 후 별도 계획으로 진행한다.
+
+## 완료 조건
+
+1. 주요 화면의 사용자-facing 자금통 문구가 `돈의 목적` 또는 문맥에 맞는 `목적`으로 표시된다.
+2. `BudgetBucket`, `budgetBucketId`, IndexedDB 저장 계약과 기존 동작은 그대로 유지된다.
+3. 기존 자금통 관련 테스트와 전체 품질 게이트가 통과한다.
+4. 360px 이상 화면에서 새 문구가 잘리지 않으며 접근성 이름이 의미를 유지한다.
+
+## 검증 결과
+
+| 검증 항목 | 결과 | 비고 |
+| --- | --- | --- |
+| 사용자-facing 명칭 | PASS | Home·거래 편집·공동결제 정산·Import Preview·Settings를 `돈의 목적` 문맥으로 통일 |
+| 기존 계약 보존 | PASS | `BudgetBucket`, `budgetBucketId`, IndexedDB 저장 계약 변경 없음 |
+| 자동 검증 | PASS | 44개 파일·454개 테스트, lint·typecheck·build 통과 |
+| 실행 확인 | PASS | Vite 실행 서버에서 `돈의 목적별 소비`, `공동결제 정산 목적`, `돈의 목적` 확인 후 종료 |

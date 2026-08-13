@@ -19,3 +19,8 @@ Thumbs.db
 
 # Financial data must remain local and must never be committed.
 samples/private/
+
+# Local agent and development logs
+.omo/
+dev-server.log
+dev-server-error.log

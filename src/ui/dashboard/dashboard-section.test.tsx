@@ -197,7 +197,7 @@ describe('DashboardSection', () => {
       screen.getByRole('progressbar', { name: '월 생활비 목표 사용률' }),
     ).toHaveAttribute('aria-valuenow', '40');
     const budgetBucketCard = screen
-      .getByRole('heading', { name: '자금통별 소비' })
+      .getByRole('heading', { name: '돈의 목적별 소비' })
       .closest('section');
     expect(budgetBucketCard).not.toBeNull();
     expect(
@@ -205,7 +205,7 @@ describe('DashboardSection', () => {
     ).toBeVisible();
     const budgetBucketList = within(budgetBucketCard as HTMLElement).getByRole(
       'list',
-      { name: '자금통별 소비' },
+      { name: '돈의 목적별 소비' },
     );
     expect(within(budgetBucketList).getByText('생활비')).toBeVisible();
     expect(within(budgetBucketList).getByText('비정기비')).toBeVisible();
@@ -335,7 +335,7 @@ describe('DashboardSection', () => {
     render(<DashboardSection ledgerRepository={manyRepository} />);
 
     await user.selectOptions(
-      await screen.findByLabelText('공동결제 정산 자금통'),
+      await screen.findByLabelText('공동결제 정산 목적'),
       'IRREGULAR',
     );
     await user.click(
@@ -476,7 +476,7 @@ describe('DashboardSection', () => {
       'CAFE',
     );
     await user.selectOptions(
-      screen.getByLabelText('Fabricated ordinary expense 자금통'),
+      screen.getByLabelText('Fabricated ordinary expense 돈의 목적'),
       'IRREGULAR',
     );
     await user.type(

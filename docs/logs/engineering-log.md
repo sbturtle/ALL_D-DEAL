@@ -1,5 +1,58 @@
 # 엔지니어링 로그
 
+## 2026-08-13 — 돈의 목적 사용자 표현 정리
+
+### 결정
+
+- Domain과 저장 계약의 `BudgetBucket`·`budgetBucketId`는 유지했다.
+- 사용자 화면의 `자금통` 표현은 `돈의 목적`, `돈의 목적별 소비`, `정산 목적`으로 문맥에 맞게 바꿨다.
+- 사용자 정의 목적 생성·이름 변경은 별도 기능으로 남겼다.
+
+### 검증
+
+- 기존 10B 기능을 재작성하지 않고 UI 문구와 테스트 기대값만 갱신했다.
+- `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `git diff --check`를 PASS로 확인했다.
+- 전체 테스트는 44개 파일, 454개 테스트가 통과했다.
+- Vite 실행 서버에서 새 문구를 확인한 뒤 서버를 종료했다.
+
+### 상태
+
+`DONE`
+
+## 2026-08-13 — 10B단계 전체 연결 검증 및 완료
+
+### 검증
+
+- 현재 계획과 요구사항을 대조해 10B의 다음 수직 슬라이스를 전체 연결 검증으로 확정했다.
+- Domain·Application·Infrastructure·UI 관련 테스트 61개를 재실행해 PASS를 확인했다.
+- `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `git diff --check`를 실행해 모두 PASS를 확인했다.
+- Vite 개발 서버를 실행하고 `curl -I http://127.0.0.1:5173/`에서 `HTTP/1.1 200 OK`를 확인했다.
+- 실행 HTML에서 문서 제목 `ALL D·DEAL · 알뜰`을 확인했다.
+- 수동 검증 서버는 확인 후 종료했으며 남은 포트나 프로세스가 없다.
+
+### 상태
+
+`DONE` — 10B단계 요구사항과 현재 구현의 연결 검증을 완료했다.
+
+## 2026-08-10 — 10B단계 거래별 자금통과 자금통별 지출 집계
+
+### 구현 기준
+
+- `BudgetBucket` Domain과 `budgetBuckets` IndexedDB 저장소를 추가하고 `LIVING`, `IRREGULAR`, `EMERGENCY`, `SAVING`, `HOUSING_MARRIAGE`, `INVESTMENT`, `OTHER` 기본 자금통 7개를 초기 저장한다.
+- 모든 Transaction과 다대다 `BudgetSettlement`에 필수 `budgetBucketId`를 추가한다. v6 업그레이드는 자금통이 없는 기존 거래·정산을 손실 없이 `LIVING`으로 변환한다. 이 값은 과거 목적을 판단한 결과가 아닌 legacy 기본값이다.
+- 자금통별 지출은 `EXPENSE + OUTFLOW`와 해당 자금통으로 명시한 공동결제 순지출만 계산한다. 기존 생활비 카드·월 목표·주간 그래프는 `LIVING` 자금통만 사용한다.
+- Import Preview는 모든 후보에 `LIVING` 기본 자금통을 표시하고, 저장된 거래 편집 시트와 공동결제 정산 화면은 사용자가 하나의 자금통을 선택하게 한다. 정산금과 거래 금액의 자동 분할 배분은 추가하지 않는다.
+- 초기화는 기존 사용자 자금통을 포함해 일곱 저장소를 비운 뒤 같은 트랜잭션에서 기본 자금통 7개를 다시 저장한다.
+
+### 문서화
+
+- 자금통과 카테고리의 구분, v6 마이그레이션, `LIVING` 생활비 기준, 공동결제 정산 귀속, 초기화 뒤 기본값 재생성을 요구사항·아키텍처·ADR에 기록했다.
+- 월 생활비 목표 결정은 다중 목표로 교체하지 않고 `LIVING` 자금통의 월간 순지출과 비교하도록 10B 기준으로 수정했다.
+
+### 상태
+
+`IN_PROGRESS` — 코드 검증과 최종 완료 기록은 10B단계 전체 검증 뒤에 보완한다.
+
 ## 2026-08-10 — 10A단계 다대다 공동결제 정산
 
 ### 구현
@@ -35,25 +88,6 @@
 
 `DONE`
 
-## 2026-08-10 — 9B단계 완료 계획 문서 한국어 정리
-
-### 구현
-
-- `docs/plans/completed/`의 Phase 0, 1, 2, 8C, 8D, 8E, 8F, 9A 계획을 점검하고 설명 문장·제목·표 머리글·검증 메모를 한국어로 통일했다.
-- 완료 계획 문서의 의미, 단계별 범위, 완료 기준, 검증 수치와 후속 연결은 유지하고 코드 식별자·경로·명령어·표준 기술명만 원문으로 남겼다.
-- 9A단계 계획을 완료 폴더로 보관하고 9B단계 계획을 새 현재 계획으로 작성했다.
-
-### 검토와 검증
-
-- 완료 폴더의 Markdown 8개와 README를 확인했다.
-- 제목 계층, 목록, 표, 코드 블록과 내부 문서 링크의 구조를 유지했다.
-- 영문 설명 문장을 검색해 허용된 기술 식별자와 명령어를 제외하고 한국어 설명으로 정리했다.
-- 소스 코드, private XLS와 실제 금융 데이터는 열거나 수정하지 않았다.
-
-| 검사 | 결과 | 비고 |
-| --- | --- | --- |
-| 완료 계획 문서 점검 | PASS | 8개 계획 문서와 README |
-| 한국어 설명 통일 | PASS | 설명·제목·표 머리글·검증 메모 |
 ## 2026-08-11 — ALL D·DEAL 브랜드 전환
 
 ### 작업 목적
@@ -84,6 +118,25 @@
 - 제품명과 서비스 설명에서 `가계부` 대신 `ALL D·DEAL · 알뜰`과 `흩어진 금융 기록을 알뜰하게.`를 사용한다.
 - 상태: `DONE`
 
+## 2026-08-10 — 9B단계 완료 계획 문서 한국어 정리
+
+### 구현
+
+- `docs/plans/completed/`의 Phase 0, 1, 2, 8C, 8D, 8E, 8F, 9A 계획을 점검하고 설명 문장·제목·표 머리글·검증 메모를 한국어로 통일했다.
+- 완료 계획 문서의 의미, 단계별 범위, 완료 기준, 검증 수치와 후속 연결은 유지하고 코드 식별자·경로·명령어·표준 기술명만 원문으로 남겼다.
+- 9A단계 계획을 완료 폴더로 보관하고 9B단계 계획을 새 현재 계획으로 작성했다.
+
+### 검토와 검증
+
+- 완료 폴더의 Markdown 8개와 README를 확인했다.
+- 제목 계층, 목록, 표, 코드 블록과 내부 문서 링크의 구조를 유지했다.
+- 영문 설명 문장을 검색해 허용된 기술 식별자와 명령어를 제외하고 한국어 설명으로 정리했다.
+- 소스 코드, private XLS와 실제 금융 데이터는 열거나 수정하지 않았다.
+
+| 검사 | 결과 | 비고 |
+| --- | --- | --- |
+| 완료 계획 문서 점검 | PASS | 8개 계획 문서와 README |
+| 한국어 설명 통일 | PASS | 설명·제목·표 머리글·검증 메모 |
 | `git diff --check` | PASS | 공백 오류 0개 |
 | 개인정보 점검 | PASS | 소스·private 샘플·실제 거래 미접근 |
 
@@ -309,22 +362,22 @@ Phase 7B는 정확 사용자 `CategoryRule`이 없는 카드 지출 설명을 Ka
 
 ## 2026-08-05 — 8B단계 로컬 월 생활비 목표
 
-- Added a validated `LocalUserSettings` singleton for one positive KRW monthly goal and a pure remaining/exceeded calculation. The record contains no transaction, payroll, account, or Kakao data.
-- Upgraded `household-ledger` IndexedDB from schema v2 to v3 with a `userSettings` store. Existing transactions, settlements, import batches, and category rules remain intact; the migration is covered by fabricated data tests.
-- Added `/settings` with local-only load, save, clear, retry, and error feedback. A missing goal remains unset rather than receiving a default amount.
-- The saved ledger now shows a monthly goal card using the existing shared-payment net living-expense summary. Day, week, and custom views intentionally do not allocate a monthly goal proportionally.
-- Updated the navigation phase label to `PHASE 8B · LOCAL` and visually checked the new settings page at desktop and 360px widths without entering any financial value.
+- 양의 KRW 월 목표 하나와 순수 잔액·초과 계산을 검증하는 `LocalUserSettings` 단일 레코드를 추가했다. 이 레코드에는 거래, 급여, 계좌, Kakao 데이터가 들어가지 않는다.
+- `household-ledger` IndexedDB를 v2에서 v3으로 올리고 `userSettings` 저장소를 추가했다. 기존 거래·정산·Import 이력·카테고리 규칙은 보존하며, 가짜 데이터 마이그레이션 테스트로 확인했다.
+- `/settings`에 로컬 전용 불러오기·저장·비우기·재시도·오류 안내를 추가했다. 목표가 없을 때 임의의 기본 금액을 넣지 않는다.
+- 저장 장부는 기존 공동결제 순생활비 요약을 쓰는 월 목표 카드를 표시한다. 하루·주·직접 선택 보기는 월 목표를 비례 배분하지 않는다.
+- 탐색 단계 표기를 `PHASE 8B · LOCAL`로 갱신하고 금융값을 입력하지 않은 데스크톱·360px 화면에서 새 설정 페이지를 확인했다.
 
 ### 검증
 
-| Check | Result | Note |
+| 검사 | 결과 | 비고 |
 | --- | --- | --- |
-| `npm run lint` | PASS | warnings 0 |
-| `npm run typecheck` | PASS | strict TypeScript build |
-| `npm test` | PASS | 33 files, 345 tests |
-| `npm run build` | PASS | existing >500 kB Vite chunk warning only |
-| IndexedDB v2 migration | PASS | fabricated transactions and category rules preserved |
-| Responsive visual check | PASS | desktop and 360px Settings layouts |
+| `npm run lint` | PASS | 경고 0개 |
+| `npm run typecheck` | PASS | 엄격한 TypeScript 빌드 통과 |
+| `npm test` | PASS | 33개 파일, 345개 테스트 |
+| `npm run build` | PASS | 기존 500 kB 초과 Vite 청크 경고만 존재 |
+| IndexedDB v2 마이그레이션 | PASS | 가짜 거래와 카테고리 규칙 보존 |
+| 반응형 시각 점검 | PASS | 데스크톱과 360px Settings 배치 |
 
 ### 기능 단위 커밋
 
@@ -335,16 +388,16 @@ Phase 7B는 정확 사용자 `CategoryRule`이 없는 카드 지출 설명을 Ka
 
 ## 2026-08-05 — 8A단계 저장 거래 메모와 카테고리
 
-- Added a validated single-Transaction update flow that preserves amount, date, type, and Import trace fields while replacing only category, memo, and `updatedAt` in local IndexedDB.
-- Added inline ledger controls to edit or clear a category and optional memo, with local error feedback and immediate list refresh after a successful write.
-- Added fixed Unicode emoji presentations for every internal category; no external icon asset or network request is used.
-- Verified with fabricated application, IndexedDB, category-presentation, and UI fixtures plus lint, typecheck, tests, and production build.
+- 금액·일자·유형·Import 추적 필드는 보존하고 카테고리·메모·`updatedAt`만 IndexedDB에서 교체하는 검증된 단일 Transaction 수정 흐름을 추가했다.
+- 카테고리와 선택 메모를 수정하거나 비우는 인라인 장부 조작을 추가하고, 로컬 오류 안내와 성공 뒤 즉시 목록 새로고침을 제공했다.
+- 모든 내부 카테고리에 고정 Unicode 이모지 표현을 추가했다. 외부 아이콘 자산이나 네트워크 요청은 사용하지 않는다.
+- 가짜 Application·IndexedDB·카테고리 표현·UI fixture와 lint, typecheck, 테스트, 프로덕션 빌드로 검증했다.
 
 ## 2026-08-05 — 7C단계 Kakao 분석 진행 표시
 
-- Import Preview now counts candidates whose Kakao place lookup is `SEARCHING` and shows a sticky spinner with the pending count.
-- The notice is announced with `role="status"`, does not block Preview review, and disappears once all pending lookups settle.
-- Verified with a deferred fabricated lookup fixture, `npm run lint`, `npm run typecheck`, `npm test` (27 files, 316 tests), and `npm run build`.
+- Import Preview는 Kakao 장소 조회가 `SEARCHING`인 후보를 세고 대기 건수와 함께 고정 스피너를 표시한다.
+- 안내는 `role="status"`로 알리며 Preview 검토를 막지 않고, 모든 대기 조회가 끝나면 사라진다.
+- 지연된 가짜 조회 fixture, `npm run lint`, `npm run typecheck`, `npm test`(27개 파일, 316개 테스트), `npm run build`로 검증했다.
 
 ## 2026-08-05 — 7B단계 Kakao 카테고리 보강
 

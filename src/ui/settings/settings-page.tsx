@@ -397,7 +397,7 @@ export function SettingsPage({
 
         <div className="settings-reset-card__action">
           <p>
-            거래 내역, 불러오기 이력, 공동결제 정산, 저장한 카테고리 규칙과 월 생활비 목표를 지우고, 저장한 자금통은 기본 자금통 7개로 되돌립니다.
+            거래 내역, 불러오기 이력, 공동결제 정산, 저장한 카테고리 규칙과 월 생활비 목표를 지우고, 저장한 돈의 목적은 기본 목적 7개로 되돌립니다.
           </p>
           <p className="settings-reset-card__warning">
             원본 엑셀 파일과 컴퓨터의 파일은 지우지 않으며, 초기화한 장부 데이터는 되돌릴 수 없어요.
@@ -446,7 +446,7 @@ export function SettingsPage({
               <li>공동결제 정산 기록</li>
               <li>정확한 이름·포함 키워드 카테고리 규칙</li>
               <li>월 생활비 목표</li>
-              <li>저장한 자금통 설정(초기화 뒤 기본 자금통 7개만 다시 만듭니다)</li>
+              <li>저장한 돈의 목적 설정(초기화 뒤 기본 목적 7개만 다시 만듭니다)</li>
             </ul>
             <p className="settings-reset-dialog__local-note">
               원본 엑셀 파일, 샘플 파일, 앱 코드와 환경 설정은 지우지 않습니다.

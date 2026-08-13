@@ -306,11 +306,11 @@ function HomeDashboard({
         <div className="home-card-heading">
           <div>
             <p className="panel-kicker">이번 달 전체 소비</p>
-            <h3 id="home-budget-bucket-title">자금통별 소비</h3>
+        <h3 id="home-budget-bucket-title">돈의 목적별 소비</h3>
           </div>
           <strong>{formatWon(totalExpenseAmountMinor)}</strong>
         </div>
-        <ul aria-label="자금통별 소비">
+        <ul aria-label="돈의 목적별 소비">
           {budgetBucketSpending.map(({ bucket, amountMinor }) => (
             <li key={bucket.id}>
               <span aria-hidden="true">{bucket.icon}</span>
@@ -1317,9 +1317,9 @@ export function DashboardSection({
 
               <div className="settlement-form">
                 <label>
-                  정산 순지출 자금통
+                  정산 순지출 목적
                   <select
-                    aria-label="공동결제 정산 자금통"
+                    aria-label="공동결제 정산 목적"
                     value={settlementBudgetBucketId}
                     onChange={(event) =>
                       setSettlementBudgetBucketId(event.target.value)
@@ -1531,9 +1531,9 @@ export function DashboardSection({
                 </select>
               </label>
               <label>
-                자금통
+                돈의 목적
                 <select
-                  aria-label={`${editingTransaction.descriptionOriginal} 자금통`}
+                  aria-label={`${editingTransaction.descriptionOriginal} 돈의 목적`}
                   value={transactionEditDraft.budgetBucketId}
                   disabled={isSavingTransactionEdit}
                   onChange={(event) =>

@@ -1,20 +1,25 @@
-# ADR-0011 Local Monthly Living-Expense Goal
+# ADR-0011 — 로컬 월 생활비 목표
 
-- Status: Accepted
-- Date: 2026-08-05
+- 상태: 채택
+- 최초 결정일: 2026-08-05
+- 수정일: 2026-08-10
+- 관련 결정: [ADR-0015](ADR-0015-separate-expense-category-and-budget-bucket.md)
 
-## Context
+## 맥락
 
-The ledger already supports day, week, month, and custom date ranges. It also preserves original transactions while calculating a linked shared payment as net out-of-pocket living expense. The product requires a user-editable living-expense goal and remaining amount, but neither a real goal amount nor a proration policy was supplied.
+장부는 하루·주·월·직접 선택 기간을 조회하고, 원본 거래를 바꾸지 않은 채 공동결제 정산을 실제 부담액으로 계산한다. 사용자는 월 생활비 목표와 남은 금액을 직접 설정하기 원했지만, 실제 목표 금액이나 기간 비례 예산 정책은 제공하지 않았다.
 
-## Decision
+10B단계에서 모든 소비가 생활비라는 가정이 사라졌다. 카테고리와 별개로 각 거래와 공동결제 정산은 `budgetBucketId`를 가지며, 생활비는 `LIVING` 자금통의 지출만 뜻한다.
 
-- Store one `userSettings` record in IndexedDB schema v3, keyed by `current`.
-- The record accepts only a positive KRW safe integer monthly goal and a UTC update time. Clearing the goal deletes the record; no default financial value is fabricated.
-- Show goal progress only in the calendar-month ledger view. Compare the goal with the existing net living-expense summary, including manually linked shared-payment reimbursements.
-- Day, week, and custom views show actual spending only and state that the monthly goal is not proportionally allocated.
-- Keep the goal local to the browser. Do not send it to a server, Kakao, URL, logs, test fixtures, or the payroll calculator's memory-only state.
+## 결정
 
-## Consequences
+- IndexedDB `userSettings`에 키가 `current`인 레코드 하나를 저장한다.
+- 레코드는 양의 KRW safe integer 월 목표와 UTC 갱신 시각만 허용한다. 목표를 비우면 레코드를 삭제하며 임의의 기본 금액을 만들지 않는다.
+- 목표 진행률은 달력 월 장부 보기에서만 보인다. 목표는 `calculateLivingExpenseSummary`가 반환하는 `LIVING` 자금통의 순생활비와 비교한다. `IRREGULAR`, `EMERGENCY` 등 다른 자금통 지출은 이 목표를 사용하지 않는다.
+- 사용자가 `LIVING`으로 선택한 공동결제 정산은 연결 지출·입금의 순지출만 생활비에 기여한다. 다른 자금통으로 선택한 정산은 생활비 목표에 포함하지 않는다.
+- 하루·주·직접 선택 범위는 실제 사용액만 보이고 월 목표를 기간 비례로 나누지 않는다.
+- 목표는 브라우저 로컬에만 저장한다. 서버, Kakao, URL, 로그, 테스트 fixture, 급여 계산기의 메모리 전용 상태로 보내지 않는다.
 
-The user receives a simple and explainable monthly remaining/exceeded amount without mutating cash-flow records. The policy intentionally does not define daily or weekly budgets, multi-goal planning, savings capacity, or links to salary estimates; those need separate user requirements.
+## 결과
+
+사용자는 현금흐름 원장을 바꾸지 않고 설명 가능한 월 생활비 잔액·초과 금액을 확인한다. 이 ADR은 이제 `LIVING` 자금통 목표에만 적용되며, 여러 자금통 목표, 주간·일간 예산, 수입 배분, 저축 가능액과 급여 추정 연결은 별도 요구가 필요하다.

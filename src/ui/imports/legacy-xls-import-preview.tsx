@@ -1021,7 +1021,7 @@ export function LegacyXlsImportPreview({
                     </small>
                   )}
                   <small className="import-classification-meta">
-                    자금통: {budgetBucket?.icon ?? '🗂️'}{' '}
+                    돈의 목적: {budgetBucket?.icon ?? '🗂️'}{' '}
                     {budgetBucket?.name ?? candidate.draft.budgetBucketId} · 기본 추천
                   </small>
                   {isExpenseCandidate ? (

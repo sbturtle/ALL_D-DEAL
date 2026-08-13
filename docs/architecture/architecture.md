@@ -1,33 +1,33 @@
-# Architecture
+# 아키텍처
 
-> 상태: Phase 9A Implemented Baseline
+> 상태: 10B단계 구현 중
 >
-> 기준일: 2026-08-07
+> 기준일: 2026-08-10
 
 ## 목적
 
 초기 애플리케이션은 백엔드가 없는 단일 사용자용 웹 앱이다. 이 문서는 구현을 앞서 확장하기 위한 설계가 아니라, 금융 파일 Parser와 UI의 결합을 막고 민감한 데이터를 사용자 기기 안에서 처리하기 위한 최소 경계를 정의한다.
 
-관련 결정은 [ADR-0001 파일 Import](../adr/ADR-0001-file-import-over-financial-api.md), [ADR-0002 local-first](../adr/ADR-0002-local-first-architecture.md), [ADR-0003 주 1회 Import](../adr/ADR-0003-weekly-import-instead-of-realtime.md), [ADR-0004 버전 지정 급여 추정](../adr/ADR-0004-versioned-local-payroll-estimation.md), [ADR-0008 클라이언트 경로](../adr/ADR-0008-client-routes-for-financial-workflows.md), [ADR-0010 Kakao 경계](../adr/ADR-0010-kakao-map-web-sdk-opt-in-boundary.md), [ADR-0012 Merchant Resolution](../adr/ADR-0012-merchant-entity-resolution-before-vector-search.md), [ADR-0013 확인형 로컬 장부 초기화](../adr/ADR-0013-confirmed-local-ledger-reset.md)을 따른다.
+관련 결정은 [ADR-0001 파일 Import](../adr/ADR-0001-file-import-over-financial-api.md), [ADR-0002 로컬 우선 구조](../adr/ADR-0002-local-first-architecture.md), [ADR-0003 주 1회 Import](../adr/ADR-0003-weekly-import-instead-of-realtime.md), [ADR-0004 버전 지정 급여 추정](../adr/ADR-0004-versioned-local-payroll-estimation.md), [ADR-0008 클라이언트 경로](../adr/ADR-0008-client-routes-for-financial-workflows.md), [ADR-0010 Kakao 경계](../adr/ADR-0010-kakao-map-web-sdk-opt-in-boundary.md), [ADR-0012 가맹점 이름 해석](../adr/ADR-0012-merchant-entity-resolution-before-vector-search.md), [ADR-0013 확인형 로컬 장부 초기화](../adr/ADR-0013-confirmed-local-ledger-reset.md), [ADR-0014 다대다 공동결제 정산](../adr/ADR-0014-many-to-many-shared-payment-settlements.md), [ADR-0015 카테고리와 자금통 분리](../adr/ADR-0015-separate-expense-category-and-budget-bucket.md)을 따른다.
 
 ## 현재와 목표 상태
 
-### Phase 1–9A 구현 상태
+### 1–10B단계 구현 상태
 
 - React + TypeScript + Vite 실행 기반과 lint, typecheck, test, build 명령이 있다.
 - 급여 입력 UI가 버전 지정 2026년 정책을 사용하는 순수 `payroll-estimate` Domain을 직접 호출한다.
 - 급여 입력과 결과는 메모리에서만 유지하며 Application·Infrastructure·Transaction 계층으로 전달하지 않는다.
-- Home은 실제 로컬 거래·공동결제 정산·월 생활비 목표로 월 요약, 최근 거래, 7일 소비를 보여준다. Transactions는 빈 상태와 명시적인 UI 전용 Mock fixture, 일·주·월·직접 선택 기간 조회, 유형 필터, 거래 편집과 수동 공동결제 정산을 제공한다. `/review`는 미분류 `EXPENSE`만 한 건씩 분류하는 보조 작업 화면이며 Home·Transactions의 검토 진입점에서 연다.
-- 공통 Transaction 타입, 금액·달력 날짜·UTC instant 검증과 생활비 판정 규칙은 `src/domain/transactions/`에 구현되어 있다. `review-needed` 순수 helper는 `UNKNOWN` 또는 미분류 `EXPENSE`를 공통 판정하되, 카테고리 큐에는 미분류 `EXPENSE`만 넣어 거래 유형 검토를 카테고리 선택으로 숨기지 않는다.
+- Home은 실제 로컬 거래·공동결제 정산·월 생활비 목표로 월 요약, 최근 거래, `LIVING` 자금통의 7일 소비와 자금통별 지출 요약을 보여준다. Transactions는 빈 상태와 사용자가 명시적으로 선택한 UI 전용 Mock fixture, 일·주·월·직접 선택 기간 조회, 유형 필터, 거래 편집과 수동 공동결제 정산을 제공한다. `/review`는 카테고리가 없는 `EXPENSE`만 한 건씩 분류하는 보조 작업 화면이며 Home·Transactions의 검토 진입점에서 연다.
+- 공통 Transaction 타입, `BudgetBucket`, 금액·달력 날짜·UTC instant 검증과 자금통별 지출 집계 규칙은 `src/domain/transactions/`, `src/domain/budget-buckets/`에 구현되어 있다. `review-needed` 순수 도우미는 `UNKNOWN` 또는 카테고리가 없는 `EXPENSE`를 공통 판정하되, 카테고리 큐에는 카테고리가 없는 `EXPENSE`만 넣어 거래 유형 검토를 카테고리 선택으로 숨기지 않는다.
 - Transaction 런타임 검증은 신뢰할 수 없는 `unknown` 입력의 모든 문제를 수집하되 원본 값과 금융 식별정보를 오류에 노출하지 않는다.
 - SheetJS `0.20.3` 기반 legacy XLS Reader가 첫 시트를 메모리에서만 읽고, 계좌 거래·카드 이용 레이아웃을 ImportCandidate Preview로 정규화한다. 계좌 후보는 순수 규칙 엔진으로 거래 유형과 비식별 근거·확신을 Preview에만 붙인다.
 - XLS Preview는 UI → Application use case → Infrastructure reader 경계로 연결된다. 원본 파일명·Blob·전체 행은 저장하지 않는다.
-- Import Preview는 실제 파일 읽기·Kakao 분석·저장 상태와 실제 신규·중복·확인 필요 수를 표시한다. 정확 설명 규칙 다음에는 사용자가 확인한 포함 키워드 규칙을 적용하고, 그 뒤에만 Merchant/Kakao fallback을 실행한다. 사용자는 모든 Preview 카테고리를 수정할 수 있다. 분석 trace는 기본적으로 접혀 있다. 카테고리는 새 `EXPENSE` 후보에만 적용하며, 계좌 분류 근거는 저장하지 않는다. 원본 파일·파일명·행은 저장하지 않는다.
+- Import Preview는 실제 파일 읽기·Kakao 분석·저장 상태와 실제 신규·중복·확인 필요 수를 표시한다. 모든 후보는 `LIVING` 자금통 기본값을 표시하고, 정확 설명 규칙 다음에는 사용자가 확인한 포함 키워드 규칙을 적용하고, 그 뒤에만 Merchant/Kakao 대체 검색을 실행한다. 사용자는 모든 Preview 카테고리를 수정할 수 있지만 이번 단계에서는 Preview의 자금통을 바꾸지 않는다. 분석 과정은 기본적으로 접혀 있다. 카테고리는 새 `EXPENSE` 후보에만 적용하며, 계좌 분류 근거와 Kakao 결과는 저장하지 않는다. 원본 파일·파일명·행은 저장하지 않는다.
 - 앱은 History API 기반의 작은 클라이언트 라우팅으로 `/home`, `/transactions`, `/imports`, `/payroll`, `/settings`, `/review`에서 한 번에 하나의 작업 화면만 렌더링한다. `/review`는 네 개 하단 탐색을 늘리지 않는 보조 경로이고, `/`는 Home, 기존 `/ledger`는 Transactions의 호환 alias다.
 - 모바일 앱 셸은 Home·Transactions·Payroll·Settings 하단 탐색과 Home·Transactions 전용 빠른 작업 시트를 제공한다. 시트는 Escape, 포커스 이동·순환·복귀를 지원하고 주요 터치 타깃은 44px 이상을 유지한다.
-- 저장 거래의 카테고리·메모 수정과 월 생활비 목표는 IndexedDB의 검증된 별도 흐름으로 관리한다. Review의 키워드 묶기는 확인한 키워드 규칙과 일치한 미분류 지출만 하나의 IndexedDB 트랜잭션에서 저장하고, 이후 개별 편집은 기존 흐름을 그대로 쓴다. Settings의 확인형 초기화는 여섯 로컬 저장소를 하나의 트랜잭션으로 비우지만 스키마와 파일 시스템은 유지한다.
+- 저장 거래의 카테고리·메모·자금통 수정과 월 생활비 목표는 IndexedDB의 검증된 별도 흐름으로 관리한다. Review의 키워드 묶기는 확인한 키워드 규칙과 일치한 미분류 지출만 하나의 IndexedDB 트랜잭션에서 저장하고, 이후 개별 편집은 기존 흐름을 그대로 쓴다. Settings의 확인형 초기화는 일곱 로컬 저장소를 하나의 트랜잭션으로 비우고 기본 자금통 7개를 다시 저장하지만, 스키마와 파일 시스템은 유지한다.
 - Payroll과 Settings의 개편은 UI 정보 계층만 변경한다. 급여 값은 계속 메모리 전용이며 월 생활비 목표만 기존 IndexedDB 설정 계약으로 관리한다.
-- Kakao가 설정된 Import Preview는 정확 또는 포함 키워드 사용자 규칙이 없는 카드 지출 후보에 한해 Merchant를 정규화하고 중앙 Alias·제한적 Fuzzy로 canonical query를 만든다. 원문·정규화·canonical을 최대 3회 검색해 `category_name`을 카테고리 제안으로 쓰며, 분석 trace와 Kakao 메타데이터는 저장하지 않는다.
+- Kakao가 설정된 Import Preview는 정확 또는 포함 키워드 사용자 규칙이 없는 카드 지출 후보에 한해 Merchant를 정규화하고 중앙 Alias·제한적 Fuzzy로 표준 검색어를 만든다. 원문·정규화·표준 검색어를 최대 3회 검색해 `category_name`을 카테고리 제안으로 쓰며, 자금통을 추천하거나 바꾸지 않는다. 분석 과정과 Kakao 메타데이터는 저장하지 않는다.
 
 ### 단계별 기술 방향
 
@@ -43,7 +43,7 @@
 | XLSX/PDF | SheetJS, PDF.js 등은 실제 형식과 샘플이 생긴 Phase에만 검토 | Phase 7 |
 | E2E | 핵심 브라우저 흐름이 생기고 단위·통합 테스트로 부족할 때 Playwright 검토 | 필요 시점 |
 
-현재 Phase에 필요하지 않은 라이브러리는 설치하지 않는다. 새 의존성을 추가할 때 필요성, 대안, 선택 이유를 계획 또는 ADR에 기록한다.
+현재 단계에 필요하지 않은 라이브러리는 설치하지 않는다. 새 의존성을 추가할 때 필요성, 대안, 선택 이유를 계획 또는 ADR에 기록한다.
 
 ## 핵심 원칙
 
@@ -83,9 +83,9 @@ Composition Root: 구체 구현을 생성하고 서로 연결
 
 ### Domain
 
-- Transaction, 금액, 거래 유형과 집계처럼 프레임워크와 무관한 규칙을 가진다.
+- Transaction, `BudgetBucket`, 금액, 거래 유형과 자금통별 집계처럼 프레임워크와 무관한 규칙을 가진다.
 - 정확 설명 `CategoryRule`과 사용자 확인형 포함 `KeywordCategoryRule`의 검증·우선순위를 순수 규칙으로 가진다.
-- Merchant 정규화, Alias, 제한적 Fuzzy, Kakao 장소 동일성·카테고리 매핑을 순수 규칙으로 가진다.
+- Merchant 정규화, Alias, 제한적 Fuzzy, Kakao 장소 동일성·카테고리 매핑을 순수 규칙으로 가진다. 카테고리 제안은 자금통 규칙을 만들거나 바꾸지 않는다.
 - React, 브라우저 `File`, IndexedDB, SheetJS 같은 파일 라이브러리에 의존하지 않는다.
 - 가능한 한 순수 함수로 검증하고 테스트한다.
 
@@ -115,7 +115,7 @@ src/
 └── shared/          # 실제로 둘 이상 영역에서 쓰는 작은 공통 코드
 ```
 
-기능이 커지면 각 계층 안을 `transactions`, `imports`, `dashboard`로 나눈다. 빈 디렉터리, 빈 인터페이스, 미래용 Factory는 미리 만들지 않는다.
+기능이 커지면 각 계층 안을 `transactions`, `imports`, `budget-buckets`, `dashboard`로 나눈다. 빈 디렉터리, 빈 인터페이스, 미래용 Factory는 미리 만들지 않는다.
 
 ## 목표 Import 흐름
 
@@ -132,6 +132,8 @@ Adapter가 처리 가능 여부 확인
   ↓
 런타임 검증과 거래 유형 판정
   ↓
+모든 후보에 `LIVING` 자금통 기본값 부여
+  ↓
 중복 후보 탐지
   ↓
 정확 CategoryRule 적용
@@ -147,7 +149,7 @@ ImportBatch와 Transaction을 원자적으로 Commit
 Home·Transactions 조회
 ```
 
-중복 후보, 사용자 카테고리 규칙, Merchant 분석 결과는 모두 저장 전 Preview 정보다. 같은 파일 경고와 거래 중복 판정은 분리하며, Kakao trace는 확정 저장에도 포함하지 않는다.
+중복 후보, 사용자 카테고리 규칙, Merchant 분석 결과는 모두 저장 전 Preview 정보다. 자금통 기본값은 확정 Transaction에 저장하지만 이번 단계의 Preview에서는 변경하지 않는다. 같은 파일 경고와 거래 중복 판정은 분리하며, Kakao 분석 과정은 확정 저장에도 포함하지 않는다.
 
 ## Import Adapter 책임
 
@@ -157,17 +159,17 @@ Home·Transactions 조회
 - `parse`: 원본을 금융기관별 Source Record로 읽고 행 단위 문제를 보고한다.
 - `normalize`: Source Record를 저장 전 공통 Transaction 후보로 변환한다.
 
-Adapter는 저장, Dashboard 집계, UI 렌더링, 사용자 카테고리 질문을 담당하지 않는다. Phase 3A는 `LegacyXlsPreviewReader`의 최소 Preview port로 구현한다. MyPDS와 금융기관별 Adapter는 마스킹된 실제 샘플을 확보한 뒤 설계한다.
+Adapter는 저장, Dashboard 집계, UI 렌더링, 사용자 카테고리·자금통 질문을 담당하지 않는다. Phase 3A는 `LegacyXlsPreviewReader`의 최소 Preview 포트로 구현한다. MyPDS와 금융기관별 Adapter는 마스킹된 실제 샘플을 확보한 뒤 설계한다.
 
 ## 저장 경계
 
-- 정규화된 Transaction, 필요한 사용자 규칙, 최소 ImportBatch 메타데이터만 IndexedDB에 저장한다.
+- 정규화된 Transaction, `BudgetBucket`, 필요한 사용자 규칙, 최소 ImportBatch 메타데이터만 IndexedDB에 저장한다.
 - 원본 PDF/CSV/XLSX Blob, 전체 원본 행, 민감할 수 있는 파일명은 기본적으로 저장하지 않는다.
 - Preview 후보와 파싱 중간 데이터는 확정 전 메모리에만 둔다.
 - Import 확정 시 Batch와 모든 Transaction을 하나의 IndexedDB 트랜잭션으로 저장한다.
 - Native IndexedDB를 첫 구현의 기본값으로 하며 DB 스키마 버전과 마이그레이션은 Phase 3 첫 영속 모델을 도입할 때 정의한다.
 - 복합 쿼리, 페이지네이션, 반응형 조회 또는 다단계 스키마 마이그레이션이 실제 요구가 되면 Dexie를 재평가한다.
-- IndexedDB는 배포 origin에 묶이며 브라우저 데이터 삭제나 주소 변경으로 유실될 수 있다. Settings에는 범위를 명시하고 재확인하는 전체 장부 초기화 UX가 있으나, 백업·복구 전략은 별도 계획한다.
+- IndexedDB는 배포 origin에 묶이며 브라우저 데이터 삭제나 주소 변경으로 유실될 수 있다. Settings에는 범위를 명시하고 재확인하는 전체 장부 초기화 UX가 있으며, 초기화 뒤 기본 자금통 7개만 재생성한다. 백업·복구 전략은 별도 계획한다.
 - local-first는 저장 데이터가 자동 암호화된다는 뜻이 아니다.
 
 ## 보안과 신뢰 경계
@@ -216,6 +218,8 @@ Adapter는 저장, Dashboard 집계, UI 렌더링, 사용자 카테고리 질문
 - 정적 배포 주소, PWA, Android 확장 방식
 - 다중 통화와 환율
 - 사용자 관리 Merchant Alias·성공 Cache의 저장·삭제 정책
+- 사용자 정의 자금통의 생성·이름 변경·보관과 자금통별 예산 목표
+- 하나의 Transaction 금액을 여러 자금통에 나누는 `TransactionAllocation[]`과 수입 배분
 - 법인 wrapper·영업 suffix 정리와 Vector/Embedding 재검토 임계값
 
 이 결정들은 해당 Phase의 실제 요구와 검증 사례가 생기기 전에는 확정하지 않는다.
