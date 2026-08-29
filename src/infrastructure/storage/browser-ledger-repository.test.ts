@@ -4,9 +4,11 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ImportBatch } from '../../domain/imports/import-batch';
 import { DEFAULT_BUDGET_BUCKETS } from '../../domain/budget-buckets/budget-bucket';
 import type { CategoryRule } from '../../domain/categories/category-rule';
+import type { CustomCategory } from '../../domain/categories/custom-category';
 import type { KeywordCategoryRule } from '../../domain/categories/keyword-category-rule';
 import type { LocalUserSettings } from '../../domain/settings/local-user-settings';
 import type { Transaction } from '../../domain/transactions/transaction';
+import type { TransactionAttachment } from '../../domain/transactions/transaction-attachment';
 import {
   BrowserLedgerRepository,
   INDEXED_DB_OPEN_TIMEOUT_MS,
@@ -97,6 +99,40 @@ describe('BrowserLedgerRepository', () => {
     ).resolves.toEqual([later, earlier]);
     await expect(repository.listCategoryRules()).resolves.toEqual([categoryRule]);
     await expect(repository.listKeywordCategoryRules()).resolves.toEqual([]);
+  });
+
+  it('persists custom categories and transaction images in separate local stores', async () => {
+    const repository = createRepository();
+    const customCategory: CustomCategory = {
+      id: 'CUSTOM_550e8400-e29b-41d4-a716-446655440010',
+      name: '반려동물',
+      emoji: '🐾',
+      createdAt: '2026-08-29T00:00:00.000Z',
+      updatedAt: '2026-08-29T00:00:00.000Z',
+    };
+    const attachment: TransactionAttachment = {
+      transactionId: '550e8400-e29b-41d4-a716-446655440001',
+      dataUrl: 'data:image/png;base64,ZmFrZQ==',
+      fileName: 'receipt.png',
+      mimeType: 'image/png',
+      sizeBytes: 5,
+      updatedAt: '2026-08-29T00:00:00.000Z',
+    };
+
+    await repository.saveCustomCategory(customCategory);
+    await repository.saveTransactionAttachment(attachment);
+
+    await expect(repository.listCustomCategories()).resolves.toEqual([
+      customCategory,
+    ]);
+    await expect(
+      repository.getTransactionAttachment(attachment.transactionId),
+    ).resolves.toEqual(attachment);
+
+    await repository.removeTransactionAttachment(attachment.transactionId);
+    await expect(
+      repository.getTransactionAttachment(attachment.transactionId),
+    ).resolves.toBeUndefined();
   });
 
   it('aborts the entire import when one duplicate transaction key fails', async () => {
@@ -219,6 +255,58 @@ describe('BrowserLedgerRepository', () => {
       DEFAULT_BUDGET_BUCKETS,
     );
     await repository.resetLocalLedger();
+    await expect(repository.listBudgetBuckets()).resolves.toEqual(
+      DEFAULT_BUDGET_BUCKETS,
+    );
+  });
+
+  it('persists custom bucket edits and archives without removing referenced IDs', async () => {
+    const repository = createRepository();
+    const customBucket = {
+      id: 'custom-travel',
+      name: '여행',
+      icon: '✈️',
+      order: 80,
+      isDefault: false,
+      isArchived: false,
+    } as const;
+
+    await repository.saveBudgetBucket(customBucket);
+    await repository.saveBudgetBucket({
+      ...customBucket,
+      name: '긴 여행',
+      icon: '🌴',
+      isArchived: true,
+    });
+
+    await expect(repository.listBudgetBuckets()).resolves.toContainEqual({
+      ...customBucket,
+      name: '긴 여행',
+      icon: '🌴',
+      isArchived: true,
+    });
+  });
+
+  it('protects default identities from archival or custom reassignment', async () => {
+    const repository = createRepository();
+
+    await expect(
+      repository.saveBudgetBucket({
+        ...DEFAULT_BUDGET_BUCKETS[0],
+        isArchived: true,
+      }),
+    ).rejects.toThrow('default status');
+    await expect(
+      repository.saveBudgetBucket({
+        id: 'custom-reserved',
+        name: '잘못된 기본 목적',
+        icon: '⚠️',
+        order: 80,
+        isDefault: true,
+        isArchived: false,
+      }),
+    ).rejects.toThrow('default status');
+
     await expect(repository.listBudgetBuckets()).resolves.toEqual(
       DEFAULT_BUDGET_BUCKETS,
     );

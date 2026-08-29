@@ -1,6 +1,7 @@
 import type { ImportBatch } from '../../domain/imports/import-batch';
 import {
   DEFAULT_BUDGET_BUCKETS,
+  getDefaultBudgetBucket,
   validateBudgetBucket,
   type BudgetBucket,
 } from '../../domain/budget-buckets/budget-bucket';
@@ -9,18 +10,26 @@ import { validateCategoryRule } from '../../domain/categories/category-rule';
 import type { KeywordCategoryRule } from '../../domain/categories/keyword-category-rule';
 import { validateKeywordCategoryRule } from '../../domain/categories/keyword-category-rule';
 import {
+  validateCustomCategory,
+  type CustomCategory,
+} from '../../domain/categories/custom-category';
+import {
   LOCAL_USER_SETTINGS_ID,
   validateLocalUserSettings,
   type LocalUserSettings,
 } from '../../domain/settings/local-user-settings';
 import type { BudgetSettlement } from '../../domain/transactions/budget-settlement';
 import { validateBudgetSettlement } from '../../domain/transactions/budget-settlement';
+import {
+  validateTransactionAttachment,
+  type TransactionAttachment,
+} from '../../domain/transactions/transaction-attachment';
 import type { TransactionDateRange } from '../../domain/transactions/transaction-period';
 import type { Transaction } from '../../domain/transactions/transaction';
 import { validateTransaction } from '../../domain/transactions/transaction-validation';
 
 export const LOCAL_LEDGER_DATABASE_NAME = 'household-ledger';
-const LOCAL_LEDGER_DATABASE_VERSION = 6;
+const LOCAL_LEDGER_DATABASE_VERSION = 7;
 export const INDEXED_DB_OPEN_TIMEOUT_MS = 5_000;
 const TRANSACTIONS_STORE = 'transactions';
 const IMPORT_BATCHES_STORE = 'importBatches';
@@ -29,6 +38,8 @@ const CATEGORY_RULES_STORE = 'categoryRules';
 const KEYWORD_CATEGORY_RULES_STORE = 'keywordCategoryRules';
 const USER_SETTINGS_STORE = 'userSettings';
 const BUDGET_BUCKETS_STORE = 'budgetBuckets';
+const CUSTOM_CATEGORIES_STORE = 'customCategories';
+const TRANSACTION_ATTACHMENTS_STORE = 'transactionAttachments';
 
 type KeyRangeFactory = Readonly<{
   bound: (lower: string, upper: string) => IDBKeyRange;
@@ -112,6 +123,26 @@ function validateStoredBudgetBucket(value: unknown): BudgetBucket {
   const validation = validateBudgetBucket(value);
   if (!validation.isValid) {
     throw new Error('Stored budget bucket is invalid.');
+  }
+
+  return validation.value;
+}
+
+function validateStoredCustomCategory(value: unknown): CustomCategory {
+  const validation = validateCustomCategory(value);
+  if (!validation.isValid) {
+    throw new Error('Stored custom category is invalid.');
+  }
+
+  return validation.value;
+}
+
+function validateStoredTransactionAttachment(
+  value: unknown,
+): TransactionAttachment {
+  const validation = validateTransactionAttachment(value);
+  if (!validation.isValid) {
+    throw new Error('Stored transaction attachment is invalid.');
   }
 
   return validation.value;
@@ -250,6 +281,73 @@ export class BrowserLedgerRepository {
       );
   }
 
+  async listCustomCategories(): Promise<readonly CustomCategory[]> {
+    const database = await this.getDatabase();
+    const transaction = database.transaction(CUSTOM_CATEGORIES_STORE, 'readonly');
+    const values = await requestAsPromise(
+      transaction.objectStore(CUSTOM_CATEGORIES_STORE).getAll(),
+    );
+    await transactionAsPromise(transaction);
+
+    return values
+      .map(validateStoredCustomCategory)
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  }
+
+  async saveCustomCategory(category: CustomCategory): Promise<void> {
+    const categoryToStore = validateStoredCustomCategory(category);
+    const database = await this.getDatabase();
+    const transaction = database.transaction(
+      CUSTOM_CATEGORIES_STORE,
+      'readwrite',
+    );
+    transaction.objectStore(CUSTOM_CATEGORIES_STORE).put(categoryToStore);
+    await transactionAsPromise(transaction);
+  }
+
+  async getTransactionAttachment(
+    transactionId: string,
+  ): Promise<TransactionAttachment | undefined> {
+    const database = await this.getDatabase();
+    const transaction = database.transaction(
+      TRANSACTION_ATTACHMENTS_STORE,
+      'readonly',
+    );
+    const value = await requestAsPromise(
+      transaction.objectStore(TRANSACTION_ATTACHMENTS_STORE).get(transactionId),
+    );
+    await transactionAsPromise(transaction);
+
+    return value === undefined
+      ? undefined
+      : validateStoredTransactionAttachment(value);
+  }
+
+  async saveTransactionAttachment(
+    attachment: TransactionAttachment,
+  ): Promise<void> {
+    const attachmentToStore = validateStoredTransactionAttachment(attachment);
+    const database = await this.getDatabase();
+    const transaction = database.transaction(
+      TRANSACTION_ATTACHMENTS_STORE,
+      'readwrite',
+    );
+    transaction
+      .objectStore(TRANSACTION_ATTACHMENTS_STORE)
+      .put(attachmentToStore);
+    await transactionAsPromise(transaction);
+  }
+
+  async removeTransactionAttachment(transactionId: string): Promise<void> {
+    const database = await this.getDatabase();
+    const transaction = database.transaction(
+      TRANSACTION_ATTACHMENTS_STORE,
+      'readwrite',
+    );
+    transaction.objectStore(TRANSACTION_ATTACHMENTS_STORE).delete(transactionId);
+    await transactionAsPromise(transaction);
+  }
+
   async listKeywordCategoryRules(): Promise<readonly KeywordCategoryRule[]> {
     const database = await this.getDatabase();
     const transaction = database.transaction(KEYWORD_CATEGORY_RULES_STORE, 'readonly');
@@ -360,6 +458,23 @@ export class BrowserLedgerRepository {
       );
   }
 
+  async saveBudgetBucket(bucket: BudgetBucket): Promise<void> {
+    const bucketToStore = validateStoredBudgetBucket(bucket);
+    const defaultBucket = getDefaultBudgetBucket(bucketToStore.id);
+    if (
+      (defaultBucket !== undefined &&
+        (!bucketToStore.isDefault || bucketToStore.isArchived)) ||
+      (defaultBucket === undefined && bucketToStore.isDefault)
+    ) {
+      throw new Error('Budget bucket default status is invalid.');
+    }
+
+    const database = await this.getDatabase();
+    const transaction = database.transaction(BUDGET_BUCKETS_STORE, 'readwrite');
+    transaction.objectStore(BUDGET_BUCKETS_STORE).put(bucketToStore);
+    await transactionAsPromise(transaction);
+  }
+
   async resetLocalLedger(): Promise<void> {
     const database = await this.getDatabase();
     const transaction = database.transaction(
@@ -371,6 +486,8 @@ export class BrowserLedgerRepository {
         KEYWORD_CATEGORY_RULES_STORE,
         USER_SETTINGS_STORE,
         BUDGET_BUCKETS_STORE,
+        CUSTOM_CATEGORIES_STORE,
+        TRANSACTION_ATTACHMENTS_STORE,
       ],
       'readwrite',
     );
@@ -381,6 +498,8 @@ export class BrowserLedgerRepository {
     transaction.objectStore(CATEGORY_RULES_STORE).clear();
     transaction.objectStore(KEYWORD_CATEGORY_RULES_STORE).clear();
     transaction.objectStore(USER_SETTINGS_STORE).clear();
+    transaction.objectStore(CUSTOM_CATEGORIES_STORE).clear();
+    transaction.objectStore(TRANSACTION_ATTACHMENTS_STORE).clear();
     const budgetBuckets = transaction.objectStore(BUDGET_BUCKETS_STORE);
     budgetBuckets.clear();
     for (const bucket of DEFAULT_BUDGET_BUCKETS) {
@@ -471,6 +590,16 @@ export class BrowserLedgerRepository {
               keyPath: 'id',
             });
             budgetBuckets.createIndex('order', 'order', { unique: false });
+          }
+          if (!database.objectStoreNames.contains(CUSTOM_CATEGORIES_STORE)) {
+            database.createObjectStore(CUSTOM_CATEGORIES_STORE, {
+              keyPath: 'id',
+            });
+          }
+          if (!database.objectStoreNames.contains(TRANSACTION_ATTACHMENTS_STORE)) {
+            database.createObjectStore(TRANSACTION_ATTACHMENTS_STORE, {
+              keyPath: 'transactionId',
+            });
           }
 
           if (

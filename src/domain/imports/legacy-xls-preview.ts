@@ -32,6 +32,7 @@ export type TransactionDraft = Readonly<{
   budgetBucketId: BudgetBucketId;
   descriptionOriginal: string;
   paymentInstrumentLabel?: string;
+  memo?: string;
 }>;
 
 export type ImportCandidate = Readonly<{

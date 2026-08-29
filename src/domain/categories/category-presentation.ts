@@ -1,4 +1,8 @@
-import type { CategoryId } from './category';
+import {
+  isBuiltInCategoryId,
+  type BuiltInCategoryId,
+  type CategoryId,
+} from './category';
 
 export type CategoryPresentation = Readonly<{
   label: string;
@@ -6,7 +10,7 @@ export type CategoryPresentation = Readonly<{
 }>;
 
 export const CATEGORY_PRESENTATIONS: Readonly<
-  Record<CategoryId, CategoryPresentation>
+  Record<BuiltInCategoryId, CategoryPresentation>
 > = {
   FOOD_DINING: { label: '식비·외식', emoji: '🍚' },
   CAFE: { label: '카페', emoji: '☕' },
@@ -32,7 +36,11 @@ export const UNCLASSIFIED_CATEGORY_PRESENTATION: CategoryPresentation = {
 export function getCategoryPresentation(
   categoryId: CategoryId | undefined,
 ): CategoryPresentation {
-  return categoryId === undefined
-    ? UNCLASSIFIED_CATEGORY_PRESENTATION
-    : CATEGORY_PRESENTATIONS[categoryId];
+  if (categoryId === undefined) {
+    return UNCLASSIFIED_CATEGORY_PRESENTATION;
+  }
+
+  return isBuiltInCategoryId(categoryId)
+    ? CATEGORY_PRESENTATIONS[categoryId]
+    : { label: '사용자 카테고리', emoji: '🏷️' };
 }
