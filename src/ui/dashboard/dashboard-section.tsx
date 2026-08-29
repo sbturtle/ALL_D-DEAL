@@ -12,6 +12,8 @@ import {
   CATEGORY_IDS,
   type CategoryId,
 } from '../../domain/categories/category';
+import { createCustomCategory } from '../../domain/categories/custom-category';
+import type { CustomCategory } from '../../domain/categories/custom-category';
 import type {
   BudgetBucket,
   BudgetBucketId,
@@ -28,14 +30,25 @@ import {
 } from '../../domain/transactions/living-expense';
 import { isReviewNeededTransaction } from '../../domain/transactions/review-needed';
 import {
+  calculateSpendingInsights,
+  type SpendingInsight,
+} from '../../domain/transactions/spending-insights';
+import {
   getTransactionDateRange,
   type TransactionPeriodPreset,
 } from '../../domain/transactions/transaction-period';
 import type { CalendarDate } from '../../domain/transactions/calendar-date';
 import type { Transaction } from '../../domain/transactions/transaction';
+import {
+  createTransactionAttachment,
+  MAX_TRANSACTION_ATTACHMENT_BYTES,
+  type TransactionAttachment,
+} from '../../domain/transactions/transaction-attachment';
 import type { UtcIsoInstant } from '../../domain/transactions/utc-iso-instant';
 import { BrowserLedgerRepository } from '../../infrastructure/storage/browser-ledger-repository';
 import { formatWon } from '../../shared/format/currency';
+import { AppIcon } from '../shell/app-icon';
+import { CategoryCreateForm } from '../shared/category-create-form';
 import {
   dashboardMockSummary,
   dashboardMockTransactions,
@@ -44,6 +57,7 @@ import './dashboard-refresh.css';
 
 type DashboardMode = 'LOCAL' | 'MOCK';
 type DashboardPage = 'HOME' | 'TRANSACTIONS';
+type LedgerWorkspace = 'TRANSACTIONS' | 'SETTLEMENTS';
 type TransactionFilter = 'ALL' | 'EXPENSE' | 'INCOME' | 'REVIEW';
 
 export type LocalLedgerRepository = Pick<
@@ -57,7 +71,17 @@ export type LocalLedgerRepository = Pick<
   | 'replaceTransaction'
   | 'getLocalUserSettings'
   | 'listBudgetBuckets'
->;
+> &
+  Partial<
+    Pick<
+      BrowserLedgerRepository,
+  | 'listCustomCategories'
+  | 'saveCustomCategory'
+  | 'getTransactionAttachment'
+  | 'saveTransactionAttachment'
+  | 'removeTransactionAttachment'
+    >
+  >;
 
 type DashboardSectionProps = Readonly<{
   ledgerRepository: LocalLedgerRepository;
@@ -99,6 +123,7 @@ const TRANSACTION_FILTERS: readonly Readonly<{
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'] as const;
 const HOME_RECENT_TRANSACTION_LIMIT = 5;
+const HOME_SPENDING_INSIGHT_LIMIT = 3;
 
 function getTodayInSeoul(): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -118,6 +143,42 @@ function createLocalId(): string {
 
 function currentUtcIsoInstant(): UtcIsoInstant {
   return new Date().toISOString() as UtcIsoInstant;
+}
+
+function readTransactionImage(
+  file: File,
+  transactionId: string,
+): Promise<TransactionAttachment | undefined> {
+  if (
+    !file.type.startsWith('image/') ||
+    file.size <= 0 ||
+    file.size > MAX_TRANSACTION_ATTACHMENT_BYTES
+  ) {
+    return Promise.resolve(undefined);
+  }
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      if (typeof reader.result !== 'string') {
+        resolve(undefined);
+        return;
+      }
+
+      resolve(
+        createTransactionAttachment({
+          transactionId,
+          dataUrl: reader.result,
+          fileName: file.name,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          updatedAt: currentUtcIsoInstant(),
+        }),
+      );
+    });
+    reader.addEventListener('error', () => resolve(undefined));
+    reader.readAsDataURL(file);
+  });
 }
 
 function enumerateCalendarDates(
@@ -187,6 +248,22 @@ function getTransactionTypeLabel(type: Transaction['type']): string {
   return labels[type];
 }
 
+function getCategoryPresentationFor(
+  categoryId: CategoryId | undefined,
+  customCategories: readonly CustomCategory[],
+) {
+  if (categoryId === undefined) {
+    return getCategoryPresentation(categoryId);
+  }
+
+  const customCategory = customCategories.find(
+    (category) => category.id === categoryId,
+  );
+  return customCategory === undefined
+    ? getCategoryPresentation(categoryId)
+    : { label: customCategory.name, emoji: customCategory.emoji };
+}
+
 function getSettlementErrorMessage(code: Exclude<
   Awaited<ReturnType<typeof saveManualBudgetSettlement>>,
   { isSaved: true }
@@ -233,12 +310,14 @@ type HomeDashboardProps = Readonly<{
   livingExpenseAmountMinor: number;
   totalExpenseAmountMinor: number;
   budgetBucketSpending: readonly BudgetBucketSpendingItem[];
+  spendingInsights: readonly SpendingInsight[];
   monthlyGoalProgress: ReturnType<
     typeof calculateMonthlyLivingExpenseGoalProgress
   >;
   reviewNeededCount: number;
   weeklySpending: readonly WeeklySpendingDay[];
   recentTransactions: readonly Transaction[];
+  customCategories: readonly CustomCategory[];
   isLoading: boolean;
   loadError: boolean;
   onRetry: () => void;
@@ -248,10 +327,12 @@ function HomeDashboard({
   livingExpenseAmountMinor,
   totalExpenseAmountMinor,
   budgetBucketSpending,
+  spendingInsights,
   monthlyGoalProgress,
   reviewNeededCount,
   weeklySpending,
   recentTransactions,
+  customCategories,
   isLoading,
   loadError,
   onRetry,
@@ -306,7 +387,7 @@ function HomeDashboard({
         <div className="home-card-heading">
           <div>
             <p className="panel-kicker">이번 달 전체 소비</p>
-        <h3 id="home-budget-bucket-title">돈의 목적별 소비</h3>
+            <h3 id="home-budget-bucket-title">돈의 목적별 소비</h3>
           </div>
           <strong>{formatWon(totalExpenseAmountMinor)}</strong>
         </div>
@@ -320,6 +401,52 @@ function HomeDashboard({
           ))}
         </ul>
       </section>
+
+      {spendingInsights.length > 0 ? (
+        <section className="home-insight-card" aria-labelledby="home-insight-title">
+          <div className="home-card-heading">
+            <div>
+              <p className="panel-kicker">이번 달 소비 패턴</p>
+              <h3 id="home-insight-title">반복해서 쓴 곳</h3>
+            </div>
+            <span>2번 이상</span>
+          </div>
+          <p className="home-insight-description">
+            같은 카테고리에서 같은 기록이 반복됐어요.
+          </p>
+          <ul className="home-insight-list" aria-label="반복 지출 요약">
+            {spendingInsights
+              .slice(0, HOME_SPENDING_INSIGHT_LIMIT)
+              .map((insight) => {
+                const category = getCategoryPresentationFor(
+                  insight.categoryId,
+                  customCategories,
+                );
+                const insightLabel = `${category.label}에서 ${insight.label} ${insight.count}번, ${formatWon(insight.totalAmountMinor)} 썼어요`;
+
+                return (
+                  <li
+                    key={`${insight.categoryId}-${insight.label}`}
+                    aria-label={insightLabel}
+                  >
+                    <span className="home-insight-mark" aria-hidden="true">
+                      {category.emoji}
+                    </span>
+                    <span className="home-insight-copy">
+                      <strong>
+                        {category.label} · {insight.label}
+                      </strong>
+                      <small>{insight.count}번 반복</small>
+                    </span>
+                    <strong className="home-insight-amount">
+                      {formatWon(insight.totalAmountMinor)}
+                    </strong>
+                  </li>
+                );
+              })}
+          </ul>
+        </section>
+      ) : null}
 
       {monthlyGoalProgress === undefined ? (
         <section className="home-goal-card home-goal-card--empty" aria-labelledby="home-goal-title">
@@ -443,7 +570,10 @@ function HomeDashboard({
         ) : (
           <ul className="transaction-list home-transaction-list">
             {recentTransactions.map((transaction) => {
-              const category = getCategoryPresentation(transaction.categoryId);
+              const category = getCategoryPresentationFor(
+                transaction.categoryId,
+                customCategories,
+              );
 
               return (
                 <li
@@ -491,6 +621,8 @@ export function DashboardSection({
   page = 'TRANSACTIONS',
 }: DashboardSectionProps) {
   const [mode, setMode] = useState<DashboardMode>('LOCAL');
+  const [ledgerWorkspace, setLedgerWorkspace] =
+    useState<LedgerWorkspace>('TRANSACTIONS');
   const [preset, setPreset] = useState<TransactionPeriodPreset>('MONTH');
   const [anchorOn, setAnchorOn] = useState(getTodayInSeoul);
   const [customStartOn, setCustomStartOn] = useState(getTodayInSeoul);
@@ -501,6 +633,9 @@ export function DashboardSection({
   );
   const [settlements, setSettlements] = useState<readonly BudgetSettlement[]>([]);
   const [budgetBuckets, setBudgetBuckets] = useState<readonly BudgetBucket[]>([]);
+  const [customCategories, setCustomCategories] = useState<
+    readonly CustomCategory[]
+  >([]);
   const [localUserSettings, setLocalUserSettings] = useState<
     LocalUserSettings | undefined
   >(undefined);
@@ -526,8 +661,31 @@ export function DashboardSection({
   const [transactionEditError, setTransactionEditError] = useState<string | null>(
     null,
   );
+  const [transactionAttachment, setTransactionAttachment] = useState<
+    TransactionAttachment | undefined
+  >(undefined);
+  const [pendingTransactionAttachment, setPendingTransactionAttachment] =
+    useState<TransactionAttachment | null | undefined>(undefined);
+  const [isLoadingTransactionAttachment, setIsLoadingTransactionAttachment] =
+    useState(false);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [transactionFilter, setTransactionFilter] =
     useState<TransactionFilter>('ALL');
+  const [budgetBucketFilter, setBudgetBucketFilter] = useState<string>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<
+    CategoryId | 'ALL' | 'UNCLASSIFIED'
+  >('ALL');
+  const [selectedTransactionIds, setSelectedTransactionIds] = useState<
+    ReadonlySet<string>
+  >(new Set());
+  const [bulkCategoryId, setBulkCategoryId] = useState<
+    CategoryId | 'UNCHANGED' | ''
+  >('UNCHANGED');
+  const [bulkBudgetBucketId, setBulkBudgetBucketId] = useState<
+    BudgetBucketId | 'UNCHANGED'
+  >('UNCHANGED');
+  const [isSavingBulkEdit, setIsSavingBulkEdit] = useState(false);
+  const [bulkEditMessage, setBulkEditMessage] = useState<string | null>(null);
   const transactionEditTriggerRef = useRef<HTMLButtonElement | null>(null);
   const transactionEditCategoryRef = useRef<HTMLSelectElement | null>(null);
   const transactionEditDialogRef = useRef<HTMLDivElement | null>(null);
@@ -556,6 +714,10 @@ export function DashboardSection({
 
     setTransactionEditDraft(null);
     setTransactionEditError(null);
+    setTransactionAttachment(undefined);
+    setPendingTransactionAttachment(undefined);
+    setIsLoadingTransactionAttachment(false);
+    setIsCreatingCategory(false);
     window.setTimeout(() => {
       if (trigger?.isConnected) {
         trigger.focus();
@@ -618,6 +780,41 @@ export function DashboardSection({
   ]);
 
   useEffect(() => {
+    if (activeTransactionEditId === undefined) {
+      return undefined;
+    }
+
+    const getAttachment = ledgerRepository.getTransactionAttachment;
+    if (getAttachment === undefined) {
+      setTransactionAttachment(undefined);
+      setIsLoadingTransactionAttachment(false);
+      return undefined;
+    }
+
+    let isCurrent = true;
+    setIsLoadingTransactionAttachment(true);
+    void getAttachment(activeTransactionEditId)
+      .then((nextAttachment) => {
+        if (!isCurrent) {
+          return;
+        }
+        setTransactionAttachment(nextAttachment);
+        setIsLoadingTransactionAttachment(false);
+      })
+      .catch(() => {
+        if (!isCurrent) {
+          return;
+        }
+        setTransactionAttachment(undefined);
+        setIsLoadingTransactionAttachment(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [activeTransactionEditId, ledgerRepository]);
+
+  useEffect(() => {
     if (!rangeResult.isValid) {
       return undefined;
     }
@@ -632,6 +829,7 @@ export function DashboardSection({
       ledgerRepository.listBudgetSettlements(),
       ledgerRepository.getLocalUserSettings(),
       ledgerRepository.listBudgetBuckets(),
+      ledgerRepository.listCustomCategories?.() ?? Promise.resolve([]),
     ])
       .then(
         ([
@@ -640,6 +838,7 @@ export function DashboardSection({
           nextSettlements,
           nextLocalUserSettings,
           nextBudgetBuckets,
+          nextCustomCategories,
         ]) => {
           if (!isCurrent) {
             return;
@@ -649,6 +848,7 @@ export function DashboardSection({
           setSettlements(nextSettlements);
           setLocalUserSettings(nextLocalUserSettings);
           setBudgetBuckets(nextBudgetBuckets);
+          setCustomCategories(nextCustomCategories);
         },
       )
       .catch(() => {
@@ -660,6 +860,7 @@ export function DashboardSection({
         setSettlements([]);
         setLocalUserSettings(undefined);
         setBudgetBuckets([]);
+        setCustomCategories([]);
         setLoadError(true);
       })
       .finally(() => {
@@ -719,16 +920,62 @@ export function DashboardSection({
   const totalOutflow = transactions
     .filter((transaction) => transaction.direction === 'OUTFLOW')
     .reduce((total, transaction) => total + transaction.amountMinor, 0);
-  const filteredTransactions = useMemo(
+  const transactionFilterResult = useMemo(
     () => filterTransactions(transactions, transactionFilter),
     [transactionFilter, transactions],
   );
+  const purposeFilteredTransactions = useMemo(
+    () =>
+      budgetBucketFilter === 'ALL'
+        ? transactionFilterResult
+        : transactionFilterResult.filter(
+            (transaction) => transaction.budgetBucketId === budgetBucketFilter,
+          ),
+    [budgetBucketFilter, transactionFilterResult],
+  );
+  const categoryFilterOptions = useMemo(
+    () => [
+      ...CATEGORY_IDS.filter((categoryId) =>
+        purposeFilteredTransactions.some(
+          (transaction) => transaction.categoryId === categoryId,
+        ),
+      ),
+      ...customCategories
+        .filter((category) =>
+          purposeFilteredTransactions.some(
+            (transaction) => transaction.categoryId === category.id,
+          ),
+        )
+        .map((category) => category.id),
+    ],
+    [customCategories, purposeFilteredTransactions],
+  );
+  const filteredTransactions = useMemo(
+    () =>
+      purposeFilteredTransactions.filter((transaction) =>
+        categoryFilter === 'ALL'
+          ? true
+          : categoryFilter === 'UNCLASSIFIED'
+            ? transaction.categoryId === undefined
+            : transaction.categoryId === categoryFilter,
+      ),
+    [categoryFilter, purposeFilteredTransactions],
+  );
+  const areAllVisibleTransactionsSelected =
+    filteredTransactions.length > 0 &&
+    filteredTransactions.every((transaction) =>
+      selectedTransactionIds.has(transaction.id),
+    );
   const editingTransaction =
     transactionEditDraft === null
       ? undefined
       : transactions.find(
           (transaction) => transaction.id === transactionEditDraft.transactionId,
         );
+  const visibleTransactionAttachment =
+    pendingTransactionAttachment === undefined
+      ? transactionAttachment
+      : pendingTransactionAttachment ?? undefined;
   const reviewNeededCount = allTransactions.filter(isReviewNeededTransaction).length;
   const recentTransactions = useMemo(
     () =>
@@ -758,6 +1005,16 @@ export function DashboardSection({
       ).totalAmountMinor,
     }));
   }, [allTransactions, anchorOn, settlements]);
+  const linkedOutflowTransactionIds = new Set(
+    settlements.flatMap((settlement) => settlement.outflowTransactionIds),
+  );
+  const spendingInsights =
+    page === 'HOME' && !isMock
+      ? calculateSpendingInsights(
+          transactions,
+          linkedOutflowTransactionIds,
+        )
+      : [];
   const linkedTransactionIds = new Set(
     settlements.flatMap((settlement) => [
       ...settlement.outflowTransactionIds,
@@ -782,6 +1039,130 @@ export function DashboardSection({
     selectedOutflowTotal - selectedInflowTotal,
     0,
   );
+
+  const resetTransactionSelection = () => {
+    setSelectedTransactionIds(new Set());
+    setBulkEditMessage(null);
+  };
+
+  const handleTransactionFilterChange = (nextFilter: TransactionFilter) => {
+    setTransactionFilter(nextFilter);
+    setCategoryFilter('ALL');
+    resetTransactionSelection();
+    setTransactionEditDraft(null);
+    setTransactionEditError(null);
+  };
+
+  const handleBudgetBucketFilterChange = (nextFilter: string) => {
+    setBudgetBucketFilter(nextFilter);
+    setCategoryFilter('ALL');
+    resetTransactionSelection();
+  };
+
+  const handleCategoryFilterChange = (
+    nextFilter: CategoryId | 'ALL' | 'UNCLASSIFIED',
+  ) => {
+    setCategoryFilter(nextFilter);
+    resetTransactionSelection();
+  };
+
+  const toggleTransactionSelection = (
+    transactionId: string,
+    checked: boolean,
+  ) => {
+    setSelectedTransactionIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      if (checked) {
+        nextIds.add(transactionId);
+      } else {
+        nextIds.delete(transactionId);
+      }
+      return nextIds;
+    });
+    setBulkEditMessage(null);
+  };
+
+  const toggleAllVisibleTransactions = (checked: boolean) => {
+    setSelectedTransactionIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      filteredTransactions.forEach((transaction) => {
+        if (checked) {
+          nextIds.add(transaction.id);
+        } else {
+          nextIds.delete(transaction.id);
+        }
+      });
+      return nextIds;
+    });
+    setBulkEditMessage(null);
+  };
+
+  const handleBulkEditSave = async () => {
+    const selectedTransactions = transactions.filter((transaction) =>
+      selectedTransactionIds.has(transaction.id),
+    );
+    if (
+      selectedTransactions.length === 0 ||
+      (bulkCategoryId === 'UNCHANGED' && bulkBudgetBucketId === 'UNCHANGED')
+    ) {
+      setBulkEditMessage('바꿀 카테고리나 돈의 목적을 하나 이상 선택해 주세요.');
+      return;
+    }
+
+    setIsSavingBulkEdit(true);
+    setBulkEditMessage(null);
+    const results = await Promise.all(
+      selectedTransactions.map((transaction) =>
+        updateTransactionDetails(
+          {
+            transactionId: transaction.id,
+            categoryId:
+              bulkCategoryId === 'UNCHANGED'
+                ? transaction.categoryId
+                : bulkCategoryId === ''
+                  ? undefined
+                  : bulkCategoryId,
+            budgetBucketId:
+              bulkBudgetBucketId === 'UNCHANGED'
+                ? transaction.budgetBucketId
+                : bulkBudgetBucketId,
+            memo: transaction.memo,
+            updatedAt: currentUtcIsoInstant(),
+          },
+          ledgerRepository,
+        ),
+      ),
+    );
+    setIsSavingBulkEdit(false);
+
+    const updatedTransactions = results.flatMap((result) =>
+      result.isUpdated ? [result.transaction] : [],
+    );
+    if (updatedTransactions.length !== selectedTransactions.length) {
+      setBulkEditMessage(
+        '일부 거래를 저장하지 못했습니다. 변경하지 못한 거래를 다시 확인해 주세요.',
+      );
+      return;
+    }
+
+    const updatedById = new Map(
+      updatedTransactions.map((transaction) => [transaction.id, transaction]),
+    );
+    setTransactions((currentTransactions) =>
+      currentTransactions.map(
+        (transaction) => updatedById.get(transaction.id) ?? transaction,
+      ),
+    );
+    setAllTransactions((currentTransactions) =>
+      currentTransactions.map(
+        (transaction) => updatedById.get(transaction.id) ?? transaction,
+      ),
+    );
+    setSelectedTransactionIds(new Set());
+    setBulkCategoryId('UNCHANGED');
+    setBulkBudgetBucketId('UNCHANGED');
+    setBulkEditMessage(`${updatedTransactions.length}건의 분류를 바꿨어요.`);
+  };
 
   const handleSettlementTransactionChange = (
     transactionId: string,
@@ -839,6 +1220,67 @@ export function DashboardSection({
     }
   };
 
+  const handleTransactionImageChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+    const transactionId = transactionEditDraft?.transactionId;
+
+    if (file === undefined || transactionId === undefined) {
+      return;
+    }
+
+    setTransactionEditError(null);
+    const attachment = await readTransactionImage(file, transactionId);
+
+    if (attachment === undefined) {
+      setTransactionEditError(
+        '이미지는 3MB 이하의 이미지 파일만 추가할 수 있습니다.',
+      );
+      return;
+    }
+
+    setPendingTransactionAttachment(attachment);
+  };
+
+  const removeTransactionImage = () => {
+    setPendingTransactionAttachment(null);
+    setTransactionEditError(null);
+  };
+
+  const handleCreateCustomCategory = async (
+    name: string,
+    emoji: string,
+  ): Promise<CustomCategory | undefined> => {
+    if (ledgerRepository.saveCustomCategory === undefined) {
+      return undefined;
+    }
+
+    const category = createCustomCategory(
+      {
+        id: `CUSTOM_${createLocalId()}` as CustomCategory['id'],
+        name,
+        emoji,
+      },
+      currentUtcIsoInstant(),
+    );
+    if (category === undefined) {
+      return undefined;
+    }
+
+    try {
+      await ledgerRepository.saveCustomCategory(category);
+    } catch {
+      return undefined;
+    }
+    setCustomCategories((currentCategories) => [
+      ...currentCategories,
+      category,
+    ]);
+    return category;
+  };
+
   const startTransactionEdit = (
     transaction: Transaction,
     trigger: HTMLButtonElement,
@@ -850,6 +1292,10 @@ export function DashboardSection({
       budgetBucketId: transaction.budgetBucketId,
       memo: transaction.memo ?? '',
     });
+    setTransactionAttachment(undefined);
+    setPendingTransactionAttachment(undefined);
+    setIsLoadingTransactionAttachment(false);
+    setIsCreatingCategory(false);
     setTransactionEditError(null);
   };
 
@@ -880,6 +1326,31 @@ export function DashboardSection({
       return;
     }
 
+    if (pendingTransactionAttachment !== undefined) {
+      try {
+        if (pendingTransactionAttachment === null) {
+          if (ledgerRepository.removeTransactionAttachment === undefined) {
+            throw new Error('Transaction attachment storage is unavailable.');
+          }
+          await ledgerRepository.removeTransactionAttachment(
+            transactionEditDraft.transactionId,
+          );
+        } else {
+          if (ledgerRepository.saveTransactionAttachment === undefined) {
+            throw new Error('Transaction attachment storage is unavailable.');
+          }
+          await ledgerRepository.saveTransactionAttachment(
+            pendingTransactionAttachment,
+          );
+        }
+      } catch {
+        setTransactionEditError(
+          '거래는 저장했지만 이미지를 저장하지 못했습니다. 다시 시도해 주세요.',
+        );
+        return;
+      }
+    }
+
     setTransactions((current) =>
       current.map((transaction) =>
         transaction.id === result.transaction.id ? result.transaction : transaction,
@@ -890,6 +1361,12 @@ export function DashboardSection({
         transaction.id === result.transaction.id ? result.transaction : transaction,
       ),
     );
+    setTransactionAttachment(
+      pendingTransactionAttachment === null
+        ? undefined
+        : pendingTransactionAttachment ?? transactionAttachment,
+    );
+    setPendingTransactionAttachment(undefined);
     closeTransactionEdit();
   };
 
@@ -936,6 +1413,34 @@ export function DashboardSection({
             </button>
           </div>
         ) : null}
+        {page === 'TRANSACTIONS' && !isMock ? (
+          <div
+            className="ledger-workspace-tabs"
+            role="group"
+            aria-label="거래 작업 공간"
+          >
+            <button
+              type="button"
+              aria-pressed={ledgerWorkspace === 'TRANSACTIONS'}
+              className={
+                ledgerWorkspace === 'TRANSACTIONS' ? 'is-active' : undefined
+              }
+              onClick={() => setLedgerWorkspace('TRANSACTIONS')}
+            >
+              거래 목록
+            </button>
+            <button
+              type="button"
+              aria-pressed={ledgerWorkspace === 'SETTLEMENTS'}
+              className={
+                ledgerWorkspace === 'SETTLEMENTS' ? 'is-active' : undefined
+              }
+              onClick={() => setLedgerWorkspace('SETTLEMENTS')}
+            >
+              공동결제 정산
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {isMock ? (
@@ -945,7 +1450,9 @@ export function DashboardSection({
         </div>
       ) : null}
 
-      {!isMock && page === 'TRANSACTIONS' ? (
+      {!isMock &&
+      page === 'TRANSACTIONS' &&
+      ledgerWorkspace === 'TRANSACTIONS' ? (
         <section className="period-controls" aria-label="저장 거래 기간 선택">
           <div className="period-preset-buttons" role="group" aria-label="기간 빠른 선택">
             {([
@@ -1008,22 +1515,26 @@ export function DashboardSection({
         </section>
       ) : null}
 
-      <div className="ledger-main">
+      <div className={`ledger-main ledger-main--${ledgerWorkspace.toLowerCase()}`}>
         {page === 'HOME' && !isMock ? (
           <HomeDashboard
             livingExpenseAmountMinor={livingExpenseSummary.totalAmountMinor}
             totalExpenseAmountMinor={totalBudgetBucketExpenseAmountMinor}
             budgetBucketSpending={budgetBucketSpending}
+            spendingInsights={spendingInsights}
             monthlyGoalProgress={monthlyGoalProgress}
             reviewNeededCount={reviewNeededCount}
             weeklySpending={weeklySpending}
             recentTransactions={recentTransactions}
+            customCategories={customCategories}
             isLoading={isLoading}
             loadError={loadError}
             onRetry={requestReload}
           />
         ) : (
           <>
+          {ledgerWorkspace === 'TRANSACTIONS' ? (
+            <>
           <div className="summary-grid" aria-label="기간 요약">
             {isMock
               ? dashboardMockSummary.map((item) => (
@@ -1129,6 +1640,7 @@ export function DashboardSection({
             </div>
 
             {!isMock && page === 'TRANSACTIONS' ? (
+              <>
               <div className="transaction-review-tools">
                 <div
                   className="transaction-filter-buttons"
@@ -1143,22 +1655,197 @@ export function DashboardSection({
                       }
                       aria-pressed={transactionFilter === filter.id}
                       key={filter.id}
-                      onClick={() => {
-                        setTransactionFilter(filter.id);
-                        setTransactionEditDraft(null);
-                        setTransactionEditError(null);
-                      }}
+                      onClick={() => handleTransactionFilterChange(filter.id)}
                     >
                       {filter.label}
                     </button>
                   ))}
                 </div>
+                <label className="transaction-select-all">
+                  <input
+                    type="checkbox"
+                    aria-label="표시된 거래 모두 선택"
+                    checked={areAllVisibleTransactionsSelected}
+                    onChange={(event) =>
+                      toggleAllVisibleTransactions(event.target.checked)
+                    }
+                  />
+                  <span>표시된 거래 모두 선택</span>
+                </label>
                 {transactionFilter === 'REVIEW' && reviewNeededCount > 0 ? (
                   <a className="transaction-review-queue-link" href="/review">
                     한 건씩 분류하기
                   </a>
                 ) : null}
               </div>
+              <div className="transaction-filter-groups">
+                <div
+                  className="transaction-purpose-tabs"
+                  role="group"
+                  aria-label="돈의 목적별 보기"
+                >
+                  <button
+                    type="button"
+                    className={
+                      budgetBucketFilter === 'ALL' ? 'is-active' : undefined
+                    }
+                    aria-pressed={budgetBucketFilter === 'ALL'}
+                    onClick={() => handleBudgetBucketFilterChange('ALL')}
+                  >
+                    전체
+                  </button>
+                  {budgetBuckets.map((bucket) => (
+                    <button
+                      type="button"
+                      className={
+                        budgetBucketFilter === bucket.id ? 'is-active' : undefined
+                      }
+                      aria-label={bucket.name}
+                      aria-pressed={budgetBucketFilter === bucket.id}
+                      key={bucket.id}
+                      onClick={() => handleBudgetBucketFilterChange(bucket.id)}
+                    >
+                      {bucket.icon} {bucket.name}
+                    </button>
+                  ))}
+                </div>
+                <div
+                  className="transaction-category-tabs"
+                  role="group"
+                  aria-label="카테고리별 보기"
+                >
+                  <button
+                    type="button"
+                    className={categoryFilter === 'ALL' ? 'is-active' : undefined}
+                    aria-pressed={categoryFilter === 'ALL'}
+                    onClick={() => handleCategoryFilterChange('ALL')}
+                  >
+                    전체 카테고리
+                  </button>
+                  {purposeFilteredTransactions.some(
+                    (transaction) => transaction.categoryId === undefined,
+                  ) ? (
+                    <button
+                      type="button"
+                      className={
+                        categoryFilter === 'UNCLASSIFIED' ? 'is-active' : undefined
+                      }
+                      aria-pressed={categoryFilter === 'UNCLASSIFIED'}
+                      onClick={() => handleCategoryFilterChange('UNCLASSIFIED')}
+                    >
+                      미분류
+                    </button>
+                  ) : null}
+                  {categoryFilterOptions.map((categoryId) => {
+                    const category = getCategoryPresentationFor(
+                      categoryId,
+                      customCategories,
+                    );
+                    return (
+                      <button
+                        type="button"
+                        className={
+                          categoryFilter === categoryId ? 'is-active' : undefined
+                        }
+                        aria-label={category.label}
+                        aria-pressed={categoryFilter === categoryId}
+                        key={categoryId}
+                        onClick={() => handleCategoryFilterChange(categoryId)}
+                      >
+                        {category.emoji} {category.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {selectedTransactionIds.size > 0 ? (
+                <div className="bulk-edit-toolbar">
+                  <strong>{selectedTransactionIds.size}건 선택됨</strong>
+                  <label>
+                    일괄 카테고리
+                    <span className="dashboard-select-control">
+                      <select
+                        aria-label="일괄 카테고리"
+                        value={bulkCategoryId}
+                        disabled={isSavingBulkEdit}
+                        onChange={(event) =>
+                          setBulkCategoryId(
+                            event.target.value as CategoryId | 'UNCHANGED' | '',
+                          )
+                        }
+                      >
+                        <option value="UNCHANGED">카테고리 유지</option>
+                        <option value="">미분류</option>
+                        {CATEGORY_IDS.map((categoryId) => {
+                          const category = getCategoryPresentationFor(
+                            categoryId,
+                            customCategories,
+                          );
+                          return (
+                            <option key={categoryId} value={categoryId}>
+                              {category.emoji} {category.label}
+                            </option>
+                          );
+                        })}
+                        {customCategories.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.emoji} {category.name}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="dashboard-select-chevron" aria-hidden="true">
+                        ⌄
+                      </span>
+                    </span>
+                  </label>
+                  <label>
+                    일괄 돈의 목적
+                    <span className="dashboard-select-control">
+                      <select
+                        aria-label="일괄 돈의 목적"
+                        value={bulkBudgetBucketId}
+                        disabled={isSavingBulkEdit}
+                        onChange={(event) =>
+                          setBulkBudgetBucketId(event.target.value)
+                        }
+                      >
+                        <option value="UNCHANGED">돈의 목적 유지</option>
+                        {budgetBuckets
+                          .filter((bucket) => !bucket.isArchived)
+                          .map((bucket) => (
+                            <option key={bucket.id} value={bucket.id}>
+                              {bucket.icon} {bucket.name}
+                            </option>
+                          ))}
+                      </select>
+                      <span className="dashboard-select-chevron" aria-hidden="true">
+                        ⌄
+                      </span>
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void handleBulkEditSave()}
+                    disabled={isSavingBulkEdit}
+                  >
+                    {isSavingBulkEdit ? '저장 중' : '선택한 거래 저장'}
+                  </button>
+                  <button
+                    type="button"
+                    className="bulk-edit-cancel"
+                    onClick={resetTransactionSelection}
+                    disabled={isSavingBulkEdit}
+                  >
+                    선택 해제
+                  </button>
+                </div>
+              ) : null}
+              {bulkEditMessage === null ? null : (
+                <p className="bulk-edit-message" role="status">
+                  {bulkEditMessage}
+                </p>
+              )}
+              </>
             ) : null}
 
             {isMock ? (
@@ -1220,9 +1907,13 @@ export function DashboardSection({
             ) : filteredTransactions.length > 0 ? (
               <ul className="transaction-list">
                 {filteredTransactions.map((transaction) => {
-                  const category = getCategoryPresentation(transaction.categoryId);
+                  const category = getCategoryPresentationFor(
+                    transaction.categoryId,
+                    customCategories,
+                  );
                   const isEditingTransaction =
                     transactionEditDraft?.transactionId === transaction.id;
+                  const isSelected = selectedTransactionIds.has(transaction.id);
 
                   return (
                   <li
@@ -1233,6 +1924,18 @@ export function DashboardSection({
                     }
                     key={transaction.id}
                   >
+                    <input
+                      type="checkbox"
+                      className="transaction-row-selection"
+                      aria-label={`거래 선택 ${transaction.descriptionOriginal}`}
+                      checked={isSelected}
+                      onChange={(event) =>
+                        toggleTransactionSelection(
+                          transaction.id,
+                          event.target.checked,
+                        )
+                      }
+                    />
                     <span className="transaction-mark" aria-hidden="true">
                       {category.emoji}
                     </span>
@@ -1301,6 +2004,17 @@ export function DashboardSection({
               </div>
             )}
           </article>
+            </>
+          ) : (
+            <section className="settlement-workspace-intro" aria-labelledby="settlement-workspace-title">
+              <p className="panel-kicker">공동결제 정산</p>
+              <h3 id="settlement-workspace-title">함께 쓴 결제를 깔끔하게 정리하세요</h3>
+              <p>
+                여러 지출과 정산 입금을 하나의 묶음으로 연결하면 생활비에는
+                실제 부담한 순지출만 반영됩니다.
+              </p>
+            </section>
+          )}
 
           {!isMock && page === 'TRANSACTIONS' ? (
             <article className="settlement-panel" aria-labelledby="settlement-title">
@@ -1318,21 +2032,26 @@ export function DashboardSection({
               <div className="settlement-form">
                 <label>
                   정산 순지출 목적
-                  <select
-                    aria-label="공동결제 정산 목적"
-                    value={settlementBudgetBucketId}
-                    onChange={(event) =>
-                      setSettlementBudgetBucketId(event.target.value)
-                    }
-                  >
-                    {budgetBuckets
-                      .filter((bucket) => !bucket.isArchived)
-                      .map((bucket) => (
-                        <option key={bucket.id} value={bucket.id}>
-                          {bucket.icon} {bucket.name}
-                        </option>
-                      ))}
-                  </select>
+                  <span className="dashboard-select-control">
+                    <select
+                      aria-label="공동결제 정산 목적"
+                      value={settlementBudgetBucketId}
+                      onChange={(event) =>
+                        setSettlementBudgetBucketId(event.target.value)
+                      }
+                    >
+                      {budgetBuckets
+                        .filter((bucket) => !bucket.isArchived)
+                        .map((bucket) => (
+                          <option key={bucket.id} value={bucket.id}>
+                            {bucket.icon} {bucket.name}
+                          </option>
+                        ))}
+                    </select>
+                    <span className="dashboard-select-chevron" aria-hidden="true">
+                      ⌄
+                    </span>
+                  </span>
                 </label>
                 <fieldset>
                   <legend>공동결제 지출 (1건 이상)</legend>
@@ -1476,7 +2195,7 @@ export function DashboardSection({
                 disabled={isSavingTransactionEdit}
                 onClick={closeTransactionEdit}
               >
-                <span aria-hidden="true">×</span>
+                <AppIcon name="close" size={20} />
               </button>
             </header>
             <p
@@ -1497,63 +2216,117 @@ export function DashboardSection({
                 void handleTransactionEditSave();
               }}
             >
-              <label>
-                카테고리
-                <select
-                  ref={transactionEditCategoryRef}
-                  aria-label={`${editingTransaction.descriptionOriginal} 카테고리`}
-                  value={transactionEditDraft.categoryId ?? ''}
-                  disabled={isSavingTransactionEdit}
-                  onChange={(event) =>
-                    setTransactionEditDraft((current) =>
-                      current === null
-                        ? current
-                        : {
-                            ...current,
-                            categoryId:
-                              event.target.value === ''
-                                ? undefined
-                                : (event.target.value as CategoryId),
-                          },
-                    )
-                  }
-                >
-                  <option value="">🏷️ 미분류</option>
-                  {CATEGORY_IDS.map((categoryId) => {
-                    const presentation = getCategoryPresentation(categoryId);
+              <div className="transaction-edit-category-field">
+                <label>
+                  카테고리
+                  <span className="dashboard-select-control">
+                  <select
+                    ref={transactionEditCategoryRef}
+                    aria-label={`${editingTransaction.descriptionOriginal} 카테고리`}
+                    value={transactionEditDraft.categoryId ?? ''}
+                    disabled={isSavingTransactionEdit}
+                    onChange={(event) =>
+                      setTransactionEditDraft((current) =>
+                        current === null
+                          ? current
+                          : {
+                              ...current,
+                              categoryId:
+                                event.target.value === ''
+                                  ? undefined
+                                  : (event.target.value as CategoryId),
+                            },
+                      )
+                    }
+                  >
+                    <option value="">🏷️ 미분류</option>
+                    {CATEGORY_IDS.map((categoryId) => {
+                      const presentation = getCategoryPresentationFor(
+                        categoryId,
+                        customCategories,
+                      );
 
-                    return (
-                      <option key={categoryId} value={categoryId}>
-                        {presentation.emoji} {presentation.label}
+                      return (
+                        <option key={categoryId} value={categoryId}>
+                          {presentation.emoji} {presentation.label}
+                        </option>
+                      );
+                    })}
+                    {customCategories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.emoji} {category.name}
                       </option>
-                    );
-                  })}
-                </select>
-              </label>
+                    ))}
+                  </select>
+                  <span className="dashboard-select-chevron" aria-hidden="true">
+                    ⌄
+                  </span>
+                  </span>
+                </label>
+                {ledgerRepository.saveCustomCategory === undefined ? null : (
+                  <>
+                    {isCreatingCategory ? (
+                      <CategoryCreateForm
+                        onCreateCategory={handleCreateCustomCategory}
+                        onCreated={(category) => {
+                          setIsCreatingCategory(false);
+                          setTransactionEditDraft((current) =>
+                            current === null
+                              ? current
+                              : { ...current, categoryId: category.id },
+                          );
+                        }}
+                        onCancel={() => setIsCreatingCategory(false)}
+                        disabled={isSavingTransactionEdit}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        className="category-create-trigger"
+                        onClick={() => setIsCreatingCategory(true)}
+                        disabled={isSavingTransactionEdit}
+                      >
+                        + 새 카테고리 추가
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
               <label>
                 돈의 목적
-                <select
-                  aria-label={`${editingTransaction.descriptionOriginal} 돈의 목적`}
-                  value={transactionEditDraft.budgetBucketId}
-                  disabled={isSavingTransactionEdit}
-                  onChange={(event) =>
-                    setTransactionEditDraft((current) =>
-                      current === null
-                        ? current
-                        : {
-                            ...current,
-                            budgetBucketId: event.target.value,
-                          },
-                    )
-                  }
-                >
-                  {budgetBuckets.map((bucket) => (
-                    <option key={bucket.id} value={bucket.id}>
-                      {bucket.icon} {bucket.name}
-                      {bucket.isArchived ? ' (보관됨)' : ''}
-                    </option>
-                  ))}
-                </select>
+                <span className="dashboard-select-control">
+                  <select
+                    aria-label={`${editingTransaction.descriptionOriginal} 돈의 목적`}
+                    value={transactionEditDraft.budgetBucketId}
+                    disabled={isSavingTransactionEdit}
+                    onChange={(event) =>
+                      setTransactionEditDraft((current) =>
+                        current === null
+                          ? current
+                          : {
+                              ...current,
+                              budgetBucketId: event.target.value,
+                            },
+                      )
+                    }
+                  >
+                    {budgetBuckets
+                      .filter(
+                        (bucket) =>
+                          !bucket.isArchived ||
+                          bucket.id === transactionEditDraft.budgetBucketId,
+                      )
+                      .map((bucket) => (
+                        <option key={bucket.id} value={bucket.id}>
+                          {bucket.icon} {bucket.name}
+                          {bucket.isArchived ? ' (보관됨)' : ''}
+                        </option>
+                      ))}
+                  </select>
+                  <span className="dashboard-select-chevron" aria-hidden="true">
+                    ⌄
+                  </span>
+                </span>
               </label>
               <p className="transaction-edit-bucket-hint">
                 기존 거래와 새 불러오기는 생활비로 시작합니다. 실제 자금 목적에 맞게 바꿔 주세요.
@@ -1575,6 +2348,60 @@ export function DashboardSection({
                   }
                 />
               </label>
+              <section
+                className="transaction-edit-attachment"
+                aria-labelledby={`transaction-edit-attachment-title-${editingTransaction.id}`}
+              >
+                <div className="transaction-edit-attachment__heading">
+                  <div>
+                    <strong
+                      id={`transaction-edit-attachment-title-${editingTransaction.id}`}
+                    >
+                      거래 이미지
+                    </strong>
+                    <small>영수증이나 거래를 기억할 사진을 이 기기에만 보관해요.</small>
+                  </div>
+                  {isLoadingTransactionAttachment ? (
+                    <span role="status">불러오는 중</span>
+                  ) : null}
+                </div>
+                {visibleTransactionAttachment === undefined ? (
+                  <div className="transaction-edit-attachment__empty">
+                    아직 추가한 이미지가 없어요.
+                  </div>
+                ) : (
+                  <div className="transaction-edit-attachment__preview">
+                    <img
+                      src={visibleTransactionAttachment.dataUrl}
+                      alt={`${editingTransaction.descriptionOriginal} 거래 이미지 미리보기`}
+                    />
+                    <span>{visibleTransactionAttachment.fileName}</span>
+                  </div>
+                )}
+                <div className="transaction-edit-attachment__actions">
+                  <label className="transaction-edit-attachment__upload">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      aria-label={`${editingTransaction.descriptionOriginal} 거래 이미지 추가`}
+                      disabled={isSavingTransactionEdit}
+                      onChange={(event) => void handleTransactionImageChange(event)}
+                    />
+                    {visibleTransactionAttachment === undefined
+                      ? '이미지 추가'
+                      : '이미지 변경'}
+                  </label>
+                  {visibleTransactionAttachment === undefined ? null : (
+                    <button
+                      type="button"
+                      onClick={removeTransactionImage}
+                      disabled={isSavingTransactionEdit}
+                    >
+                      이미지 삭제
+                    </button>
+                  )}
+                </div>
+              </section>
               {transactionEditError === null ? null : (
                 <p role="alert">{transactionEditError}</p>
               )}

@@ -240,6 +240,49 @@ describe('DashboardSection', () => {
     expect(screen.queryByLabelText('장부 보기 선택')).not.toBeInTheDocument();
   });
 
+  it('shows repeated spending by category with its count and total', async () => {
+    const occurredOn = getTodayInSeoulForTest();
+    const firstTteokbokki: Transaction = {
+      ...ordinaryExpense,
+      id: '550e8400-e29b-41d4-a716-446655440021',
+      occurredOn,
+      categoryId: 'DATE',
+      amountMinor: 12_000,
+      descriptionOriginal: '떡볶이',
+    };
+    const secondTteokbokki: Transaction = {
+      ...firstTteokbokki,
+      id: '550e8400-e29b-41d4-a716-446655440022',
+      amountMinor: 15_000,
+      descriptionOriginal: '떡-볶이',
+    };
+
+    render(
+      <DashboardSection
+        ledgerRepository={createHomeRepository([
+          firstTteokbokki,
+          secondTteokbokki,
+        ])}
+        page="HOME"
+      />,
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: '반복해서 쓴 곳' }),
+    ).toBeVisible();
+    const insightCard = screen
+      .getByRole('heading', { name: '반복해서 쓴 곳' })
+      .closest('section');
+    expect(insightCard).not.toBeNull();
+    expect(
+      screen.getByRole('listitem', {
+        name: '데이트에서 떡볶이 2번, 27,000원 썼어요',
+      }),
+    ).toBeVisible();
+    expect(screen.getByText('2번 반복')).toBeVisible();
+    expect(within(insightCard as HTMLElement).getByText('27,000원')).toBeVisible();
+  });
+
   it('shows honest HOME empty and goal guidance without fabricated values', async () => {
     render(
       <DashboardSection
@@ -260,6 +303,9 @@ describe('DashboardSection', () => {
     expect(screen.getByText('분류가 필요한 거래가 없어요')).toBeVisible();
     expect(
       screen.queryByRole('link', { name: '분류 시작하기' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: '반복해서 쓴 곳' }),
     ).not.toBeInTheDocument();
     expect(screen.getByText('이번 달 거래가 아직 없어요')).toBeVisible();
   });
@@ -316,6 +362,33 @@ describe('DashboardSection', () => {
     await user.click(screen.getByRole('button', { name: '직접 선택' }));
     expect(screen.getByLabelText('기간 시작')).toBeVisible();
     expect(screen.getByLabelText('기간 종료')).toBeVisible();
+  });
+
+  it('opens shared payments in a dedicated workspace tab', async () => {
+    const user = userEvent.setup();
+    render(<DashboardSection ledgerRepository={repository} />);
+
+    expect(await screen.findByText('Fabricated group payment')).toBeVisible();
+    const settlementTab = screen.getByRole('button', {
+      name: '공동결제 정산',
+    });
+    await user.click(settlementTab);
+
+    expect(settlementTab).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      screen.getByRole('heading', { name: '공동결제 정산' }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', {
+        name: 'Fabricated group payment 카테고리·메모 수정',
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '거래 목록' }),
+    ).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(screen.getByRole('button', { name: '거래 목록' }));
+    expect(screen.getByText('Fabricated group payment')).toBeVisible();
   });
 
   it('saves a many-to-many shared-payment selection', async () => {
@@ -423,6 +496,117 @@ describe('DashboardSection', () => {
     expect(screen.queryByText('Fabricated ordinary expense')).not.toBeInTheDocument();
   });
 
+  it('filters transactions by purpose and then by category', async () => {
+    const user = userEvent.setup();
+    const livingTransport = {
+      ...ordinaryExpense,
+      id: '550e8400-e29b-41d4-a716-446655440013',
+      descriptionOriginal: 'Fabricated living transport',
+      budgetBucketId: 'LIVING',
+      categoryId: 'TRANSPORT',
+    } satisfies Transaction;
+    const irregularCafe = {
+      ...ordinaryExpense,
+      id: '550e8400-e29b-41d4-a716-446655440014',
+      descriptionOriginal: 'Fabricated irregular cafe',
+      budgetBucketId: 'IRREGULAR',
+      categoryId: 'CAFE',
+    } satisfies Transaction;
+    const purposeRepository: LocalLedgerRepository = {
+      ...repository,
+      listTransactionsInRange: vi.fn().mockResolvedValue([
+        livingTransport,
+        irregularCafe,
+      ]),
+      listAllTransactions: vi.fn().mockResolvedValue([
+        livingTransport,
+        irregularCafe,
+      ]),
+      listBudgetSettlements: vi.fn().mockResolvedValue([]),
+    };
+    render(<DashboardSection ledgerRepository={purposeRepository} />);
+
+    await screen.findByText('Fabricated living transport');
+    await user.click(
+      within(
+        screen.getByRole('group', { name: '돈의 목적별 보기' }),
+      ).getByRole('button', { name: '비정기비' }),
+    );
+    expect(screen.getByText('Fabricated irregular cafe')).toBeVisible();
+    expect(screen.queryByText('Fabricated living transport')).not.toBeInTheDocument();
+
+    await user.click(
+      within(
+        screen.getByRole('group', { name: '카테고리별 보기' }),
+      ).getByRole('button', { name: '카페' }),
+    );
+    expect(screen.getByText('Fabricated irregular cafe')).toBeVisible();
+  });
+
+  it('updates selected transactions category and purpose together', async () => {
+    const user = userEvent.setup();
+    const replaceTransaction = vi.fn().mockResolvedValue(undefined);
+    const bulkRepository: LocalLedgerRepository = {
+      ...repository,
+      listTransactionsInRange: vi.fn().mockResolvedValue([
+        ordinaryExpense,
+        uncategorizedExpense,
+      ]),
+      listAllTransactions: vi.fn().mockResolvedValue([
+        ordinaryExpense,
+        uncategorizedExpense,
+      ]),
+      listBudgetSettlements: vi.fn().mockResolvedValue([]),
+      getTransactionsByIds: vi.fn().mockImplementation(
+        async (ids: readonly string[]) =>
+          [ordinaryExpense, uncategorizedExpense].filter((transaction) =>
+            ids.includes(transaction.id),
+          ),
+      ),
+      replaceTransaction,
+    };
+    render(<DashboardSection ledgerRepository={bulkRepository} />);
+
+    await screen.findByText('Fabricated ordinary expense');
+    await user.click(
+      screen.getByRole('checkbox', {
+        name: '거래 선택 Fabricated ordinary expense',
+      }),
+    );
+    await user.click(
+      screen.getByRole('checkbox', {
+        name: '거래 선택 Fabricated uncategorized expense',
+      }),
+    );
+    await user.selectOptions(
+      screen.getByLabelText('일괄 카테고리'),
+      'CAFE',
+    );
+    await user.selectOptions(
+      screen.getByLabelText('일괄 돈의 목적'),
+      'IRREGULAR',
+    );
+    await user.click(screen.getByRole('button', { name: '선택한 거래 저장' }));
+
+    await waitFor(() => {
+      expect(replaceTransaction).toHaveBeenCalledTimes(2);
+      expect(replaceTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: ordinaryExpense.id,
+          categoryId: 'CAFE',
+          budgetBucketId: 'IRREGULAR',
+        }),
+      );
+      expect(replaceTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: uncategorizedExpense.id,
+          categoryId: 'CAFE',
+          budgetBucketId: 'IRREGULAR',
+        }),
+      );
+    });
+  });
+
   it('shows the monthly goal remaining after shared-payment net spending', async () => {
     const user = userEvent.setup();
     const monthlyGoalRepository: LocalLedgerRepository = {
@@ -496,6 +680,51 @@ describe('DashboardSection', () => {
     );
     expect(await screen.findByText('메모: Fabricated memo')).toBeVisible();
     expect(screen.getByText('2026-08-04 · 지출 · ☕ 카페')).toBeVisible();
+  });
+
+  it('stores a selected transaction image locally from the edit sheet', async () => {
+    const user = userEvent.setup();
+    const saveTransactionAttachment = vi.fn().mockResolvedValue(undefined);
+    const imageRepository: LocalLedgerRepository = {
+      ...repository,
+      getTransactionsByIds: vi.fn().mockResolvedValue([ordinaryExpense]),
+      getTransactionAttachment: vi.fn().mockResolvedValue(undefined),
+      saveTransactionAttachment,
+    };
+    render(<DashboardSection ledgerRepository={imageRepository} />);
+
+    await screen.findByText('Fabricated ordinary expense');
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Fabricated ordinary expense 카테고리·메모 수정',
+      }),
+    );
+    const image = new File(['fake image'], 'receipt.png', {
+      type: 'image/png',
+    });
+    await user.upload(
+      screen.getByLabelText('Fabricated ordinary expense 거래 이미지 추가'),
+      image,
+    );
+
+    expect(
+      await screen.findByAltText(
+        'Fabricated ordinary expense 거래 이미지 미리보기',
+      ),
+    ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(saveTransactionAttachment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          transactionId: ordinaryExpense.id,
+          fileName: 'receipt.png',
+          mimeType: 'image/png',
+          sizeBytes: image.size,
+          dataUrl: expect.stringContaining('data:image/png;base64,'),
+        }),
+      );
+    });
   });
 
   it('opens transaction editing as an accessible bottom sheet and restores focus on Escape', async () => {

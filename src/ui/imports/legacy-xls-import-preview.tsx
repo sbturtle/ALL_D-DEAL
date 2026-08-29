@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+} from 'react';
 
 import type {
   ImportCandidate,
@@ -14,9 +20,15 @@ import type {
 import type { DuplicateCandidateMatch } from '../../domain/imports/duplicate-candidates';
 import {
   CATEGORY_IDS,
+  type BuiltInCategoryId,
   type CategoryId,
 } from '../../domain/categories/category';
-import { getDefaultBudgetBucket } from '../../domain/budget-buckets/budget-bucket';
+import type { CustomCategory } from '../../domain/categories/custom-category';
+import {
+  DEFAULT_BUDGET_BUCKETS,
+  type BudgetBucket,
+  type BudgetBucketId,
+} from '../../domain/budget-buckets/budget-bucket';
 import type { TransactionType } from '../../domain/transactions/transaction';
 import type { PlaceSearch, PlaceSearchResult } from '../../application/places/place-search';
 import {
@@ -29,6 +41,7 @@ import type {
   AccountTransactionTypeClassificationReasonCode,
 } from '../../domain/transactions/account-transaction-type-classifier';
 import { formatWon } from '../../shared/format/currency';
+import { CategoryCreateForm } from '../shared/category-create-form';
 
 type ImportStatus = 'IDLE' | 'READING' | 'PREVIEW' | 'SAVING' | 'SAVED';
 type PlaceSearchState = Readonly<{
@@ -45,6 +58,7 @@ type CandidatePlaceSearchRequest = Readonly<{
 }>;
 
 const MAX_CONCURRENT_KAKAO_ANALYSES = 3;
+const EMPTY_CUSTOM_CATEGORIES: readonly CustomCategory[] = [];
 
 export type LegacyXlsImportPreviewProps = Readonly<{
   previewFile: LegacyXlsPreviewReader;
@@ -58,6 +72,12 @@ export type LegacyXlsImportPreviewProps = Readonly<{
   ) => Promise<LegacyXlsImportConfirmationResult>;
   onImportConfirmed?: () => void;
   searchPlaces?: PlaceSearch;
+  budgetBuckets?: readonly BudgetBucket[];
+  customCategories?: readonly CustomCategory[];
+  onCreateCategory?: (
+    name: string,
+    emoji: string,
+  ) => Promise<CustomCategory | undefined>;
 }>;
 
 const SOURCE_LABELS: Readonly<Record<ImportSource, string>> = {
@@ -65,7 +85,7 @@ const SOURCE_LABELS: Readonly<Record<ImportSource, string>> = {
   CARD_USAGE_XLS: '카드 이용 XLS',
 };
 
-const CATEGORY_LABELS: Readonly<Record<CategoryId, string>> = {
+const CATEGORY_LABELS: Readonly<Record<BuiltInCategoryId, string>> = {
   FOOD_DINING: '식비·외식',
   CAFE: '카페',
   CONVENIENCE: '편의점',
@@ -82,7 +102,7 @@ const CATEGORY_LABELS: Readonly<Record<CategoryId, string>> = {
   OTHER: '기타',
 };
 
-const CATEGORY_SYMBOLS: Readonly<Record<CategoryId, string>> = {
+const CATEGORY_SYMBOLS: Readonly<Record<BuiltInCategoryId, string>> = {
   FOOD_DINING: '🍽️',
   CAFE: '☕',
   CONVENIENCE: '🏪',
@@ -99,19 +119,66 @@ const CATEGORY_SYMBOLS: Readonly<Record<CategoryId, string>> = {
   OTHER: '•••',
 };
 
-function withCategoryId(
-  candidate: ImportCandidate,
+function getCategoryLabel(
   categoryId: CategoryId | undefined,
+  customCategories: readonly CustomCategory[],
+): string {
+  if (categoryId === undefined) {
+    return '미분류';
+  }
+
+  return (
+    CATEGORY_LABELS[categoryId as BuiltInCategoryId] ??
+    customCategories.find((category) => category.id === categoryId)?.name ??
+    '사용자 카테고리'
+  );
+}
+
+function getCategorySymbol(
+  categoryId: CategoryId | undefined,
+  customCategories: readonly CustomCategory[],
+): string {
+  if (categoryId === undefined) {
+    return '?';
+  }
+
+  return (
+    CATEGORY_SYMBOLS[categoryId as BuiltInCategoryId] ??
+    customCategories.find((category) => category.id === categoryId)?.emoji ??
+    '🏷️'
+  );
+}
+
+type CandidateDetails = Readonly<{
+  categoryId: CategoryId | undefined;
+  budgetBucketId: BudgetBucketId;
+  memo: string;
+}>;
+
+function withCandidateDetails(
+  candidate: ImportCandidate,
+  details: CandidateDetails,
 ): ImportCandidate {
-  const { categoryId: ignoredCategoryId, ...draftWithoutCategory } = candidate.draft;
+  const {
+    categoryId: ignoredCategoryId,
+    budgetBucketId: ignoredBudgetBucketId,
+    memo: ignoredMemo,
+    ...draftWithoutDetails
+  } = candidate.draft;
   void ignoredCategoryId;
+  void ignoredBudgetBucketId;
+  void ignoredMemo;
 
   return {
     ...candidate,
-    draft:
-      candidate.draft.type !== 'EXPENSE' || categoryId === undefined
-        ? draftWithoutCategory
-        : { ...draftWithoutCategory, categoryId },
+    draft: {
+      ...draftWithoutDetails,
+      budgetBucketId: details.budgetBucketId,
+      ...(candidate.draft.type !== 'EXPENSE' || details.categoryId === undefined
+        ? {}
+        : { categoryId: details.categoryId }),
+      ...(details.memo.trim().length === 0 ? {} : { memo: details.memo.trim() }),
+    },
   };
 }
 
@@ -168,7 +235,11 @@ function getIssueLabel(issue: ImportIssue): string {
 
 function MerchantAnalysisTrace({
   analysis,
-}: Readonly<{ analysis: MerchantKakaoAnalysis }>) {
+  customCategories,
+}: Readonly<{
+  analysis: MerchantKakaoAnalysis;
+  customCategories: readonly CustomCategory[];
+}>) {
   const { resolution, trace } = analysis;
 
   return (
@@ -204,7 +275,9 @@ function MerchantAnalysisTrace({
           <small>Kakao 카테고리: {trace.kakaoCategoryName}</small>
         )}
         {trace.mappedCategoryId === undefined ? null : (
-          <small>내부 카테고리: {CATEGORY_LABELS[trace.mappedCategoryId]}</small>
+          <small>
+            내부 카테고리: {getCategoryLabel(trace.mappedCategoryId, customCategories)}
+          </small>
         )}
         {trace.finalReviewReason === undefined ? null : (
           <small>최종 검토 사유: {trace.finalReviewReason}</small>
@@ -256,6 +329,9 @@ export function LegacyXlsImportPreview({
   confirmPreview,
   onImportConfirmed,
   searchPlaces,
+  budgetBuckets = DEFAULT_BUDGET_BUCKETS,
+  customCategories: providedCustomCategories = EMPTY_CUSTOM_CATEGORIES,
+  onCreateCategory,
 }: LegacyXlsImportPreviewProps) {
   const [status, setStatus] = useState<ImportStatus>('IDLE');
   const [preview, setPreview] = useState<ImportPreview | null>(null);
@@ -269,16 +345,26 @@ export function LegacyXlsImportPreview({
   const [categoryIdByCandidateIndex, setCategoryIdByCandidateIndex] = useState<
     ReadonlyMap<number, CategoryId | undefined>
   >(new Map());
+  const [budgetBucketIdByCandidateIndex, setBudgetBucketIdByCandidateIndex] =
+    useState<ReadonlyMap<number, BudgetBucketId>>(new Map());
+  const [memoByCandidateIndex, setMemoByCandidateIndex] = useState<
+    ReadonlyMap<number, string>
+  >(new Map());
   const [categoryRuleCandidateIndexes, setCategoryRuleCandidateIndexes] = useState<
     ReadonlySet<number>
   >(new Set());
   const [openCategoryPickerIndex, setOpenCategoryPickerIndex] = useState<number | null>(
     null,
   );
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [placeSearchByCandidateIndex, setPlaceSearchByCandidateIndex] = useState<
     ReadonlyMap<number, PlaceSearchState>
   >(new Map());
+  const [isDropActive, setIsDropActive] = useState(false);
+  const [customCategories, setCustomCategories] = useState<
+    readonly CustomCategory[]
+  >(providedCustomCategories);
   const requestIdRef = useRef(0);
   const kakaoAbortControllerRef = useRef<AbortController | null>(null);
   const categoryPickerRef = useRef<HTMLDivElement | null>(null);
@@ -291,6 +377,10 @@ export function LegacyXlsImportPreview({
     },
     [],
   );
+
+  useEffect(() => {
+    setCustomCategories(providedCustomCategories);
+  }, [providedCustomCategories]);
 
   useEffect(() => {
     if (openCategoryPickerIndex === null) {
@@ -358,18 +448,17 @@ export function LegacyXlsImportPreview({
     setSelectedCandidateIndexes(new Set());
     setDuplicateCheckFailed(false);
     setCategoryIdByCandidateIndex(new Map());
+    setBudgetBucketIdByCandidateIndex(new Map());
+    setMemoByCandidateIndex(new Map());
     setCategoryRuleCandidateIndexes(new Set());
     setOpenCategoryPickerIndex(null);
+    setIsCreatingCategory(false);
     setSaveMessage(null);
     setPlaceSearchByCandidateIndex(new Map());
+    setIsDropActive(false);
   };
 
-  const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.currentTarget.files?.[0];
-    event.currentTarget.value = '';
-
+  const processFile = async (file: File) => {
     if (file === undefined) {
       return;
     }
@@ -385,6 +474,8 @@ export function LegacyXlsImportPreview({
     setSelectedCandidateIndexes(new Set());
     setDuplicateCheckFailed(false);
     setCategoryIdByCandidateIndex(new Map());
+    setBudgetBucketIdByCandidateIndex(new Map());
+    setMemoByCandidateIndex(new Map());
     setCategoryRuleCandidateIndexes(new Set());
     setOpenCategoryPickerIndex(null);
     setSaveMessage(null);
@@ -428,6 +519,22 @@ export function LegacyXlsImportPreview({
                 ? [[candidateIndex, candidate.draft.categoryId] as const]
                 : [],
             ),
+          ),
+        );
+        setBudgetBucketIdByCandidateIndex(
+          new Map(
+            nextPreview.candidates.map((candidate, candidateIndex) => [
+              candidateIndex,
+              candidate.draft.budgetBucketId,
+            ]),
+          ),
+        );
+        setMemoByCandidateIndex(
+          new Map(
+            nextPreview.candidates.map((candidate, candidateIndex) => [
+              candidateIndex,
+              candidate.draft.memo ?? '',
+            ]),
           ),
         );
         setDuplicateCheckFailed(didDuplicateCheckFail);
@@ -482,6 +589,29 @@ export function LegacyXlsImportPreview({
     }
   };
 
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+
+    if (file !== undefined) {
+      void processFile(file);
+    }
+  };
+
+  const handleFileDrop = (event: DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    setIsDropActive(false);
+
+    if (status === 'SAVING') {
+      return;
+    }
+
+    const file = event.dataTransfer.files[0];
+    if (file !== undefined) {
+      void processFile(file);
+    }
+  };
+
   const handleConfirm = async () => {
     const hasPendingKakaoAnalysis = Array.from(
       placeSearchByCandidateIndex.values(),
@@ -500,9 +630,15 @@ export function LegacyXlsImportPreview({
       (candidate, candidateIndex) =>
         selectedCandidateIndexes.has(candidateIndex)
           ? [
-              withCategoryId(
+              withCandidateDetails(
                 candidate,
-                categoryIdByCandidateIndex.get(candidateIndex),
+                {
+                  categoryId: categoryIdByCandidateIndex.get(candidateIndex),
+                  budgetBucketId:
+                    budgetBucketIdByCandidateIndex.get(candidateIndex) ??
+                    candidate.draft.budgetBucketId,
+                  memo: memoByCandidateIndex.get(candidateIndex) ?? '',
+                },
               ),
             ]
           : [],
@@ -621,6 +757,25 @@ export function LegacyXlsImportPreview({
     }
     setOpenCategoryPickerIndex(null);
     categoryTriggerRefs.current.get(candidateIndex)?.focus();
+  };
+
+  const updateCandidateBudgetBucket = (
+    candidateIndex: number,
+    budgetBucketId: BudgetBucketId,
+  ) => {
+    setBudgetBucketIdByCandidateIndex((currentBuckets) => {
+      const nextBuckets = new Map(currentBuckets);
+      nextBuckets.set(candidateIndex, budgetBucketId);
+      return nextBuckets;
+    });
+  };
+
+  const updateCandidateMemo = (candidateIndex: number, memo: string) => {
+    setMemoByCandidateIndex((currentMemos) => {
+      const nextMemos = new Map(currentMemos);
+      nextMemos.set(candidateIndex, memo);
+      return nextMemos;
+    });
   };
 
   const toggleCategoryPicker = (candidateIndex: number) => {
@@ -826,7 +981,25 @@ export function LegacyXlsImportPreview({
         </div>
       ) : null}
 
-      <label className="import-file-action">
+      <label
+        className={
+          isDropActive
+            ? 'import-file-action import-file-dropzone is-dragging'
+            : 'import-file-action import-file-dropzone'
+        }
+        data-testid="import-file-dropzone"
+        onDragEnter={(event) => {
+          event.preventDefault();
+          if (status !== 'SAVING') {
+            setIsDropActive(true);
+          }
+        }}
+        onDragOver={(event) => {
+          event.preventDefault();
+        }}
+        onDragLeave={() => setIsDropActive(false)}
+        onDrop={handleFileDrop}
+      >
         <input
           type="file"
           accept=".xls,application/vnd.ms-excel"
@@ -844,7 +1017,10 @@ export function LegacyXlsImportPreview({
             strokeWidth="2"
           />
         </svg>
-        <span>{status === 'IDLE' ? '파일 선택하기' : '다른 파일 선택하기'}</span>
+        <span>
+          {status === 'IDLE' ? '파일 선택하기' : '다른 파일 선택하기'}
+          <small>또는 XLS 파일을 여기로 끌어놓기</small>
+        </span>
       </label>
 
       {preview !== null ? (
@@ -977,9 +1153,13 @@ export function LegacyXlsImportPreview({
                 const isCategoryPickerOpen = openCategoryPickerIndex === candidateIndex;
                 const isCandidateSelected = selectedCandidateIndexes.has(candidateIndex);
                 const isExpenseCandidate = candidate.draft.type === 'EXPENSE';
-                const budgetBucket = getDefaultBudgetBucket(
-                  candidate.draft.budgetBucketId,
-                );
+                const budgetBucket =
+                  budgetBuckets.find(
+                    (bucket) =>
+                      bucket.id ===
+                      (budgetBucketIdByCandidateIndex.get(candidateIndex) ??
+                        candidate.draft.budgetBucketId),
+                  ) ?? undefined;
                 const placeSearchState = placeSearchByCandidateIndex.get(candidateIndex);
 
                 return (
@@ -995,7 +1175,7 @@ export function LegacyXlsImportPreview({
                           : candidate.draft.direction === 'INFLOW'
                             ? '+'
                             : '₩'
-                        : CATEGORY_SYMBOLS[selectedCategoryId]}
+                        : getCategorySymbol(selectedCategoryId, customCategories)}
                     </span>
                     <div className="import-candidate-copy">
                       <span className="import-candidate-date">
@@ -1080,14 +1260,23 @@ export function LegacyXlsImportPreview({
                       ) : null}
                       {placeSearchState?.userRuleCategoryId === undefined ? null : (
                         <small>
-                          사용자 규칙 → {CATEGORY_LABELS[placeSearchState.userRuleCategoryId]} · USER_RULE · HIGH
+                          사용자 규칙 →{' '}
+                          {getCategoryLabel(
+                            placeSearchState.userRuleCategoryId,
+                            customCategories,
+                          )}{' '}
+                          · USER_RULE · HIGH
                         </small>
                       )}
                       {placeSearchState?.classification?.status === 'CLASSIFIED' ? (
                         <small>
                           {placeSearchState.classification.place.placeName} ·{' '}
                           {placeSearchState.classification.place.categoryName} →{' '}
-                          {CATEGORY_LABELS[placeSearchState.classification.categoryId]} ·{' '}
+                          {getCategoryLabel(
+                            placeSearchState.classification.categoryId,
+                            customCategories,
+                          )}{' '}
+                          ·{' '}
                           {placeSearchState.classification.source} ·{' '}
                           {placeSearchState.classification.confidence}
                         </small>
@@ -1104,7 +1293,10 @@ export function LegacyXlsImportPreview({
                         </small>
                       ) : null}
                       {placeSearchState?.analysis === undefined ? null : (
-                        <MerchantAnalysisTrace analysis={placeSearchState.analysis} />
+                        <MerchantAnalysisTrace
+                          analysis={placeSearchState.analysis}
+                          customCategories={customCategories}
+                        />
                       )}
                     </div>
                   )}
@@ -1135,9 +1327,21 @@ export function LegacyXlsImportPreview({
                       <strong>
                         {selectedCategoryId === undefined
                           ? '미분류'
-                          : CATEGORY_LABELS[selectedCategoryId]}
+                          : getCategoryLabel(selectedCategoryId, customCategories)}
                       </strong>
-                      <span>{isCategoryPickerOpen ? '닫기' : '선택'}</span>
+                      <span className="import-category-trigger__affordance">
+                        {isCategoryPickerOpen ? '닫기' : '선택'}
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                          <path
+                            d="m7 9 5 5 5-5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                          />
+                        </svg>
+                      </span>
                     </button>
                     {candidate.draft.categoryId === undefined ? (
                       <small>선택한 카테고리는 우선 이번 거래에만 반영해요.</small>
@@ -1234,14 +1438,116 @@ export function LegacyXlsImportPreview({
                                   updateCandidateCategory(candidateIndex, categoryId)
                                 }
                               >
-                                <span aria-hidden="true">{CATEGORY_SYMBOLS[categoryId]}</span>
-                                <strong>{CATEGORY_LABELS[categoryId]}</strong>
+                                <span aria-hidden="true">
+                                  {getCategorySymbol(categoryId, customCategories)}
+                                </span>
+                                <strong>
+                                  {getCategoryLabel(categoryId, customCategories)}
+                                </strong>
+                              </button>
+                            ))}
+                            {customCategories.map((category) => (
+                              <button
+                                type="button"
+                                className={
+                                  selectedCategoryId === category.id
+                                    ? 'is-active category-quick-option'
+                                    : 'category-quick-option'
+                                }
+                                aria-pressed={selectedCategoryId === category.id}
+                                key={category.id}
+                                onClick={() =>
+                                  updateCandidateCategory(candidateIndex, category.id)
+                                }
+                              >
+                                <span aria-hidden="true">{category.emoji}</span>
+                                <strong>{category.name}</strong>
                               </button>
                             ))}
                           </div>
+                          {onCreateCategory === undefined ? null : isCreatingCategory ? (
+                            <CategoryCreateForm
+                              onCreateCategory={onCreateCategory}
+                              onCreated={(category) => {
+                                setCustomCategories((currentCategories) =>
+                                  currentCategories.some(
+                                    (currentCategory) =>
+                                      currentCategory.id === category.id,
+                                  )
+                                    ? currentCategories
+                                    : [...currentCategories, category],
+                                );
+                                setIsCreatingCategory(false);
+                                updateCandidateCategory(candidateIndex, category.id);
+                              }}
+                              onCancel={() => setIsCreatingCategory(false)}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              className="category-create-trigger"
+                              onClick={() => setIsCreatingCategory(true)}
+                            >
+                              + 새 카테고리 추가
+                            </button>
+                          )}
                         </div>
                       </div>
                     ) : null}
+                  </div>
+                  <div className="import-candidate-detail-fields">
+                    <label>
+                      돈의 목적
+                      <span className="dashboard-select-control">
+                        <select
+                          aria-label={`후보 ${candidateIndex + 1} 돈의 목적`}
+                          value={
+                            budgetBucketIdByCandidateIndex.get(candidateIndex) ??
+                            candidate.draft.budgetBucketId
+                          }
+                          disabled={status === 'SAVING' || status === 'SAVED'}
+                          onChange={(event) =>
+                            updateCandidateBudgetBucket(
+                              candidateIndex,
+                              event.target.value,
+                            )
+                          }
+                        >
+                          {budgetBuckets
+                            .filter(
+                              (bucket) =>
+                                !bucket.isArchived ||
+                                bucket.id ===
+                                  (budgetBucketIdByCandidateIndex.get(
+                                    candidateIndex,
+                                  ) ?? candidate.draft.budgetBucketId),
+                            )
+                            .map((bucket) => (
+                              <option key={bucket.id} value={bucket.id}>
+                                {bucket.icon} {bucket.name}
+                                {bucket.isArchived ? ' (보관됨)' : ''}
+                              </option>
+                            ))}
+                        </select>
+                        <span className="dashboard-select-chevron" aria-hidden="true">
+                          ⌄
+                        </span>
+                      </span>
+                    </label>
+                    <label>
+                      메모
+                      <input
+                        type="text"
+                        aria-label={`후보 ${candidateIndex + 1} 메모`}
+                        value={memoByCandidateIndex.get(candidateIndex) ?? ''}
+                        placeholder="예: 친구와 나눈 저녁"
+                        maxLength={280}
+                        disabled={status === 'SAVING' || status === 'SAVED'}
+                        onChange={(event) =>
+                          updateCandidateMemo(candidateIndex, event.target.value)
+                        }
+                      />
+                    </label>
                   </div>
                   <label className="import-category-rule">
                     <input

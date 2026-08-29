@@ -12,6 +12,7 @@ import {
   type LegacyXlsImportFile,
 } from '../application/imports/prepare-legacy-xls-import';
 import type { ImportPreview } from '../domain/imports/legacy-xls-preview';
+import { createCustomCategory } from '../domain/categories/custom-category';
 import type { UtcIsoInstant } from '../domain/transactions/utc-iso-instant';
 import { previewLegacyXlsFile } from '../infrastructure/imports/legacy-xls-file-reader';
 import { BrowserLedgerRepository } from '../infrastructure/storage/browser-ledger-repository';
@@ -68,6 +69,28 @@ function findSelectedLegacyXlsImportDuplicates(preview: ImportPreview) {
 
 function applySelectedCategoryRules(preview: ImportPreview) {
   return applyCategoryRulesToLegacyXlsPreview(preview, ledgerRepository);
+}
+
+async function createSelectedCustomCategory(name: string, emoji: string) {
+  const category = createCustomCategory(
+    {
+      id: `CUSTOM_${createLocalId()}`,
+      name,
+      emoji,
+    },
+    currentUtcIsoInstant(),
+  );
+
+  if (category === undefined) {
+    return undefined;
+  }
+
+  try {
+    await ledgerRepository.saveCustomCategory(category);
+    return category;
+  } catch {
+    return undefined;
+  }
 }
 
 function isModifiedNavigation(event: MouseEvent<HTMLAnchorElement>): boolean {
@@ -135,6 +158,9 @@ export function App() {
             findPotentialLegacyXlsImportDuplicates={findSelectedLegacyXlsImportDuplicates}
             applyCategoryRulesToLegacyXlsPreview={applySelectedCategoryRules}
             searchPlaces={kakaoMapPlaceSearch}
+            listBudgetBuckets={() => ledgerRepository.listBudgetBuckets()}
+            listCustomCategories={() => ledgerRepository.listCustomCategories()}
+            onCreateCategory={createSelectedCustomCategory}
           />
         ) : null}
         {route === 'SETTINGS' ? (

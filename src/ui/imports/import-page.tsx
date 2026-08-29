@@ -1,8 +1,15 @@
+import { useEffect, useState } from 'react';
+
 import type { LegacyXlsImportConfirmationOptions, LegacyXlsImportConfirmationResult } from '../../application/imports/confirm-legacy-xls-import';
 import type { LegacyXlsPreviewReader } from '../../application/imports/prepare-legacy-xls-import';
 import type { DuplicateCandidateMatch } from '../../domain/imports/duplicate-candidates';
 import type { ImportPreview } from '../../domain/imports/legacy-xls-preview';
 import type { PlaceSearch } from '../../application/places/place-search';
+import {
+  DEFAULT_BUDGET_BUCKETS,
+  type BudgetBucket,
+} from '../../domain/budget-buckets/budget-bucket';
+import type { CustomCategory } from '../../domain/categories/custom-category';
 
 import { LegacyXlsImportPreview } from './legacy-xls-import-preview';
 import './import-page-refresh.css';
@@ -20,6 +27,12 @@ type ImportPageProps = Readonly<{
     preview: ImportPreview,
   ) => Promise<ImportPreview>;
   searchPlaces?: PlaceSearch;
+  listBudgetBuckets?: () => Promise<readonly BudgetBucket[]>;
+  listCustomCategories?: () => Promise<readonly CustomCategory[]>;
+  onCreateCategory?: (
+    name: string,
+    emoji: string,
+  ) => Promise<CustomCategory | undefined>;
 }>;
 
 export function ImportPage({
@@ -28,7 +41,74 @@ export function ImportPage({
   findPotentialLegacyXlsImportDuplicates,
   applyCategoryRulesToLegacyXlsPreview,
   searchPlaces,
+  listBudgetBuckets,
+  listCustomCategories,
+  onCreateCategory,
 }: ImportPageProps) {
+  const [budgetBuckets, setBudgetBuckets] = useState<readonly BudgetBucket[]>(
+    DEFAULT_BUDGET_BUCKETS,
+  );
+  const [customCategories, setCustomCategories] = useState<
+    readonly CustomCategory[]
+  >([]);
+
+  useEffect(() => {
+    if (listBudgetBuckets === undefined) {
+      return undefined;
+    }
+
+    let isCurrent = true;
+    void listBudgetBuckets()
+      .then((nextBudgetBuckets) => {
+        if (isCurrent && nextBudgetBuckets.length > 0) {
+          setBudgetBuckets(nextBudgetBuckets);
+        }
+      })
+      .catch(() => {
+        // The preview remains usable with the built-in purpose list.
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [listBudgetBuckets]);
+
+  useEffect(() => {
+    if (listCustomCategories === undefined) {
+      return undefined;
+    }
+
+    let isCurrent = true;
+    void listCustomCategories()
+      .then((nextCustomCategories) => {
+        if (isCurrent) {
+          setCustomCategories(nextCustomCategories);
+        }
+      })
+      .catch(() => {
+        // The built-in categories remain available when the local store is unavailable.
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [listCustomCategories]);
+
+  const handleCreateCategory = async (name: string, emoji: string) => {
+    if (onCreateCategory === undefined) {
+      return undefined;
+    }
+
+    const category = await onCreateCategory(name, emoji);
+    if (category !== undefined) {
+      setCustomCategories((currentCategories) => [
+        ...currentCategories,
+        category,
+      ]);
+    }
+    return category;
+  };
+
   return (
     <section className="import-page" aria-labelledby="import-page-title">
       <header className="import-page-intro">
@@ -53,6 +133,11 @@ export function ImportPage({
           confirmPreview={confirmLegacyXlsImport}
           findPotentialDuplicates={findPotentialLegacyXlsImportDuplicates}
           searchPlaces={searchPlaces}
+          budgetBuckets={budgetBuckets}
+          customCategories={customCategories}
+          onCreateCategory={
+            onCreateCategory === undefined ? undefined : handleCreateCategory
+          }
         />
       </div>
 

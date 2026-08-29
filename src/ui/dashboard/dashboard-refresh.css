@@ -80,15 +80,25 @@
   box-shadow: 0 1px 5px rgb(30 32 40 / 7%);
 }
 
-.mobile-app-shell .ledger-section .view-switch button:focus-visible,
-.mobile-app-shell .ledger-section .period-preset-buttons button:focus-visible,
-.mobile-app-shell .ledger-section .transaction-filter-buttons button:focus-visible,
-.mobile-app-shell .ledger-section .transaction-row-edit-action:focus-visible,
-.mobile-app-shell .ledger-section .settlement-panel :is(button, select, input):focus-visible,
-.mobile-app-shell .ledger-section .empty-transactions button:focus-visible,
+.mobile-app-shell .ledger-section :is(button, a, input, select, textarea):focus-visible,
 .transaction-edit-sheet :is(button, select, textarea):focus-visible {
   outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline-offset: var(--space-1);
+}
+
+.mobile-app-shell .ledger-section :is(button, a, input, select),
+.transaction-edit-sheet :is(button, select, textarea) {
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.mobile-app-shell .ledger-section :is(button, a):not(:disabled):active,
+.transaction-edit-sheet button:not(:disabled):active {
+  transform: scale(0.98);
 }
 
 .mobile-app-shell .ledger-section .mock-notice {
@@ -216,6 +226,7 @@
 .mobile-app-shell .ledger-section :is(
     .home-goal-card,
     .home-budget-bucket-card,
+    .home-insight-card,
     .home-review-card,
     .home-weekly-card,
     .home-recent-card
@@ -265,6 +276,92 @@
   color: var(--text-secondary);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+}
+
+.mobile-app-shell .ledger-section .home-insight-card {
+  display: grid;
+  gap: var(--space-3);
+  background: var(--brand-mint);
+  border-color: rgb(40 125 101 / 12%);
+}
+
+.mobile-app-shell .ledger-section .home-insight-card .home-card-heading {
+  margin-bottom: 0;
+}
+
+.mobile-app-shell .ledger-section .home-insight-description {
+  margin: calc(var(--space-2) * -1) 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.mobile-app-shell .ledger-section .home-insight-card .panel-kicker,
+.mobile-app-shell .ledger-section .home-insight-card .home-card-heading > span {
+  color: var(--text-secondary);
+}
+
+.mobile-app-shell .ledger-section .home-insight-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mobile-app-shell .ledger-section .home-insight-list li {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+  min-width: 0;
+  padding: 10px;
+  background: rgb(255 255 255 / 68%);
+  border: 1px solid rgb(40 125 101 / 12%);
+  border-radius: var(--radius-input);
+}
+
+.mobile-app-shell .ledger-section .home-insight-mark {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  font-size: 17px;
+  background: var(--surface);
+  border-radius: 12px;
+  place-items: center;
+}
+
+.mobile-app-shell .ledger-section .home-insight-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.mobile-app-shell .ledger-section .home-insight-copy > strong {
+  display: -webkit-box;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  word-break: keep-all;
+}
+
+.mobile-app-shell .ledger-section .home-insight-copy > small {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.mobile-app-shell .ledger-section .home-insight-amount {
+  color: var(--primary-strong);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .mobile-app-shell .ledger-section .home-goal-card--empty {
@@ -618,6 +715,24 @@
   gap: var(--space-2);
 }
 
+.mobile-app-shell .ledger-section .transaction-select-all {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  width: fit-content;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.mobile-app-shell .ledger-section .transaction-select-all input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--primary-strong);
+}
+
 .mobile-app-shell .ledger-section .transaction-review-queue-link {
   width: fit-content;
 }
@@ -847,6 +962,7 @@
 
 .mobile-app-shell .ledger-section .transaction-row-edit-action {
   display: inline-flex;
+  gap: var(--space-1);
   align-items: center;
   width: fit-content;
   min-height: 44px;
@@ -855,10 +971,17 @@
   color: var(--primary-strong);
   font-size: 12px;
   font-weight: 700;
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-color: var(--border-subtle);
+  text-underline-offset: var(--space-1);
   background: transparent;
   border: 0;
   border-radius: var(--radius-chip);
+}
+
+.mobile-app-shell .ledger-section .transaction-row-edit-action::after {
+  content: "→";
+  transition: transform 160ms ease;
 }
 
 .mobile-app-shell .ledger-section .empty-transactions {
@@ -945,10 +1068,46 @@
   border-top: 1px solid var(--border-subtle);
 }
 
-.mobile-app-shell .ledger-section .settlement-form select {
+.dashboard-select-control {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.dashboard-select-control select {
   width: 100%;
+  padding-right: var(--space-10);
+  cursor: pointer;
+  appearance: none;
+}
+
+.dashboard-select-control:focus-within select {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 var(--space-1) var(--primary-soft);
+}
+
+.dashboard-select-chevron {
+  position: absolute;
+  top: 50%;
+  right: var(--space-4);
+  color: var(--text-secondary);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+.dashboard-select-control:focus-within .dashboard-select-chevron {
+  color: var(--primary-strong);
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.mobile-app-shell .ledger-section .settlement-form select {
   min-height: 48px;
-  padding: 0 var(--space-3);
+  padding-left: var(--space-3);
   color: var(--text-primary);
   background: var(--surface);
   border: 1px solid var(--border-subtle);
@@ -968,13 +1127,25 @@
   gap: var(--space-3);
   align-items: center;
   min-height: 48px;
-  padding: 8px var(--space-2);
+  padding: var(--space-2);
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 550;
   line-height: 1.5;
   background: var(--surface);
+  border: 1px solid transparent;
   border-radius: var(--radius-input);
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.mobile-app-shell .ledger-section .settlement-reimbursement-list label:has(input:checked) {
+  color: var(--primary-strong);
+  background: var(--primary-soft);
+  border-color: var(--primary);
 }
 
 .mobile-app-shell .ledger-section .settlement-reimbursement-list input {
@@ -1139,12 +1310,16 @@
   width: 44px;
   height: 44px;
   padding: 0;
-  color: var(--text-secondary);
-  font-size: 26px;
-  background: var(--surface-muted);
-  border: 0;
+  color: var(--primary-strong);
+  background: var(--primary-soft);
+  border: 1px solid transparent;
   border-radius: 50%;
   place-items: center;
+}
+
+.transaction-edit-close:active {
+  color: var(--on-primary);
+  background: var(--primary-strong);
 }
 
 .transaction-edit-sheet-summary {
@@ -1190,7 +1365,9 @@
 
 .transaction-edit-sheet-form select {
   min-height: 50px;
-  padding: 0 var(--space-3);
+  padding-left: var(--space-3);
+  cursor: pointer;
+  appearance: none;
 }
 
 .transaction-edit-sheet-form textarea {
@@ -1238,6 +1415,366 @@
   opacity: 0.55;
 }
 
+.mobile-app-shell .ledger-section .ledger-workspace-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  max-width: 420px;
+  margin-top: var(--space-5);
+  padding: 4px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+}
+
+.mobile-app-shell .ledger-section .ledger-workspace-tabs button {
+  min-height: 46px;
+  padding: 0 var(--space-3);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  background: transparent;
+  border: 0;
+  border-radius: 14px;
+}
+
+.mobile-app-shell .ledger-section .ledger-workspace-tabs button.is-active {
+  color: var(--primary-strong);
+  background: var(--surface);
+  box-shadow: 0 3px 12px rgb(30 32 40 / 8%);
+}
+
+.mobile-app-shell .ledger-section .settlement-workspace-intro {
+  padding: var(--space-6) var(--space-5);
+  background:
+    radial-gradient(circle at 92% 8%, rgb(108 127 242 / 14%), transparent 11rem),
+    var(--primary-soft);
+  border: 1px solid rgb(108 127 242 / 14%);
+  border-radius: var(--radius-card);
+}
+
+.mobile-app-shell .ledger-section .settlement-workspace-intro h3,
+.mobile-app-shell .ledger-section .settlement-workspace-intro p {
+  margin: 0;
+}
+
+.mobile-app-shell .ledger-section .settlement-workspace-intro h3 {
+  max-width: 34rem;
+  margin-top: var(--space-2);
+  color: var(--text-primary);
+  font-size: clamp(20px, 4vw, 28px);
+  line-height: 1.28;
+  letter-spacing: -0.045em;
+}
+
+.mobile-app-shell .ledger-section .settlement-workspace-intro > p:last-child {
+  max-width: 38rem;
+  margin-top: var(--space-3);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.mobile-app-shell .ledger-section .transaction-filter-groups {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) calc(var(--space-4) * -1) 0;
+}
+
+.mobile-app-shell .ledger-section :is(
+    .transaction-purpose-tabs,
+    .transaction-category-tabs
+  ) {
+  display: flex;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.mobile-app-shell .ledger-section :is(
+    .transaction-purpose-tabs,
+    .transaction-category-tabs
+  )::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-app-shell .ledger-section :is(
+    .transaction-purpose-tabs,
+    .transaction-category-tabs
+  ) button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 0 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+  background: var(--surface-muted);
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+
+.mobile-app-shell .ledger-section :is(
+    .transaction-purpose-tabs,
+    .transaction-category-tabs
+  ) button.is-active {
+  color: var(--primary-strong);
+  background: var(--primary-soft);
+  border-color: rgb(108 127 242 / 18%);
+}
+
+.mobile-app-shell .ledger-section .bulk-edit-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr) minmax(180px, 1fr) auto auto;
+  gap: var(--space-2);
+  align-items: end;
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  background: var(--primary-soft);
+  border: 1px solid rgb(108 127 242 / 16%);
+  border-radius: 16px;
+}
+
+.mobile-app-shell .ledger-section .bulk-edit-toolbar > strong {
+  align-self: center;
+  color: var(--primary-strong);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.mobile-app-shell .ledger-section .bulk-edit-toolbar label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.mobile-app-shell .ledger-section .bulk-edit-toolbar select {
+  min-height: 44px;
+  padding-left: 10px;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+
+.mobile-app-shell .ledger-section .bulk-edit-toolbar > button {
+  min-height: 44px;
+  padding: 0 14px;
+  color: var(--on-primary);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--primary-strong);
+  border: 0;
+  border-radius: 12px;
+}
+
+.mobile-app-shell .ledger-section .bulk-edit-toolbar > button.bulk-edit-cancel {
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+}
+
+.mobile-app-shell .ledger-section .bulk-edit-message {
+  margin: var(--space-2) 0 0;
+  color: var(--primary-strong);
+  font-size: 12px;
+}
+
+.mobile-app-shell .ledger-section .transaction-row-selection {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--primary-strong);
+}
+
+.mobile-app-shell .ledger-section .transactions-panel .transaction-list li {
+  grid-template-columns: 24px 44px minmax(0, 1fr) auto;
+}
+
+.mobile-app-shell .ledger-section .category-create-trigger {
+  min-height: 42px;
+  margin-top: var(--space-2);
+  padding: 0 var(--space-3);
+  color: var(--primary-strong);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--primary-soft);
+  border: 1px solid rgb(108 127 242 / 16%);
+  border-radius: 12px;
+}
+
+.mobile-app-shell .ledger-section .category-create-form {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--surface-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+.mobile-app-shell .ledger-section .category-create-form__heading {
+  display: grid;
+  gap: 2px;
+}
+
+.mobile-app-shell .ledger-section .category-create-form__heading strong {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.mobile-app-shell .ledger-section .category-create-form__heading small,
+.mobile-app-shell .ledger-section .category-create-form label {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.mobile-app-shell .ledger-section .category-create-form label {
+  display: grid;
+  gap: 5px;
+  font-weight: 650;
+}
+
+.mobile-app-shell .ledger-section .category-create-form input {
+  min-height: 44px;
+  padding: 0 10px;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+
+.mobile-app-shell .ledger-section .category-create-form__error {
+  margin: 0;
+  color: #ad4141;
+  font-size: 11px;
+}
+
+.mobile-app-shell .ledger-section .category-create-form__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.mobile-app-shell .ledger-section .category-create-form__actions button {
+  min-height: 42px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+
+.mobile-app-shell .ledger-section .category-create-form__actions button:last-child {
+  color: var(--on-primary);
+  background: var(--primary-strong);
+  border-color: transparent;
+}
+
+.transaction-edit-attachment {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--background-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+.transaction-edit-attachment__heading {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.transaction-edit-attachment__heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.transaction-edit-attachment__heading strong {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.transaction-edit-attachment__heading small,
+.transaction-edit-attachment__heading > span,
+.transaction-edit-attachment__empty,
+.transaction-edit-attachment__preview > span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.transaction-edit-attachment__empty {
+  padding: var(--space-3);
+  background: var(--surface);
+  border-radius: 12px;
+}
+
+.transaction-edit-attachment__preview {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  min-width: 0;
+}
+
+.transaction-edit-attachment__preview img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  background: var(--surface-muted);
+  border-radius: 12px;
+}
+
+.transaction-edit-attachment__preview > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transaction-edit-attachment__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.transaction-edit-attachment__upload,
+.transaction-edit-attachment__actions > button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  color: var(--primary-strong);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.transaction-edit-attachment__upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.transaction-edit-attachment__actions > button {
+  color: #ad4141;
+  background: var(--danger-soft);
+  border-color: transparent;
+}
+
 @keyframes transaction-edit-fade-in {
   from {
     opacity: 0;
@@ -1269,8 +1806,24 @@
     margin-top: var(--space-4);
   }
 
+  .mobile-app-shell .ledger-section .ledger-workspace-tabs {
+    max-width: none;
+  }
+
   .mobile-app-shell .ledger-section .period-controls {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mobile-app-shell .ledger-section .bulk-edit-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mobile-app-shell .ledger-section .bulk-edit-toolbar > strong {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-app-shell .ledger-section .bulk-edit-toolbar > button {
+    width: 100%;
   }
 
   .mobile-app-shell .ledger-section .period-preset-buttons {
@@ -1295,6 +1848,10 @@
   .mobile-app-shell .ledger-section .transaction-list li {
     grid-template-columns: 40px minmax(0, 1fr) auto;
     gap: var(--space-2);
+  }
+
+  .mobile-app-shell .ledger-section .transactions-panel .transaction-list li {
+    grid-template-columns: 22px 40px minmax(0, 1fr) auto;
   }
 
   .mobile-app-shell .ledger-section .transaction-mark {
@@ -1343,24 +1900,82 @@
   }
 }
 
+@media (min-width: 980px) {
+  .mobile-app-shell .ledger-section .ledger-main--transactions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.62fr);
+    gap: var(--space-4);
+    align-items: start;
+  }
+
+  .mobile-app-shell .ledger-section .ledger-main--transactions
+    .summary-grid,
+  .mobile-app-shell .ledger-section .ledger-main--transactions
+    .monthly-goal-period-note {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-app-shell .ledger-section .ledger-main--transactions
+    .transactions-panel {
+    grid-column: 1;
+  }
+
+  .mobile-app-shell .ledger-section .ledger-main--transactions
+    .settlement-panel {
+    grid-column: 2;
+    margin-top: var(--space-4);
+  }
+
+  .mobile-app-shell .ledger-section .ledger-main--settlements {
+    max-width: 760px;
+  }
+}
+
 @media (hover: hover) and (pointer: fine) {
-  .mobile-app-shell .ledger-section .view-switch button:hover,
-  .mobile-app-shell .ledger-section .period-preset-buttons button:hover,
-  .mobile-app-shell .ledger-section .transaction-filter-buttons button:hover,
-  .mobile-app-shell .ledger-section .transaction-row-edit-action:hover {
+  .mobile-app-shell .ledger-section .view-switch button:not(.is-active):hover,
+  .mobile-app-shell .ledger-section .period-preset-buttons button:not(.is-active):hover,
+  .mobile-app-shell .ledger-section .transaction-filter-buttons button:not(.is-active):hover,
+  .mobile-app-shell .ledger-section .transaction-row-edit-action:hover,
+  .mobile-app-shell .ledger-section :is(.home-review-action, .transaction-review-queue-link):hover,
+  .mobile-app-shell .ledger-section .empty-transactions button:hover {
     color: var(--primary-strong);
     background: var(--primary-soft);
   }
 
-  .mobile-app-shell .ledger-section .transaction-list .transaction-row--expense:hover {
-    background: #ffe8e8;
+  .mobile-app-shell .ledger-section .transaction-row-edit-action:hover {
+    text-decoration-color: currentColor;
   }
 
-  .mobile-app-shell .ledger-section .transaction-list .transaction-row--income:hover {
-    background: #e0f5eb;
+  .mobile-app-shell .ledger-section .transaction-row-edit-action:hover::after {
+    transform: translateX(var(--space-1));
+  }
+
+  .mobile-app-shell .ledger-section .dashboard-select-control:hover select {
+    border-color: var(--primary);
+  }
+
+  .mobile-app-shell .ledger-section .settlement-reimbursement-list label:not(:has(input:checked)):hover {
+    background: var(--surface-muted);
+    border-color: var(--border-subtle);
+  }
+
+  .mobile-app-shell .ledger-section .settlement-save-action:not(:disabled):hover,
+  .mobile-app-shell .ledger-section .home-dashboard-state button:hover,
+  .transaction-edit-sheet-actions button[type="submit"]:not(:disabled):hover {
+    background: var(--brand-forest);
+  }
+
+  .mobile-app-shell .ledger-section .settlement-list button:hover {
+    color: var(--danger);
+    background: var(--surface);
   }
 
   .transaction-edit-close:hover {
+    color: var(--on-primary);
+    background: var(--primary-strong);
+  }
+
+  .transaction-edit-sheet-actions button:not([type="submit"]):hover {
     color: var(--text-primary);
     background: var(--surface-pressed);
   }
@@ -1382,6 +1997,7 @@
   .mobile-app-shell .ledger-section :is(
       .home-goal-card,
       .home-review-card,
+      .home-insight-card,
       .home-weekly-card,
       .home-recent-card,
       .summary-card,

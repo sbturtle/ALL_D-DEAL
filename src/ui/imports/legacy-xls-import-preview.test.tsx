@@ -125,6 +125,10 @@ describe('LegacyXlsImportPreview', () => {
     );
     render(<LegacyXlsImportPreview previewFile={previewFile} />);
 
+    expect(document.querySelector('#import')).toHaveClass(
+      'legacy-import-preview--idle',
+    );
+
     await user.upload(
       screen.getByLabelText('XLS 파일 선택'),
       new File(['fake'], 'fake-card.xls', {
@@ -133,6 +137,9 @@ describe('LegacyXlsImportPreview', () => {
     );
 
     expect(screen.getByText('파일을 읽고 있어요')).toBeVisible();
+    expect(document.querySelector('#import')).toHaveClass(
+      'legacy-import-preview--reading',
+    );
     expect(document.querySelector('#import')).toHaveAttribute('aria-busy', 'true');
     expect(screen.queryByText(/%/)).not.toBeInTheDocument();
 
@@ -141,7 +148,27 @@ describe('LegacyXlsImportPreview', () => {
     expect(
       await screen.findByRole('heading', { name: '1건을 찾았어요' }),
     ).toBeVisible();
+    expect(document.querySelector('#import')).toHaveClass(
+      'legacy-import-preview--preview',
+    );
     expect(document.querySelector('#import')).toHaveAttribute('aria-busy', 'false');
+  });
+
+  it('previews an XLS file dropped onto the upload area', async () => {
+    const previewFile = vi.fn().mockResolvedValue(expensePreview);
+    render(<LegacyXlsImportPreview previewFile={previewFile} />);
+
+    const file = new File(['fake'], 'dropped-card.xls', {
+      type: 'application/vnd.ms-excel',
+    });
+    fireEvent.drop(screen.getByTestId('import-file-dropzone'), {
+      dataTransfer: { files: [file] },
+    });
+
+    expect(
+      await screen.findByRole('heading', { name: '1건을 찾았어요' }),
+    ).toBeVisible();
+    expect(previewFile).toHaveBeenCalledWith(file);
   });
 
   it('선택한 XLS의 후보와 원본 값 없는 확인 필요 사유를 미리보기로 보여준다', async () => {
@@ -293,6 +320,13 @@ describe('LegacyXlsImportPreview', () => {
 
     expect(clearAction).toBeDisabled();
     expect(input).toBeDisabled();
+    expect(document.querySelector('#import')).toHaveClass(
+      'legacy-import-preview--saving',
+    );
+    expect(document.querySelector('#import')).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByTestId('import-confirm-action')).toHaveTextContent(
+      '선택한 거래를 저장하는 중',
+    );
 
     input.removeAttribute('disabled');
     fireEvent.change(input, {
@@ -557,6 +591,10 @@ describe('LegacyXlsImportPreview', () => {
       name: '어디에 사용하셨나요?',
     });
     expect(dialog).toBeVisible();
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      within(dialog).getByRole('button', { name: '카테고리 선택 닫기' }),
+    ).toBeVisible();
     expect(dialog).toHaveAttribute(
       'aria-describedby',
       'candidate-category-context-0',
@@ -570,6 +608,7 @@ describe('LegacyXlsImportPreview', () => {
     expect(
       screen.queryByRole('group', { name: '후보 1 카테고리 선택' }),
     ).not.toBeInTheDocument();
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
     expect(trigger).toHaveFocus();
   });
 
@@ -917,5 +956,102 @@ describe('LegacyXlsImportPreview', () => {
       expect(screen.queryByText('GS25 대전법동점')).not.toBeInTheDocument();
       expect(screen.getByText('가짜 식료품점')).toBeVisible();
     });
+  });
+
+  it('saves category, budget purpose, and memo from the candidate review', async () => {
+    const user = userEvent.setup();
+    const confirmPreview = vi.fn().mockResolvedValue({
+      isConfirmed: true,
+      batch: {
+        id: '550e8400-e29b-41d4-a716-446655440099',
+        importerId: 'LEGACY_XLS',
+        importerVersion: 1,
+        sourceType: 'CARD_USAGE_XLS',
+        committedAt: '2026-08-10T00:00:00.000Z',
+        newCount: 1,
+        skippedCount: 0,
+        reviewedCount: 1,
+      },
+      transactions: [],
+    } satisfies LegacyXlsImportConfirmationResult);
+    render(
+      <LegacyXlsImportPreview
+        previewFile={vi.fn().mockResolvedValue(expensePreview)}
+        confirmPreview={confirmPreview}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'details.xls', {
+        type: 'application/vnd.ms-excel',
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: '후보 1 카테고리 열기' }),
+    );
+    await user.click(screen.getByRole('button', { name: '카페' }));
+    await user.selectOptions(
+      screen.getByLabelText('후보 1 돈의 목적'),
+      'IRREGULAR',
+    );
+    await user.type(
+      screen.getByLabelText('후보 1 메모'),
+      '친구와 나눈 저녁',
+    );
+    await user.click(screen.getByRole('button', { name: '1건 저장하기' }));
+
+    expect(confirmPreview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        candidates: [
+          expect.objectContaining({
+            draft: expect.objectContaining({
+              categoryId: 'CAFE',
+              budgetBucketId: 'IRREGULAR',
+              memo: '친구와 나눈 저녁',
+            }),
+          }),
+        ],
+      }),
+      expect.anything(),
+    );
+  });
+
+  it('creates a custom category inside the category picker and selects it', async () => {
+    const user = userEvent.setup();
+    const customCategory = {
+      id: 'CUSTOM_550e8400-e29b-41d4-a716-446655440010',
+      name: '반려동물',
+      emoji: '🐾',
+      createdAt: '2026-08-29T00:00:00.000Z',
+      updatedAt: '2026-08-29T00:00:00.000Z',
+    } as const;
+    const onCreateCategory = vi.fn().mockResolvedValue(customCategory);
+    render(
+      <LegacyXlsImportPreview
+        previewFile={vi.fn().mockResolvedValue(expensePreview)}
+        onCreateCategory={onCreateCategory}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'custom-category.xls', {
+        type: 'application/vnd.ms-excel',
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: '후보 1 카테고리 열기' }),
+    );
+    await user.click(screen.getByRole('button', { name: '+ 새 카테고리 추가' }));
+    await user.type(screen.getByLabelText('새 카테고리 이름'), '반려동물');
+    await user.clear(screen.getByLabelText('새 카테고리 아이콘'));
+    await user.type(screen.getByLabelText('새 카테고리 아이콘'), '🐾');
+    await user.click(screen.getByRole('button', { name: '카테고리 추가' }));
+
+    expect(onCreateCategory).toHaveBeenCalledWith('반려동물', '🐾');
+    expect(
+      screen.getByRole('button', { name: '후보 1 카테고리 열기' }),
+    ).toHaveTextContent('반려동물');
   });
 });
