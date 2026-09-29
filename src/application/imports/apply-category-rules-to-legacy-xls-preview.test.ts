@@ -146,4 +146,53 @@ describe('applyCategoryRulesToLegacyXlsPreview', () => {
 
     expect(result.candidates[0]?.draft.categoryId).toBe('FOOD_DINING');
   });
+
+  it('fills well-known merchants with a built-in suggestion after user rules', async () => {
+    const defaultPreview: ImportPreview = {
+      ...preview,
+      candidates: [
+        {
+          ...preview.candidates[0]!,
+          draft: {
+            ...preview.candidates[0]!.draft,
+            descriptionOriginal: '가짜 스타벅스 테스트점',
+          },
+        },
+        {
+          ...preview.candidates[1]!,
+          draft: {
+            ...preview.candidates[1]!.draft,
+            descriptionOriginal: '가짜 쿠팡이츠 주문',
+          },
+        },
+        {
+          ...preview.candidates[1]!,
+          rowNumber: 7,
+          draft: {
+            ...preview.candidates[1]!.draft,
+            descriptionOriginal: 'Fabricated unknown shop',
+          },
+        },
+      ],
+    };
+
+    const result = await applyCategoryRulesToLegacyXlsPreview(defaultPreview, {
+      listCategoryRules: async () => [],
+      listKeywordCategoryRules: async () => [
+        {
+          keywordNormalized: '쿠팡',
+          categoryId: 'SHOPPING',
+          createdAt: '2026-08-07T00:00:00.000Z',
+          updatedAt: '2026-08-07T00:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(result.candidates[0]?.draft.categoryId).toBe('CAFE');
+    expect(result.candidates[0]?.categorySource).toBe('DEFAULT_KEYWORD');
+    expect(result.candidates[1]?.draft.categoryId).toBe('SHOPPING');
+    expect(result.candidates[1]?.categorySource).toBe('USER_RULE');
+    expect(result.candidates[2]?.draft.categoryId).toBeUndefined();
+    expect(result.candidates[2]?.categorySource).toBeUndefined();
+  });
 });

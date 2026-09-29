@@ -37,6 +37,12 @@
 
 정확한 규칙이 항상 우선한다. 정확 규칙이 없으면 Preview는 일치하는 사용자 확인 키워드 중 가장 긴 규칙을 적용하고, 길이가 같으면 사전순으로 안정적으로 결정한다. Import를 확정하기 전에는 Preview 카테고리를 언제든 수정할 수 있다. 키워드 일치는 가맹점 동일성의 증명이 아니며 Kakao 결제중개자 차단 경계를 바꾸지 않는다.
 
+## 내장 기본 추천 키워드
+
+2026-09-29 [ADR-0016](../adr/ADR-0016-built-in-merchant-keyword-suggestions.md)에 따라 `DEFAULT_CATEGORY_KEYWORDS`를 추가했다. 스타벅스·버거킹·CGV·쿠팡·GS25처럼 널리 알려진 상호와 업종 표식만 코드 상수로 두며, 사용자 정확 규칙과 사용자 키워드 규칙이 모두 없을 때만 Preview의 `EXPENSE` 후보를 채운다. 비교는 `normalizeKeywordCategoryRuleText` 포함 비교이고 가장 긴 키워드가 우선한다. 후보에는 `categorySource: 'DEFAULT_KEYWORD'`를 붙여 화면에 `기본 추천`으로 표시하고, 규칙 저장소와 이미 저장된 거래는 바꾸지 않는다. 기본 추천으로 채운 후보는 Kakao 분석 대상에서 제외한다.
+
+Preview에는 같은 정확 규칙 키(`normalizeCategoryRuleDescription`)를 가진 지출 후보가 2건 이상이면 `같은 거래 설명 묶음`을 보여 준다. 묶음 선택은 해당 후보 전체의 카테고리를 한 번에 바꾸고, 묶음 규칙 체크는 저장 대상으로 선택된 후보에만 기존 규칙 동의를 켠다.
+
 ## Preview와 확정 흐름
 
 ```text
@@ -44,6 +50,7 @@ Legacy XLS Preview
   → 로컬 categoryRules 읽기
   → 정확히 일치하는 카테고리를 Preview에만 채우기
   → 없으면 가장 긴 사용자 확인 키워드 카테고리 채우기
+  → 없으면 내장 기본 추천 키워드 카테고리 채우기 (DEFAULT_KEYWORD, 규칙 저장 없음)
   → 해결되지 않은 지출 후보만 Merchant/Kakao 분석으로 보내기
   → 사용자가 필요에 따라 카테고리 수정
   → “이 설명에 앞으로 적용”을 별도로 선택

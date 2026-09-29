@@ -1,5 +1,6 @@
 import type { CategoryRule } from '../../domain/categories/category-rule';
 import { normalizeCategoryRuleDescription } from '../../domain/categories/category-rule';
+import { findDefaultCategoryKeyword } from '../../domain/categories/default-category-keywords';
 import {
   findKeywordCategoryRule,
   type KeywordCategoryRule,
@@ -38,7 +39,7 @@ export async function applyCategoryRulesToLegacyXlsPreview(
         return candidate;
       }
 
-      const categoryId =
+      const userRuleCategoryId =
         categoryIdByDescription.get(
           normalizeCategoryRuleDescription(candidate.draft.descriptionOriginal),
         ) ??
@@ -47,11 +48,24 @@ export async function applyCategoryRulesToLegacyXlsPreview(
           keywordRules,
         )?.categoryId;
 
-      return categoryId === undefined
+      if (userRuleCategoryId !== undefined) {
+        return {
+          ...candidate,
+          draft: { ...candidate.draft, categoryId: userRuleCategoryId },
+          categorySource: 'USER_RULE',
+        };
+      }
+
+      const defaultCategoryId = findDefaultCategoryKeyword(
+        candidate.draft.descriptionOriginal,
+      )?.categoryId;
+
+      return defaultCategoryId === undefined
         ? candidate
         : {
             ...candidate,
-            draft: { ...candidate.draft, categoryId },
+            draft: { ...candidate.draft, categoryId: defaultCategoryId },
+            categorySource: 'DEFAULT_KEYWORD',
           };
     }),
   };

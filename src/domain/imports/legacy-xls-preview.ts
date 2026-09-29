@@ -35,11 +35,14 @@ export type TransactionDraft = Readonly<{
   memo?: string;
 }>;
 
+export type ImportCandidateCategorySource = 'USER_RULE' | 'DEFAULT_KEYWORD';
+
 export type ImportCandidate = Readonly<{
   source: ImportSource;
   rowNumber: number;
   draft: TransactionDraft;
   accountTypeClassification?: AccountTransactionTypeClassification;
+  categorySource?: ImportCandidateCategorySource;
 }>;
 
 export type ImportIssueCode =
