@@ -654,6 +654,8 @@ export function DashboardSection({
   const [settlementNotice, setSettlementNotice] = useState<SettlementNotice | null>(
     null,
   );
+  const [settlementSearch, setSettlementSearch] = useState('');
+  const [showAllSettlementPeriods, setShowAllSettlementPeriods] = useState(false);
   const [transactionEditDraft, setTransactionEditDraft] = useState<
     TransactionEditDraft | null
   >(null);
@@ -1028,6 +1030,24 @@ export function DashboardSection({
   const inflowCandidates = allTransactions.filter(
     (transaction) =>
       transaction.direction === 'INFLOW' && !linkedTransactionIds.has(transaction.id),
+  );
+  const rangeTransactionIds = new Set(transactions.map((transaction) => transaction.id));
+  const settlementSearchKey = settlementSearch.trim().toLocaleLowerCase('ko-KR');
+  const isVisibleSettlementCandidate = (
+    transaction: Transaction,
+    selectedIds: readonly string[],
+  ) =>
+    selectedIds.includes(transaction.id) ||
+    ((showAllSettlementPeriods || rangeTransactionIds.has(transaction.id)) &&
+      (settlementSearchKey.length === 0 ||
+        [transaction.descriptionOriginal, transaction.memo ?? ''].some((text) =>
+          text.toLocaleLowerCase('ko-KR').includes(settlementSearchKey),
+        )));
+  const visibleOutflowCandidates = outflowCandidates.filter((transaction) =>
+    isVisibleSettlementCandidate(transaction, outflowTransactionIds),
+  );
+  const visibleInflowCandidates = inflowCandidates.filter((transaction) =>
+    isVisibleSettlementCandidate(transaction, inflowTransactionIds),
   );
   const selectedOutflowTotal = outflowCandidates
     .filter((transaction) => outflowTransactionIds.includes(transaction.id))
@@ -2053,11 +2073,36 @@ export function DashboardSection({
                     </span>
                   </span>
                 </label>
+                <div className="settlement-filter">
+                  <label>
+                    정산할 거래 찾기
+                    <input
+                      type="search"
+                      value={settlementSearch}
+                      placeholder="거래 설명이나 메모로 검색"
+                      onChange={(event) => setSettlementSearch(event.target.value)}
+                    />
+                  </label>
+                  <label className="settlement-filter__toggle">
+                    <input
+                      type="checkbox"
+                      checked={showAllSettlementPeriods}
+                      onChange={(event) =>
+                        setShowAllSettlementPeriods(event.target.checked)
+                      }
+                    />
+                    <span>전체 기간 거래 보기</span>
+                  </label>
+                  <small aria-live="polite">
+                    {showAllSettlementPeriods ? '저장한 모든 기간' : '현재 조회 기간'} · 지출{' '}
+                    {visibleOutflowCandidates.length}건 · 입금 {visibleInflowCandidates.length}건 표시
+                  </small>
+                </div>
                 <fieldset>
                   <legend>공동결제 지출 (1건 이상)</legend>
-                  {outflowCandidates.length > 0 ? (
+                  {visibleOutflowCandidates.length > 0 ? (
                     <div className="settlement-reimbursement-list">
-                      {outflowCandidates.map((transaction) => (
+                      {visibleOutflowCandidates.map((transaction) => (
                         <label key={transaction.id}>
                           <input
                             type="checkbox"
@@ -2079,15 +2124,19 @@ export function DashboardSection({
                       ))}
                     </div>
                   ) : (
-                    <p className="settlement-empty">연결할 출금 거래가 없습니다.</p>
+                    <p className="settlement-empty">
+                      {outflowCandidates.length === 0
+                        ? '연결할 출금 거래가 없습니다.'
+                        : '조건에 맞는 출금 거래가 없습니다. 검색어나 기간을 바꿔 보세요.'}
+                    </p>
                   )}
                 </fieldset>
 
                 <fieldset>
                   <legend>정산 입금 (1건 이상)</legend>
-                  {inflowCandidates.length > 0 ? (
+                  {visibleInflowCandidates.length > 0 ? (
                     <div className="settlement-reimbursement-list">
-                      {inflowCandidates.map((transaction) => (
+                      {visibleInflowCandidates.map((transaction) => (
                         <label key={transaction.id}>
                           <input
                             type="checkbox"
@@ -2109,7 +2158,11 @@ export function DashboardSection({
                       ))}
                     </div>
                   ) : (
-                    <p className="settlement-empty">연결할 입금 거래가 없습니다.</p>
+                    <p className="settlement-empty">
+                      {inflowCandidates.length === 0
+                        ? '연결할 입금 거래가 없습니다.'
+                        : '조건에 맞는 입금 거래가 없습니다. 검색어나 기간을 바꿔 보세요.'}
+                    </p>
                   )}
                 </fieldset>
 

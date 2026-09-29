@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_BUDGET_BUCKETS } from '../../domain/budget-buckets/budget-bucket';
 import type { Transaction } from '../../domain/transactions/transaction';
@@ -146,7 +146,17 @@ function createHomeRepository(
   };
 }
 
+// 픽스처 거래가 2026-08에 있으므로 월간 집계 테스트는 Date만 고정해 실행일과 무관하게 만든다.
+function pinTodayToFixtureMonth() {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-08-06T03:00:00.000Z'));
+}
+
 describe('DashboardSection', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('shows actual monthly goal, review count, weekly spending, and recent transactions on HOME', async () => {
     const occurredOn = getTodayInSeoulForTest();
     const homeExpense: Transaction = {
@@ -345,6 +355,7 @@ describe('DashboardSection', () => {
   });
 
   it('shows period controls and the net shared-payment living expense', async () => {
+    pinTodayToFixtureMonth();
     const user = userEvent.setup();
     render(
       <DashboardSection
@@ -416,11 +427,29 @@ describe('DashboardSection', () => {
         name: '공동결제 지출 Fabricated group payment',
       }),
     );
+    expect(
+      screen.queryByRole('checkbox', {
+        name: '공동결제 지출 Fabricated second group payment',
+      }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText('전체 기간 거래 보기'));
+    await user.type(screen.getByLabelText('정산할 거래 찾기'), 'second');
+    expect(
+      screen.getByRole('checkbox', {
+        name: '공동결제 지출 Fabricated group payment',
+      }),
+    ).toBeChecked();
+    expect(
+      screen.queryByRole('checkbox', {
+        name: '정산 입금 Fabricated reimbursement',
+      }),
+    ).not.toBeInTheDocument();
     await user.click(
       screen.getByRole('checkbox', {
         name: '공동결제 지출 Fabricated second group payment',
       }),
     );
+    await user.clear(screen.getByLabelText('정산할 거래 찾기'));
     await user.click(
       screen.getByRole('checkbox', {
         name: '정산 입금 Fabricated reimbursement',
@@ -608,6 +637,7 @@ describe('DashboardSection', () => {
   });
 
   it('shows the monthly goal remaining after shared-payment net spending', async () => {
+    pinTodayToFixtureMonth();
     const user = userEvent.setup();
     const monthlyGoalRepository: LocalLedgerRepository = {
       ...repository,

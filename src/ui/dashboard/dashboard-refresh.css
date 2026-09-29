@@ -1068,6 +1068,57 @@
   border-top: 1px solid var(--border-subtle);
 }
 
+.mobile-app-shell .ledger-section .settlement-filter {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.mobile-app-shell .ledger-section .settlement-filter > label:first-child {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.mobile-app-shell .ledger-section .settlement-filter input[type='search'] {
+  min-height: 48px;
+  padding: 0 var(--space-3);
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 500;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-input);
+}
+
+.mobile-app-shell .ledger-section .settlement-filter input[type='search']:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 var(--space-1) var(--primary-soft);
+}
+
+.mobile-app-shell .ledger-section .settlement-filter__toggle {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.mobile-app-shell .ledger-section .settlement-filter__toggle input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--primary-strong);
+}
+
+.mobile-app-shell .ledger-section .settlement-filter small {
+  color: var(--text-tertiary, var(--text-secondary));
+  font-size: 12px;
+  font-weight: 550;
+}
+
 .dashboard-select-control {
   position: relative;
   display: block;
