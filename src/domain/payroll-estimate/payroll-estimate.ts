@@ -82,6 +82,8 @@ export type PayrollEstimateResult = {
 };
 
 const MONTHS_PER_YEAR = 12;
+// 건강보험 보수월액 상한(월 약 1.28억 원)까지 계산하되, 입력 겹침 같은 비현실적 값은 막는다.
+export const MAX_SUPPORTED_ANNUAL_GROSS_WON = 3_000_000_000;
 const VALID_WITHHOLDING_RATES: readonly WithholdingRatePercent[] = [
   80, 100, 120,
 ];
@@ -157,6 +159,30 @@ export function validatePayrollEstimateInput(
       field: 'monthlyNonTaxableWon',
       code: 'invalid_money',
       message: '월 비과세액은 0원 이상의 원 단위 정수여야 합니다.',
+    });
+  }
+
+  if (
+    isValidMoney(annualBaseGrossWon) &&
+    annualBaseGrossWon > MAX_SUPPORTED_ANNUAL_GROSS_WON &&
+    !issues.some((issue) => issue.field === 'baseGrossWon')
+  ) {
+    issues.push({
+      field: 'baseGrossWon',
+      code: 'out_of_range',
+      message:
+        '기본 급여는 연 30억 원(월 2억 5천만 원) 이하까지 계산할 수 있어요. 입력값을 다시 확인해 주세요.',
+    });
+  }
+
+  if (
+    isValidMoney(input.annualBonusGrossWon) &&
+    input.annualBonusGrossWon > MAX_SUPPORTED_ANNUAL_GROSS_WON
+  ) {
+    issues.push({
+      field: 'annualBonusGrossWon',
+      code: 'out_of_range',
+      message: '연간 상여금은 30억 원 이하까지 계산할 수 있어요. 입력값을 다시 확인해 주세요.',
     });
   }
 

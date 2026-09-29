@@ -134,8 +134,10 @@ function formatPolicyDate(isoDate: string): string {
   return isoDate.replaceAll('-', '.');
 }
 
-function formatPolicyMonth(isoDate: string): string {
-  return isoDate.slice(0, 7).replace('-', '.');
+function formatPolicyEffectiveDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-').map(Number);
+
+  return `${year}년 ${month}월 ${day}일 시행`;
 }
 
 function EstimateResult({ result, headingRef }: EstimateResultProps) {
@@ -579,7 +581,7 @@ export function PayrollEstimateCalculator() {
           <span className="step-label">02 · 결과</span>
           <span>
             <time dateTime={payrollPolicy2026H2.effectiveFrom}>
-              {formatPolicyMonth(payrollPolicy2026H2.effectiveFrom)} 기준
+              {formatPolicyEffectiveDate(payrollPolicy2026H2.effectiveFrom)} 요율 적용
             </time>
           </span>
         </div>

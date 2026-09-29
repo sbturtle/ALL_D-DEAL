@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   estimateTakeHomePay,
+  MAX_SUPPORTED_ANNUAL_GROSS_WON,
   PayrollEstimateValidationError,
   validatePayrollEstimateInput,
 } from './payroll-estimate';
@@ -170,6 +171,40 @@ describe('estimateTakeHomePay', () => {
       ]),
     );
     expect(() => estimateTakeHomePay(input)).toThrow(
+      PayrollEstimateValidationError,
+    );
+  });
+
+  it('지원 상한을 넘는 연봉·월급·상여는 계산하지 않는다', () => {
+    const annualInput: PayrollEstimateInput = {
+      ...monthlyInput,
+      mode: 'ANNUAL',
+      annualBaseGrossWon: MAX_SUPPORTED_ANNUAL_GROSS_WON + 1,
+      annualBonusGrossWon: MAX_SUPPORTED_ANNUAL_GROSS_WON + 1,
+    };
+    const monthlyOverInput: PayrollEstimateInput = {
+      ...monthlyInput,
+      monthlyBaseGrossWon: 250_000_001,
+      annualBonusGrossWon: 0,
+    };
+    const boundaryInput: PayrollEstimateInput = {
+      ...monthlyInput,
+      mode: 'ANNUAL',
+      annualBaseGrossWon: MAX_SUPPORTED_ANNUAL_GROSS_WON,
+      annualBonusGrossWon: MAX_SUPPORTED_ANNUAL_GROSS_WON,
+    };
+
+    expect(
+      validatePayrollEstimateInput(annualInput).map((issue) => [issue.field, issue.code]),
+    ).toEqual([
+      ['baseGrossWon', 'out_of_range'],
+      ['annualBonusGrossWon', 'out_of_range'],
+    ]);
+    expect(validatePayrollEstimateInput(monthlyOverInput)).toEqual([
+      expect.objectContaining({ field: 'baseGrossWon', code: 'out_of_range' }),
+    ]);
+    expect(validatePayrollEstimateInput(boundaryInput)).toEqual([]);
+    expect(() => estimateTakeHomePay(annualInput)).toThrow(
       PayrollEstimateValidationError,
     );
   });
