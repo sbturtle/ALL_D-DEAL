@@ -1,5 +1,38 @@
 # 엔지니어링 로그
 
+## 2026-09-29 — 배포 사이트 점검 피드백 반영
+
+### 구현
+
+- `vercel.json`에 SPA rewrite를 추가하고, App에 `navigateTo`를 분리해 Import 저장 후 거래 화면 이동에 재사용했다.
+- Import Preview: 저장 성공 상단 알림(포커스 이동), 저장 후 후보·중복·확정 영역 숨김, `분류 필요` 수치 분리, 자동 반영하지 않은 항목을 목록 위로 이동, 같은 거래 설명 묶음 일괄 분류와 규칙 동의, `분류 필요한 거래만 보기` 필터를 추가했다.
+- `DEFAULT_CATEGORY_KEYWORDS`와 `findDefaultCategoryKeyword`를 추가하고 `ImportCandidate.categorySource`로 사용자 규칙(`USER_RULE`)과 기본 추천(`DEFAULT_KEYWORD`)을 구분했다.
+- 공동결제 정산 후보를 현재 조회 기간·검색어로 좁히고, 선택된 거래는 필터와 관계없이 유지되게 했다.
+- 급여 추정 검증에 `MAX_SUPPORTED_ANNUAL_GROSS_WON`(30억 원) 상한을 추가했다. 처음 10억 원으로 두었으나 월 2억 원 입력으로 건강보험 상한을 검증하는 기존 테스트가 정책 상한 도달 범위를 보여 줘 30억 원으로 조정했다.
+- 기존 `favicon.svg`에서 `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`, `favicon.ico`를 렌더링하고 `manifest.webmanifest`와 OG 메타를 추가했다.
+- 실행일이 8월을 벗어나면 실패하던 Dashboard 월간 집계 테스트 2개에 `Date`만 고정하는 헬퍼를 넣어 실행일 의존성을 없앴다.
+
+### 검증
+
+| 검증 | 결과 | 비고 |
+| --- | --- | --- |
+| `npm run typecheck` | PASS | |
+| `npm run build` | PASS | 기존 번들 크기 경고만 존재 |
+| 변경 파일 `eslint --max-warnings 0` | PASS | 전체 `npm run lint`는 진행 중인 백업 작업 파일 `local-ledger-backup.test.ts`의 미사용 import 1건으로 실패 |
+| `vitest run --no-file-parallelism` | 501/504 PASS | 실패 3건은 모두 진행 중인 JSON 백업 작업의 `local-ledger-backup-repository.test.ts`이며 이번 변경과 무관 |
+| `git diff --check` | PASS | 줄바꿈 경고만 존재 |
+| 실제 브라우저(390px, Vite Preview) | PASS | `/payroll` 직접 접속, 메뉴 이동 시 주소 변경·뒤로가기, 가짜 카드 XLS 8건의 기본 추천(카페·식비·문화·쇼핑·편의점)과 `분류 필요 2건`, 묶음 분류 후 0건, 저장 알림 상단 표시·포커스·거래 화면 이동, 정산 검색 8→2건, 급여 4,848조 원 입력 오류, 아이콘·manifest HTTP 200 |
+
+### 남은 일
+
+- Vercel의 실제 rewrite 동작은 배포 후 `/home`, `/transactions` 직접 접속으로 한 번 더 확인해야 한다. 로컬 Vite Preview는 자체 fallback을 사용한다.
+- 기본 추천은 새 Import Preview에만 적용되므로, 이미 저장한 미분류 거래 80건은 Review 화면이나 키워드 묶기로 정리해야 한다.
+- `og:image`는 절대 URL이 필요해 배포 도메인이 확정되면 추가한다.
+
+### 상태
+
+`DONE`
+
 ## 2026-08-23 — 반복 지출 패턴 요약
 
 ### 구현
