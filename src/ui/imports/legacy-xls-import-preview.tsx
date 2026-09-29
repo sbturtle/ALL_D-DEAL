@@ -24,6 +24,7 @@ import {
   type CategoryId,
 } from '../../domain/categories/category';
 import type { CustomCategory } from '../../domain/categories/custom-category';
+import { normalizeCategoryRuleDescription } from '../../domain/categories/category-rule';
 import {
   DEFAULT_BUDGET_BUCKETS,
   type BudgetBucket,
@@ -78,7 +79,66 @@ export type LegacyXlsImportPreviewProps = Readonly<{
     name: string,
     emoji: string,
   ) => Promise<CustomCategory | undefined>;
+  onViewSavedTransactions?: () => void;
 }>;
+
+type CandidateDescriptionGroup = Readonly<{
+  key: string;
+  label: string;
+  candidateIndexes: readonly number[];
+  totalAmountMinor: number;
+}>;
+
+const MIXED_CATEGORY_VALUE = '__MIXED__';
+const MAX_VISIBLE_IMPORT_ISSUES = 6;
+
+function groupExpenseCandidatesByDescription(
+  candidates: readonly ImportCandidate[],
+): readonly CandidateDescriptionGroup[] {
+  const groups = new Map<string, { label: string; candidateIndexes: number[]; totalAmountMinor: number }>();
+
+  candidates.forEach((candidate, candidateIndex) => {
+    if (candidate.draft.type !== 'EXPENSE') {
+      return;
+    }
+
+    const key = normalizeCategoryRuleDescription(candidate.draft.descriptionOriginal);
+    if (key.length === 0) {
+      return;
+    }
+
+    const group = groups.get(key);
+    if (group === undefined) {
+      groups.set(key, {
+        label: candidate.draft.descriptionOriginal,
+        candidateIndexes: [candidateIndex],
+        totalAmountMinor: candidate.draft.amountMinor,
+      });
+      return;
+    }
+
+    group.candidateIndexes.push(candidateIndex);
+    group.totalAmountMinor += candidate.draft.amountMinor;
+  });
+
+  return Array.from(groups, ([key, group]) => ({ key, ...group }))
+    .filter((group) => group.candidateIndexes.length >= 2)
+    .sort(
+      (left, right) =>
+        right.candidateIndexes.length - left.candidateIndexes.length ||
+        left.label.localeCompare(right.label, 'ko'),
+    );
+}
+
+function needsClassification(
+  candidate: ImportCandidate,
+  categoryId: CategoryId | undefined,
+): boolean {
+  return (
+    candidate.draft.type === 'UNKNOWN' ||
+    (candidate.draft.type === 'EXPENSE' && categoryId === undefined)
+  );
+}
 
 const SOURCE_LABELS: Readonly<Record<ImportSource, string>> = {
   ACCOUNT_LEDGER_XLS: '계좌 거래 XLS',
@@ -332,6 +392,7 @@ export function LegacyXlsImportPreview({
   budgetBuckets = DEFAULT_BUDGET_BUCKETS,
   customCategories: providedCustomCategories = EMPTY_CUSTOM_CATEGORIES,
   onCreateCategory,
+  onViewSavedTransactions,
 }: LegacyXlsImportPreviewProps) {
   const [status, setStatus] = useState<ImportStatus>('IDLE');
   const [preview, setPreview] = useState<ImportPreview | null>(null);
@@ -362,10 +423,13 @@ export function LegacyXlsImportPreview({
     ReadonlyMap<number, PlaceSearchState>
   >(new Map());
   const [isDropActive, setIsDropActive] = useState(false);
+  const [unclassifiedOnlyIndexes, setUnclassifiedOnlyIndexes] =
+    useState<ReadonlySet<number> | null>(null);
   const [customCategories, setCustomCategories] = useState<
     readonly CustomCategory[]
   >(providedCustomCategories);
   const requestIdRef = useRef(0);
+  const savedNoticeRef = useRef<HTMLDivElement | null>(null);
   const kakaoAbortControllerRef = useRef<AbortController | null>(null);
   const categoryPickerRef = useRef<HTMLDivElement | null>(null);
   const categoryTriggerRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
@@ -381,6 +445,12 @@ export function LegacyXlsImportPreview({
   useEffect(() => {
     setCustomCategories(providedCustomCategories);
   }, [providedCustomCategories]);
+
+  useEffect(() => {
+    if (status === 'SAVED') {
+      savedNoticeRef.current?.focus();
+    }
+  }, [status]);
 
   useEffect(() => {
     if (openCategoryPickerIndex === null) {
@@ -456,6 +526,7 @@ export function LegacyXlsImportPreview({
     setSaveMessage(null);
     setPlaceSearchByCandidateIndex(new Map());
     setIsDropActive(false);
+    setUnclassifiedOnlyIndexes(null);
   };
 
   const processFile = async (file: File) => {
@@ -480,6 +551,7 @@ export function LegacyXlsImportPreview({
     setOpenCategoryPickerIndex(null);
     setSaveMessage(null);
     setPlaceSearchByCandidateIndex(new Map());
+    setUnclassifiedOnlyIndexes(null);
 
     try {
       const parsedPreview = await previewFile(file);
@@ -778,6 +850,65 @@ export function LegacyXlsImportPreview({
     });
   };
 
+  const updateGroupCategory = (
+    candidateIndexes: readonly number[],
+    categoryId: CategoryId | undefined,
+  ) => {
+    setCategoryIdByCandidateIndex((currentCategories) => {
+      const nextCategories = new Map(currentCategories);
+      candidateIndexes.forEach((candidateIndex) =>
+        nextCategories.set(candidateIndex, categoryId),
+      );
+      return nextCategories;
+    });
+
+    if (categoryId === undefined) {
+      setCategoryRuleCandidateIndexes((currentIndexes) => {
+        const nextIndexes = new Set(currentIndexes);
+        candidateIndexes.forEach((candidateIndex) => nextIndexes.delete(candidateIndex));
+        return nextIndexes;
+      });
+    }
+  };
+
+  const updateGroupCategoryRule = (
+    candidateIndexes: readonly number[],
+    shouldRemember: boolean,
+  ) => {
+    setCategoryRuleCandidateIndexes((currentIndexes) => {
+      const nextIndexes = new Set(currentIndexes);
+      candidateIndexes.forEach((candidateIndex) => {
+        if (
+          shouldRemember &&
+          selectedCandidateIndexes.has(candidateIndex) &&
+          categoryIdByCandidateIndex.get(candidateIndex) !== undefined
+        ) {
+          nextIndexes.add(candidateIndex);
+        } else {
+          nextIndexes.delete(candidateIndex);
+        }
+      });
+      return nextIndexes;
+    });
+  };
+
+  const toggleUnclassifiedOnly = () => {
+    if (preview === null || unclassifiedOnlyIndexes !== null) {
+      setUnclassifiedOnlyIndexes(null);
+      return;
+    }
+
+    setUnclassifiedOnlyIndexes(
+      new Set(
+        preview.candidates.flatMap((candidate, candidateIndex) =>
+          needsClassification(candidate, categoryIdByCandidateIndex.get(candidateIndex))
+            ? [candidateIndex]
+            : [],
+        ),
+      ),
+    );
+  };
+
   const toggleCategoryPicker = (candidateIndex: number) => {
     if (openCategoryPickerIndex === candidateIndex) {
       setOpenCategoryPickerIndex(null);
@@ -928,16 +1059,20 @@ export function LegacyXlsImportPreview({
     preview === null || duplicateCheckFailed
       ? null
       : Math.max(0, preview.candidates.length - duplicateCandidateCount);
-  const reviewRequiredCount =
+  const classificationNeededCount =
     preview === null
       ? 0
-      : preview.issues.length +
-        preview.candidates.filter(
-          (candidate, candidateIndex) =>
-            candidate.draft.type === 'UNKNOWN' ||
-            (candidate.draft.type === 'EXPENSE' &&
-              categoryIdByCandidateIndex.get(candidateIndex) === undefined),
+      : preview.candidates.filter((candidate, candidateIndex) =>
+          needsClassification(candidate, categoryIdByCandidateIndex.get(candidateIndex)),
         ).length;
+  const excludedIssueCount = preview?.issues.length ?? 0;
+  const excludedIssueNotice =
+    excludedIssueCount === 0
+      ? ''
+      : ` 자동 반영하지 않은 항목 ${excludedIssueCount}건은 따로 확인해 주세요.`;
+  const candidateDescriptionGroups =
+    preview === null ? [] : groupExpenseCandidatesByDescription(preview.candidates);
+  const isSaved = status === 'SAVED';
   const kakaoAnalysisPendingCount = Array.from(
     placeSearchByCandidateIndex.values(),
   ).filter((placeSearchState) => placeSearchState.status === 'SEARCHING').length;
@@ -1059,9 +1194,31 @@ export function LegacyXlsImportPreview({
 
           <p className="import-preview-announcement" role="status" aria-live="polite">
             {duplicateCheckFailed
-              ? `거래 후보 ${preview.candidates.length}건을 읽었지만 신규·중복 여부는 확인하지 못했습니다. 확인 필요 ${reviewRequiredCount}건입니다.`
-              : `새 거래 ${newCandidateCount}건, 중복 가능 ${duplicateCandidateCount}건, 확인 필요 ${reviewRequiredCount}건을 찾았습니다.`}
+              ? `거래 후보 ${preview.candidates.length}건을 읽었지만 신규·중복 여부는 확인하지 못했습니다. 분류 필요 ${classificationNeededCount}건입니다.${excludedIssueNotice}`
+              : `새 거래 ${newCandidateCount}건, 중복 가능 ${duplicateCandidateCount}건, 분류 필요 ${classificationNeededCount}건을 찾았습니다.${excludedIssueNotice}`}
           </p>
+
+          {isSaved && saveMessage !== null ? (
+            <div
+              className="import-saved-notice"
+              ref={savedNoticeRef}
+              role="status"
+              tabIndex={-1}
+            >
+              <strong>{saveMessage}</strong>
+              <p>거래 화면에서 기간별로 확인하고 분류를 이어서 바꿀 수 있어요.</p>
+              <div className="import-saved-notice__actions">
+                {onViewSavedTransactions === undefined ? null : (
+                  <button type="button" onClick={onViewSavedTransactions}>
+                    거래 화면에서 보기
+                  </button>
+                )}
+                <button type="button" onClick={resetPreview}>
+                  다른 파일 불러오기
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           <dl className="import-preview-stats" aria-label="가져오기 결과 요약">
             <div className="import-preview-stat import-preview-stat--new">
@@ -1073,8 +1230,8 @@ export function LegacyXlsImportPreview({
               <dd>{duplicateCheckFailed ? '확인 실패' : `${duplicateCandidateCount}건`}</dd>
             </div>
             <div className="import-preview-stat import-preview-stat--review">
-              <dt>확인 필요</dt>
-              <dd>{reviewRequiredCount}건</dd>
+              <dt>분류 필요</dt>
+              <dd>{classificationNeededCount}건</dd>
             </div>
           </dl>
 
@@ -1084,7 +1241,7 @@ export function LegacyXlsImportPreview({
             </p>
           ) : null}
 
-          {duplicateCandidateMatches.length > 0 ? (
+          {!isSaved && duplicateCandidateMatches.length > 0 ? (
             <section className="duplicate-candidate-review" aria-labelledby="duplicate-review-title">
               <div>
                 <strong id="duplicate-review-title">중복 가능 후보 {duplicateCandidateMatches.length}건</strong>
@@ -1098,7 +1255,6 @@ export function LegacyXlsImportPreview({
                 onClick={includeAllPotentialDuplicates}
                 disabled={
                   status === 'SAVING' ||
-                  status === 'SAVED' ||
                   duplicateCandidateMatches.every((match) =>
                     selectedCandidateIndexes.has(match.candidateIndex),
                   )
@@ -1121,7 +1277,7 @@ export function LegacyXlsImportPreview({
                           type="checkbox"
                           aria-label={`중복 가능 후보 ${match.candidateIndex + 1} 저장`}
                           checked={selectedCandidateIndexes.has(match.candidateIndex)}
-                          disabled={status === 'SAVING' || status === 'SAVED'}
+                          disabled={status === 'SAVING'}
                           onChange={() => toggleCandidateSelection(match.candidateIndex)}
                         />
                         <span>
@@ -1138,17 +1294,156 @@ export function LegacyXlsImportPreview({
             </section>
           ) : null}
 
-          {preview.candidates.length > 0 ? (
+          {!isSaved && preview.issues.length > 0 ? (
+            <div className="import-issue-list" role="alert">
+              <strong>자동 반영하지 않은 항목 {preview.issues.length}건</strong>
+              <ul>
+                {preview.issues.slice(0, MAX_VISIBLE_IMPORT_ISSUES).map((issue, index) => (
+                  <li key={`${issue.code}-${issue.rowNumber ?? 'file'}-${index}`}>
+                    {getIssueLabel(issue)}
+                  </li>
+                ))}
+              </ul>
+              {preview.issues.length > MAX_VISIBLE_IMPORT_ISSUES ? (
+                <small>외 {preview.issues.length - MAX_VISIBLE_IMPORT_ISSUES}건</small>
+              ) : null}
+            </div>
+          ) : null}
+
+          {!isSaved && candidateDescriptionGroups.length > 0 ? (
+            <section
+              className="import-description-groups"
+              aria-labelledby="import-description-groups-title"
+            >
+              <div className="import-review-section-heading">
+                <div>
+                  <span>한 번에 분류</span>
+                  <h5 id="import-description-groups-title">같은 거래 설명 묶음</h5>
+                </div>
+                <strong>{candidateDescriptionGroups.length}묶음</strong>
+              </div>
+              <ul aria-label="같은 거래 설명 묶음">
+                {candidateDescriptionGroups.map((group) => {
+                  const groupCategoryIds = new Set(
+                    group.candidateIndexes.map((candidateIndex) =>
+                      categoryIdByCandidateIndex.get(candidateIndex),
+                    ),
+                  );
+                  const [firstGroupCategoryId] = groupCategoryIds;
+                  const groupCategoryValue =
+                    groupCategoryIds.size > 1
+                      ? MIXED_CATEGORY_VALUE
+                      : (firstGroupCategoryId ?? '');
+                  const ruleEligibleIndexes = group.candidateIndexes.filter(
+                    (candidateIndex) =>
+                      selectedCandidateIndexes.has(candidateIndex) &&
+                      categoryIdByCandidateIndex.get(candidateIndex) !== undefined,
+                  );
+                  const isGroupRuleChecked =
+                    ruleEligibleIndexes.length > 0 &&
+                    ruleEligibleIndexes.every((candidateIndex) =>
+                      categoryRuleCandidateIndexes.has(candidateIndex),
+                    );
+
+                  return (
+                    <li key={group.key}>
+                      <span className="import-description-group__copy">
+                        <strong>{group.label}</strong>
+                        <small>
+                          {group.candidateIndexes.length}건 · 합계{' '}
+                          {formatWon(group.totalAmountMinor)}
+                        </small>
+                      </span>
+                      <span className="dashboard-select-control">
+                        <select
+                          aria-label={`${group.label} ${group.candidateIndexes.length}건 카테고리 한 번에 선택`}
+                          value={groupCategoryValue}
+                          disabled={status === 'SAVING'}
+                          onChange={(event) =>
+                            updateGroupCategory(
+                              group.candidateIndexes,
+                              event.target.value === ''
+                                ? undefined
+                                : (event.target.value as CategoryId),
+                            )
+                          }
+                        >
+                          {groupCategoryValue === MIXED_CATEGORY_VALUE ? (
+                            <option value={MIXED_CATEGORY_VALUE} disabled>
+                              여러 카테고리
+                            </option>
+                          ) : null}
+                          <option value="">미분류</option>
+                          {CATEGORY_IDS.map((categoryId) => (
+                            <option key={categoryId} value={categoryId}>
+                              {getCategorySymbol(categoryId, customCategories)}{' '}
+                              {getCategoryLabel(categoryId, customCategories)}
+                            </option>
+                          ))}
+                          {customCategories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.emoji} {category.name}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="dashboard-select-chevron" aria-hidden="true">
+                          ⌄
+                        </span>
+                      </span>
+                      <label className="import-category-rule">
+                        <input
+                          type="checkbox"
+                          aria-label={`${group.label} 묶음 카테고리 규칙 저장`}
+                          checked={isGroupRuleChecked}
+                          disabled={status === 'SAVING' || ruleEligibleIndexes.length === 0}
+                          onChange={(event) =>
+                            updateGroupCategoryRule(
+                              group.candidateIndexes,
+                              event.target.checked,
+                            )
+                          }
+                        />
+                        <span>
+                          <strong>앞으로 같은 설명에도 적용</strong>
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
+
+          {!isSaved && preview.candidates.length > 0 ? (
             <>
               <div className="import-review-section-heading">
                 <div>
                   <span>거래별 확인</span>
                   <h5>분류와 금액을 확인해 주세요</h5>
                 </div>
-                <strong>{preview.candidates.length}건</strong>
+                <strong>
+                  {unclassifiedOnlyIndexes === null
+                    ? `${preview.candidates.length}건`
+                    : `${unclassifiedOnlyIndexes.size}/${preview.candidates.length}건`}
+                </strong>
               </div>
+              <button
+                type="button"
+                className="import-unclassified-filter"
+                aria-pressed={unclassifiedOnlyIndexes !== null}
+                onClick={toggleUnclassifiedOnly}
+              >
+                {unclassifiedOnlyIndexes === null ? '분류 필요한 거래만 보기' : '모든 거래 보기'}
+              </button>
               <ul className="import-candidate-list" aria-label="가져오기 후보">
               {preview.candidates.map((candidate, candidateIndex) => {
+                if (
+                  unclassifiedOnlyIndexes !== null &&
+                  !unclassifiedOnlyIndexes.has(candidateIndex)
+                ) {
+                  return null;
+                }
+
                 const selectedCategoryId = categoryIdByCandidateIndex.get(candidateIndex);
                 const isCategoryPickerOpen = openCategoryPickerIndex === candidateIndex;
                 const isCandidateSelected = selectedCandidateIndexes.has(candidateIndex);
@@ -1258,7 +1553,16 @@ export function LegacyXlsImportPreview({
                           </ul>
                         )
                       ) : null}
-                      {placeSearchState?.userRuleCategoryId === undefined ? null : (
+                      {placeSearchState?.userRuleCategoryId === undefined ? null : candidate.categorySource === 'DEFAULT_KEYWORD' ? (
+                        <small>
+                          기본 추천 →{' '}
+                          {getCategoryLabel(
+                            placeSearchState.userRuleCategoryId,
+                            customCategories,
+                          )}{' '}
+                          · DEFAULT_KEYWORD
+                        </small>
+                      ) : (
                         <small>
                           사용자 규칙 →{' '}
                           {getCategoryLabel(
@@ -1321,7 +1625,7 @@ export function LegacyXlsImportPreview({
                       aria-label={`후보 ${candidateIndex + 1} 카테고리 ${
                         isCategoryPickerOpen ? '닫기' : '열기'
                       }`}
-                      disabled={status === 'SAVING' || status === 'SAVED'}
+                      disabled={status === 'SAVING'}
                       onClick={() => toggleCategoryPicker(candidateIndex)}
                     >
                       <strong>
@@ -1345,6 +1649,8 @@ export function LegacyXlsImportPreview({
                     </button>
                     {candidate.draft.categoryId === undefined ? (
                       <small>선택한 카테고리는 우선 이번 거래에만 반영해요.</small>
+                    ) : candidate.categorySource === 'DEFAULT_KEYWORD' ? (
+                      <small>자주 쓰는 상호라 기본 추천으로 채웠어요. 다르면 바꿔 주세요.</small>
                     ) : (
                       <small>기억한 규칙으로 채웠어요. 언제든 바꿀 수 있어요.</small>
                     )}
@@ -1505,7 +1811,7 @@ export function LegacyXlsImportPreview({
                             budgetBucketIdByCandidateIndex.get(candidateIndex) ??
                             candidate.draft.budgetBucketId
                           }
-                          disabled={status === 'SAVING' || status === 'SAVED'}
+                          disabled={status === 'SAVING'}
                           onChange={(event) =>
                             updateCandidateBudgetBucket(
                               candidateIndex,
@@ -1542,7 +1848,7 @@ export function LegacyXlsImportPreview({
                         value={memoByCandidateIndex.get(candidateIndex) ?? ''}
                         placeholder="예: 친구와 나눈 저녁"
                         maxLength={280}
-                        disabled={status === 'SAVING' || status === 'SAVED'}
+                        disabled={status === 'SAVING'}
                         onChange={(event) =>
                           updateCandidateMemo(candidateIndex, event.target.value)
                         }
@@ -1556,7 +1862,6 @@ export function LegacyXlsImportPreview({
                       checked={categoryRuleCandidateIndexes.has(candidateIndex)}
                       disabled={
                         status === 'SAVING' ||
-                        status === 'SAVED' ||
                         !isCandidateSelected ||
                         selectedCategoryId === undefined
                       }
@@ -1585,26 +1890,13 @@ export function LegacyXlsImportPreview({
             </>
           ) : null}
 
-          {preview.issues.length > 0 ? (
-            <div className="import-issue-list" role="alert">
-              <strong>자동 반영하지 않은 항목</strong>
-              <ul>
-                {preview.issues.slice(0, 6).map((issue, index) => (
-                  <li key={`${issue.code}-${issue.rowNumber ?? 'file'}-${index}`}>
-                    {getIssueLabel(issue)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {saveMessage !== null ? (
+          {!isSaved && saveMessage !== null ? (
             <p className="import-save-message" role="status">
               {saveMessage}
             </p>
           ) : null}
 
-          {confirmPreview !== undefined && preview.candidates.length > 0 ? (
+          {!isSaved && confirmPreview !== undefined && preview.candidates.length > 0 ? (
             <div className="import-confirmation">
               <button
                 type="button"
@@ -1618,7 +1910,6 @@ export function LegacyXlsImportPreview({
                 }`}
                 disabled={
                   status === 'SAVING' ||
-                  status === 'SAVED' ||
                   duplicateCheckFailed ||
                   kakaoAnalysisPendingCount > 0 ||
                   selectedCandidateCount === 0
@@ -1626,11 +1917,9 @@ export function LegacyXlsImportPreview({
               >
                 {status === 'SAVING'
                   ? '선택한 거래를 저장하는 중'
-                  : status === 'SAVED'
-                    ? '저장 완료'
-                    : kakaoAnalysisPendingCount > 0
-                      ? 'Kakao 분석을 기다리는 중'
-                      : `${selectedCandidateCount}건 저장하기`}
+                  : kakaoAnalysisPendingCount > 0
+                    ? 'Kakao 분석을 기다리는 중'
+                    : `${selectedCandidateCount}건 저장하기`}
               </button>
               {kakaoAnalysisPendingCount > 0 ? (
                 <p

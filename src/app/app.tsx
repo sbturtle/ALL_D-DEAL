@@ -119,6 +119,14 @@ export function App() {
     document.title = `${APP_ROUTE_TITLES[route]} · ALL D·DEAL · 알뜰`;
   }, [route]);
 
+  const navigateTo = (nextRoute: AppRoute) => {
+    const nextPath = getAppRoutePath(nextRoute);
+    if (window.location.pathname !== nextPath) {
+      window.history.pushState(null, '', nextPath);
+    }
+    setRoute(nextRoute);
+  };
+
   const handleNavigation = (
     event: MouseEvent<HTMLAnchorElement>,
     nextRoute: AppRoute,
@@ -128,11 +136,7 @@ export function App() {
     }
 
     event.preventDefault();
-    const nextPath = getAppRoutePath(nextRoute);
-    if (window.location.pathname !== nextPath) {
-      window.history.pushState(null, '', nextPath);
-    }
-    setRoute(nextRoute);
+    navigateTo(nextRoute);
   };
 
   return (
@@ -161,6 +165,7 @@ export function App() {
             listBudgetBuckets={() => ledgerRepository.listBudgetBuckets()}
             listCustomCategories={() => ledgerRepository.listCustomCategories()}
             onCreateCategory={createSelectedCustomCategory}
+            onViewSavedTransactions={() => navigateTo('TRANSACTIONS')}
           />
         ) : null}
         {route === 'SETTINGS' ? (

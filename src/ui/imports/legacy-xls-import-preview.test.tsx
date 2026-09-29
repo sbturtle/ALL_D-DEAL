@@ -184,7 +184,7 @@ describe('LegacyXlsImportPreview', () => {
     expect(previewFile).toHaveBeenCalledWith(file);
     expect(screen.getByRole('heading', { name: '1건을 찾았어요' })).toBeVisible();
     expect(
-      screen.getByText('새 거래 1건, 중복 가능 0건, 확인 필요 2건을 찾았습니다.'),
+      screen.getByText('새 거래 1건, 중복 가능 0건, 분류 필요 1건을 찾았습니다. 자동 반영하지 않은 항목 1건은 따로 확인해 주세요.'),
     ).toBeInTheDocument();
     expect(screen.getByText('가짜 식료품점')).toBeVisible();
     expect(screen.getByText('검토 필요 · 출금')).toBeVisible();
@@ -282,6 +282,96 @@ describe('LegacyXlsImportPreview', () => {
 
     expect(confirmPreview).toHaveBeenCalledWith(accountPreview, { skippedCount: 0 });
     expect(await screen.findByText('1건을 이 기기에 저장했습니다.')).toBeVisible();
+    expect(screen.queryByRole('list', { name: '가져오기 후보' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('import-confirm-action')).not.toBeInTheDocument();
+  });
+
+  it('moves focus to the saved notice and offers a transactions shortcut', async () => {
+    const user = userEvent.setup();
+    const onViewSavedTransactions = vi.fn();
+    render(
+      <LegacyXlsImportPreview
+        previewFile={async () => expensePreview}
+        confirmPreview={vi.fn().mockResolvedValue({
+          isConfirmed: true,
+          batch: {},
+          transactions: [{}],
+        })}
+        onViewSavedTransactions={onViewSavedTransactions}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+    await user.click(screen.getByRole('button', { name: '1건 저장하기' }));
+
+    const notice = await screen.findByText('1건을 이 기기에 저장했습니다.');
+    expect(notice.closest('.import-saved-notice')).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: '거래 화면에서 보기' }));
+    expect(onViewSavedTransactions).toHaveBeenCalledOnce();
+
+    await user.click(screen.getByRole('button', { name: '다른 파일 불러오기' }));
+    expect(screen.queryByText('1건을 이 기기에 저장했습니다.')).not.toBeInTheDocument();
+  });
+
+  it('classifies every candidate with the same description at once', async () => {
+    const user = userEvent.setup();
+    const confirmPreview = vi.fn().mockResolvedValue({
+      isConfirmed: true,
+      batch: {},
+      transactions: [],
+    });
+    const repeatedPreview: ImportPreview = {
+      ...multipleExpensePreview,
+      candidates: [
+        ...multipleExpensePreview.candidates,
+        {
+          ...multipleExpensePreview.candidates[0]!,
+          rowNumber: 7,
+          draft: { ...multipleExpensePreview.candidates[0]!.draft, amountMinor: 5_000 },
+        },
+      ],
+    };
+    render(
+      <LegacyXlsImportPreview
+        previewFile={async () => repeatedPreview}
+        confirmPreview={confirmPreview}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+    const groups = screen.getByRole('list', { name: '같은 거래 설명 묶음' });
+    expect(within(groups).getByText('2건 · 합계 20,000원')).toBeVisible();
+    expect(within(groups).queryByText('가짜 대중교통')).not.toBeInTheDocument();
+
+    await user.selectOptions(
+      within(groups).getByLabelText('가짜 식료품점 2건 카테고리 한 번에 선택'),
+      'FOOD_DINING',
+    );
+    await user.click(within(groups).getByLabelText('가짜 식료품점 묶음 카테고리 규칙 저장'));
+    expect(screen.getByText(/분류 필요 1건을 찾았습니다/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '분류 필요한 거래만 보기' }));
+    const candidates = screen.getByRole('list', { name: '가져오기 후보' });
+    expect(within(candidates).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(candidates).getByText('가짜 대중교통')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: '3건 저장하기' }));
+    const [savedPreview, options] = confirmPreview.mock.calls[0]!;
+    expect(
+      savedPreview.candidates.map((candidate: { draft: { categoryId?: string } }) =>
+        candidate.draft.categoryId,
+      ),
+    ).toEqual(['FOOD_DINING', undefined, 'FOOD_DINING']);
+    expect(options.categoryRuleRequests).toEqual([
+      { descriptionOriginal: '가짜 식료품점', categoryId: 'FOOD_DINING' },
+      { descriptionOriginal: '가짜 식료품점', categoryId: 'FOOD_DINING' },
+    ]);
   });
 
   it('does not let an older save result overwrite a newer file preview', async () => {
@@ -397,7 +487,7 @@ describe('LegacyXlsImportPreview', () => {
       name: '중복 가능 후보 1 저장',
     });
     expect(
-      screen.getByText('새 거래 0건, 중복 가능 1건, 확인 필요 2건을 찾았습니다.'),
+      screen.getByText('새 거래 0건, 중복 가능 1건, 분류 필요 1건을 찾았습니다. 자동 반영하지 않은 항목 1건은 따로 확인해 주세요.'),
     ).toBeInTheDocument();
     expect(candidateCheckbox).not.toBeChecked();
     expect(screen.getByTestId('import-confirm-action')).toBeDisabled();
@@ -465,7 +555,7 @@ describe('LegacyXlsImportPreview', () => {
 
     expect(
       screen.getByText(
-        '거래 후보 1건을 읽었지만 신규·중복 여부는 확인하지 못했습니다. 확인 필요 2건입니다.',
+        '거래 후보 1건을 읽었지만 신규·중복 여부는 확인하지 못했습니다. 분류 필요 1건입니다. 자동 반영하지 않은 항목 1건은 따로 확인해 주세요.',
       ),
     ).toBeInTheDocument();
     const summary = screen.getByLabelText('가져오기 결과 요약');

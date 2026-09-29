@@ -33,6 +33,7 @@ type ImportPageProps = Readonly<{
     name: string,
     emoji: string,
   ) => Promise<CustomCategory | undefined>;
+  onViewSavedTransactions?: () => void;
 }>;
 
 export function ImportPage({
@@ -44,6 +45,7 @@ export function ImportPage({
   listBudgetBuckets,
   listCustomCategories,
   onCreateCategory,
+  onViewSavedTransactions,
 }: ImportPageProps) {
   const [budgetBuckets, setBudgetBuckets] = useState<readonly BudgetBucket[]>(
     DEFAULT_BUDGET_BUCKETS,
@@ -138,6 +140,7 @@ export function ImportPage({
           onCreateCategory={
             onCreateCategory === undefined ? undefined : handleCreateCategory
           }
+          onViewSavedTransactions={onViewSavedTransactions}
         />
       </div>
 
