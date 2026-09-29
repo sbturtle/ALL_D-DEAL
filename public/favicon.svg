@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">ALL D·DEAL 알뜰</title>
+  <style>
+    :root {
+      --brand-forest: #174735;
+      --brand-forest-strong: #0f3226;
+      --brand-lime: #d9f26f;
+      --brand-cream: #f5f1e8;
+    }
+  </style>
+  <rect width="64" height="64" rx="16" fill="var(--brand-cream)" />
+  <rect x="5" y="5" width="54" height="54" rx="13" fill="var(--brand-forest)" />
+  <path d="M48 5h11v11c-6.1 0-11-4.9-11-11Z" fill="var(--brand-lime)" />
+  <text
+    x="32"
+    y="39"
+    fill="var(--brand-lime)"
+    font-family="Pretendard, 'Noto Sans KR', sans-serif"
+    font-size="19"
+    font-weight="900"
+    letter-spacing="-1"
+    text-anchor="middle"
+  >알뜰</text>
+  <path d="M20 47h24" fill="none" stroke="var(--brand-forest-strong)" stroke-linecap="round" stroke-width="2" />
+</svg>
