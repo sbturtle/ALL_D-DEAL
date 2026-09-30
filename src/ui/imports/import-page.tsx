@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import type { LegacyXlsImportConfirmationOptions, LegacyXlsImportConfirmationResult } from '../../application/imports/confirm-legacy-xls-import';
+import type { LatestLocalFinanceXlsPicker } from '../../application/imports/local-finance-directory-import';
 import type { LegacyXlsPreviewReader } from '../../application/imports/prepare-legacy-xls-import';
 import type { DuplicateCandidateMatch } from '../../domain/imports/duplicate-candidates';
 import type { ImportPreview } from '../../domain/imports/legacy-xls-preview';
@@ -34,6 +35,7 @@ type ImportPageProps = Readonly<{
     emoji: string,
   ) => Promise<CustomCategory | undefined>;
   onViewSavedTransactions?: () => void;
+  pickLatestLocalFinanceXls?: LatestLocalFinanceXlsPicker;
 }>;
 
 export function ImportPage({
@@ -46,6 +48,7 @@ export function ImportPage({
   listCustomCategories,
   onCreateCategory,
   onViewSavedTransactions,
+  pickLatestLocalFinanceXls,
 }: ImportPageProps) {
   const [budgetBuckets, setBudgetBuckets] = useState<readonly BudgetBucket[]>(
     DEFAULT_BUDGET_BUCKETS,
@@ -141,6 +144,7 @@ export function ImportPage({
             onCreateCategory === undefined ? undefined : handleCreateCategory
           }
           onViewSavedTransactions={onViewSavedTransactions}
+          pickLatestLocalFinanceXls={pickLatestLocalFinanceXls}
         />
       </div>
 

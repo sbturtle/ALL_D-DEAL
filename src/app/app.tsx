@@ -15,6 +15,10 @@ import type { ImportPreview } from '../domain/imports/legacy-xls-preview';
 import { createCustomCategory } from '../domain/categories/custom-category';
 import type { UtcIsoInstant } from '../domain/transactions/utc-iso-instant';
 import { previewLegacyXlsFile } from '../infrastructure/imports/legacy-xls-file-reader';
+import {
+  canPickLocalFinanceDirectory,
+  pickLatestLocalFinanceXls,
+} from '../infrastructure/imports/local-finance-directory';
 import { BrowserLedgerRepository } from '../infrastructure/storage/browser-ledger-repository';
 import { getKakaoMapPlaceSearch } from '../infrastructure/kakao/kakao-map-config';
 import { DashboardSection } from '../ui/dashboard/dashboard-section';
@@ -36,6 +40,10 @@ import './mobile-app.css';
 
 const ledgerRepository = new BrowserLedgerRepository();
 const kakaoMapPlaceSearch = getKakaoMapPlaceSearch();
+// 폴더 선택을 지원하지 않는 브라우저에서는 버튼을 숨기고 기존 파일 선택만 남긴다.
+const latestLocalFinanceXlsPicker = canPickLocalFinanceDirectory()
+  ? () => pickLatestLocalFinanceXls()
+  : undefined;
 
 function previewSelectedLegacyXls(file: LegacyXlsImportFile) {
   return prepareLegacyXlsImportPreview(file, previewLegacyXlsFile);
@@ -167,6 +175,7 @@ export function App() {
             listCustomCategories={() => ledgerRepository.listCustomCategories()}
             onCreateCategory={createSelectedCustomCategory}
             onViewSavedTransactions={() => navigateTo('TRANSACTIONS')}
+            pickLatestLocalFinanceXls={latestLocalFinanceXlsPicker}
           />
         ) : null}
         {route === 'SETTINGS' ? (

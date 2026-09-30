@@ -12,6 +12,10 @@ import type {
   ImportPreview,
   ImportSource,
 } from '../../domain/imports/legacy-xls-preview';
+import type {
+  LatestLocalFinanceXlsPicker,
+  LocalFinanceDirectoryPickResult,
+} from '../../application/imports/local-finance-directory-import';
 import type { LegacyXlsPreviewReader } from '../../application/imports/prepare-legacy-xls-import';
 import type {
   LegacyXlsImportConfirmationResult,
@@ -80,6 +84,7 @@ export type LegacyXlsImportPreviewProps = Readonly<{
     emoji: string,
   ) => Promise<CustomCategory | undefined>;
   onViewSavedTransactions?: () => void;
+  pickLatestLocalFinanceXls?: LatestLocalFinanceXlsPicker;
 }>;
 
 type CandidateDescriptionGroup = Readonly<{
@@ -393,6 +398,7 @@ export function LegacyXlsImportPreview({
   customCategories: providedCustomCategories = EMPTY_CUSTOM_CATEGORIES,
   onCreateCategory,
   onViewSavedTransactions,
+  pickLatestLocalFinanceXls,
 }: LegacyXlsImportPreviewProps) {
   const [status, setStatus] = useState<ImportStatus>('IDLE');
   const [preview, setPreview] = useState<ImportPreview | null>(null);
@@ -423,6 +429,7 @@ export function LegacyXlsImportPreview({
     ReadonlyMap<number, PlaceSearchState>
   >(new Map());
   const [isDropActive, setIsDropActive] = useState(false);
+  const [localFolderMessage, setLocalFolderMessage] = useState<string | null>(null);
   // Preview를 읽은 시점에 분류가 필요했던 후보는 분류 뒤에도 같은 자리에 남긴다.
   const [reviewFirstCandidateIndexes, setReviewFirstCandidateIndexes] = useState<
     ReadonlySet<number>
@@ -528,6 +535,7 @@ export function LegacyXlsImportPreview({
     setSaveMessage(null);
     setPlaceSearchByCandidateIndex(new Map());
     setIsDropActive(false);
+    setLocalFolderMessage(null);
     setReviewFirstCandidateIndexes(new Set());
   };
 
@@ -536,6 +544,7 @@ export function LegacyXlsImportPreview({
       return;
     }
 
+    setLocalFolderMessage(null);
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
     kakaoAbortControllerRef.current?.abort();
@@ -693,6 +702,34 @@ export function LegacyXlsImportPreview({
     if (file !== undefined) {
       void processFile(file);
     }
+  };
+
+  const handleLocalFinanceFolderImport = async () => {
+    if (pickLatestLocalFinanceXls === undefined || status === 'READING' || status === 'SAVING') {
+      return;
+    }
+
+    setLocalFolderMessage(null);
+
+    let result: LocalFinanceDirectoryPickResult;
+    try {
+      result = await pickLatestLocalFinanceXls();
+    } catch {
+      // 권한 거부·읽기 실패 원인에 경로가 담길 수 있어 일반화된 안내만 보여 준다.
+      setLocalFolderMessage('폴더를 읽지 못했습니다. 파일 선택하기로 계속할 수 있습니다.');
+      return;
+    }
+
+    if (result.status === 'CANCELLED') {
+      return;
+    }
+
+    if (result.status === 'EMPTY') {
+      setLocalFolderMessage('선택한 폴더에서 XLS 파일을 찾지 못했습니다.');
+      return;
+    }
+
+    await processFile(result.file);
   };
 
   const handleConfirm = async () => {
@@ -1608,6 +1645,29 @@ export function LegacyXlsImportPreview({
           <small>또는 XLS 파일을 여기로 끌어놓기</small>
         </span>
       </label>
+
+      {pickLatestLocalFinanceXls === undefined ? null : (
+        <div className="import-folder-import">
+          <button
+            type="button"
+            className="import-folder-action"
+            aria-describedby="import-folder-hint"
+            disabled={status === 'READING' || status === 'SAVING'}
+            onClick={() => void handleLocalFinanceFolderImport()}
+          >
+            로컬 금융 폴더에서 최신 XLS 불러오기
+          </button>
+          {/* Chrome은 다운로드 폴더 자체를 폴더 선택 대상에서 막고 하위 폴더만 허용한다. */}
+          <p className="import-folder-hint" id="import-folder-hint">
+            다운로드 폴더 자체는 선택할 수 없어요. 금융 파일을 모아 둔 하위 폴더를 골라 주세요.
+          </p>
+          {localFolderMessage === null ? null : (
+            <p className="import-folder-message" role="status">
+              {localFolderMessage}
+            </p>
+          )}
+        </div>
+      )}
 
       {preview !== null ? (
         <section className="import-preview-result" aria-labelledby="import-result-title">

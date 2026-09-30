@@ -1456,3 +1456,58 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* 로컬 금융 폴더에서 최신 XLS 불러오기 */
+.import-page .import-folder-import {
+  display: grid;
+  width: 100%;
+  gap: var(--space-2, 8px);
+  margin-top: var(--space-2, 8px);
+}
+
+.import-page .import-folder-action {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 14px;
+  color: var(--primary-strong, #0f3226);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  background: var(--primary-soft, #e8f1e8);
+  border: 1px solid var(--border-subtle, #e4e5eb);
+  border-radius: var(--radius-button, 16px);
+  cursor: pointer;
+}
+
+.import-page .import-folder-action:hover:not(:disabled),
+.import-page .import-folder-action:active:not(:disabled) {
+  background: var(--surface-pressed, #e1e8df);
+}
+
+.import-page .import-folder-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.import-page .import-folder-hint,
+.import-page .import-folder-message {
+  margin: 0;
+  color: var(--text-secondary, #5f6b63);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.import-page .import-folder-message {
+  font-weight: 700;
+}
+
+.import-page .legacy-import-preview--reading .import-folder-import,
+.import-page .legacy-import-preview--preview .import-folder-import,
+.import-page .legacy-import-preview--saved .import-folder-import {
+  order: 3;
+}
+
+.import-page .legacy-import-preview--saving .import-folder-import {
+  display: none;
+}
