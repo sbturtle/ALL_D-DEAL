@@ -1,5 +1,66 @@
 # 엔지니어링 로그
 
+## 2026-09-30 — Chrome 내장 AI 카테고리 분류 실험
+
+### 구현
+
+- `src/experiments/chrome-built-in-ai/`에 Prompt API 최소 타입·감지, 카테고리 시스템 프롬프트와 `responseConstraint`(기본 카테고리 13개 + `UNKNOWN`, `DATE` 제외), 가짜 거래 설명 fixture 79건, 거래마다 세션을 `clone()`해 한 번만 묻는 평가 루프와 지표 계산을 추가했다.
+- 개발 서버 전용 실행 페이지 `experiments/chrome-built-in-ai/index.html`을 추가했다. `npm run dev` 후 `/experiments/chrome-built-in-ai/`를 PC Chrome으로 열고 `실험 시작`을 누르면 된다. 프로덕션 build 입력이 아니어서 배포 산출물에는 없다.
+- 앱 화면, Import 흐름, 저장 데이터, `requirements.md`의 `AI 기반 카테고리 모델` 제외 항목과 ADR은 바꾸지 않았다.
+
+### 실행 환경
+
+- Chrome 154.0.8037.92, Windows 11, RTX 4060 Ti(VRAM 7.9GB), RAM 32GB.
+- 기본 프로필에 이미 있던 모델 `OptGuideOnDeviceModel` 2025.8.8.1141(`v3Nano`)을 임시 프로필로 복사하고, 그 임시 프로필 Chrome을 CDP로 실행했다. 사용자 기본 프로필과 설정은 바꾸지 않았고 임시 프로필은 실행 후 삭제했다.
+- 비교 기준은 작업 트리의 현재 `DEFAULT_CATEGORY_KEYWORDS`(커밋 전 확장분 포함)이다. 응답 시간은 세션 복제와 응답을 합한 값이다.
+
+### 결과(fixture 79건, 2회 실행)
+
+| 지표 | 1회차 | 2회차 |
+| --- | --- | --- |
+| 키워드 기본 추천만 정답 | 28 (오답 3, 미분류 48) | 28 (오답 3, 미분류 48) |
+| AI만 정답 | 71 (오답 7, `UNKNOWN` 1) | 71 (오답 8) |
+| 키워드가 놓친 48건 중 AI 정답 | 42 (오답 5, `UNKNOWN` 1) | 42 (오답 6) |
+| 키워드 우선 + AI 보완 정답 | 70 (오답 8, 미분류 1) | 70 (오답 9) |
+| 응답 시간 중앙값 / p90 | 369ms / 421ms | 368ms / 427ms |
+| 형식 오류 / 실행 오류 | 0 / 0 | 0 / 0 |
+
+### 관찰
+
+- `LanguageModel.availability()`에서 입력 언어 `ko`는 `unavailable`이었다. 입력 언어를 `en`으로 선언하고 한국어 설명을 넣으면 동작했지만 공식 지원 범위 밖이라 Chrome·모델 업데이트에 따라 달라질 수 있다.
+- 기능 플래그가 없는 Chrome 154에서도 localhost와 공개 https 주소(`example.com`) 모두 `LanguageModel`이 노출되고 `en`이 `available`이었다. 이 PC·버전에서 관찰한 결과이며, 모델이 없는 기기에서는 사용자 조작 뒤 모델 다운로드가 먼저 필요하다.
+- 웹에서 샘플링 파라미터를 고정할 수 없어 두 실행 사이에 79건 중 5건의 답이 바뀌었다.
+- 반복된 오답은 통신·케이블 요금(`SK브로드밴드`→구독, `(주)케이티`→기타, `LG헬로비전`→모름·구독), `커피머신 전문몰`→카페(키워드와 같은 오답), `더클라이밍`→여가, `야나두`→기타였다. 2회차에서는 `여기어때`를 주거·공과금으로 답했다.
+- AI는 키워드 오답인 `쿠팡플레이`(쇼핑)를 구독으로 맞혔지만 키워드 우선 순서에서는 반영되지 않는다.
+
+### 해석과 다음 결정 제안
+
+- 가짜 fixture 기준으로 키워드만 쓸 때 35%(28/79)인 정답 비율이 AI 보완으로 89%(70/79)까지 올랐다. 대신 오답이 3건에서 8~9건으로 늘어나므로, 제품에 넣는다면 저장 전 확인을 전제로 한 별도 `AI 추천` 표시가 필수다.
+- fixture는 작성자가 기대 카테고리를 붙인 79건이고 유명 상호 비중이 높다. 실제 카드 명세의 잘린 상호·법인명·결제대행 표기에서는 정확도가 더 낮을 수 있으므로, 채택 판단 전에 실제 미분류 설명으로 사용자 PC 브라우저 안에서만 같은 측정을 하는 것이 다음 단계다.
+- 모바일 Chrome은 지원 대상이 아니므로 도입하더라도 PC Chrome에서만 켜지는 선택적 보완이어야 한다.
+- 도입을 결정하면 `requirements.md`의 `AI 기반 카테고리 모델` 제외 항목과 ADR-0012 재검토 조건을 다루는 새 ADR부터 작성한다.
+
+### 검증
+
+| 검증 | 결과 | 비고 |
+| --- | --- | --- |
+| `vitest run src/experiments` | PASS | 12개 테스트 |
+| 실험 파일 `eslint --max-warnings 0` | PASS | |
+| `npm run typecheck` | PASS | |
+| `npm run build` | PASS | 기존 번들 크기 경고만 존재, `dist`에 실험 페이지·`LanguageModel` 참조 없음 |
+| 전체 `vitest run --no-file-parallelism` | 529/532 PASS | 실패 3건은 진행 중인 JSON 백업 작업의 `local-ledger-backup-repository.test.ts`이며 이번 변경과 무관 |
+| 전체 `npm run lint` | FAIL(무관) | 진행 중인 백업 작업 `local-ledger-backup.test.ts`의 미사용 import 1건 |
+| 실제 Chrome 평가 | PASS | 임시 프로필 Chrome 154로 2회 실행, 79건 모두 응답 |
+| `git diff --cached --check` | PASS | |
+
+### 기능 단위 커밋
+
+- `d477001` `[Test] : Chrome 내장 AI 카테고리 분류 실험 추가`
+
+### 상태
+
+`DONE`
+
 ## 2026-09-29 — 배포 사이트 점검 피드백 반영
 
 ### 구현

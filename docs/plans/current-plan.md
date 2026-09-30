@@ -363,3 +363,62 @@
 ## 완료 상태
 
 `DONE`
+
+---
+
+# 현재 작업 — Chrome 내장 AI 카테고리 분류 실험
+
+- 상태: `DONE`
+- 계획 갱신일: 2026-09-30
+- 작업 유형: 기술 검증 실험(Spike), 제품 기능 아님
+
+## 목표
+
+PC Chrome의 내장 Gemini Nano(Prompt API)가 한국어 카드 거래 설명의 카테고리를
+얼마나 맞히는지, 특히 현재 기본 추천 키워드가 놓치는 거래를 얼마나 보완하는지
+가짜 fixture로 측정한다. 결과는 ADR-0012의 재검토 조건과 별도 ADR 작성 여부를
+판단하는 근거로만 쓴다.
+
+## 범위와 결정
+
+1. 앱 화면·Import 흐름·저장 데이터는 바꾸지 않는다. 실험 코드는
+   `src/experiments/chrome-built-in-ai/`에, 실행 페이지는 개발 서버 전용
+   `experiments/chrome-built-in-ai/index.html`에 두고 프로덕션 build 입력에 넣지 않는다.
+2. fixture는 공개 상호명과 지어낸 일반 상호로 만든 가짜 거래 설명 약 80건이다.
+   금액·날짜·카드번호·개인정보는 넣지 않고 private 샘플은 열지 않는다.
+3. 모델은 `responseConstraint` JSON Schema로 기본 카테고리 ID(`DATE` 제외)와
+   `UNKNOWN` 중 하나만 고른다. 거래마다 기본 세션을 `clone()`해 이전 거래 문맥이
+   섞이지 않게 한다.
+4. 같은 fixture에서 `findDefaultCategoryKeyword` 결과와 비교해 키워드 적중·정답,
+   AI 전체 정답, 키워드 미적중 거래의 AI 정답, 키워드 우선 + AI 보완 조합 정답,
+   확신 오답 수와 응답 시간을 계산한다.
+5. 실행은 사용자 기본 Chrome 프로필을 건드리지 않도록 임시 프로필의 Chrome으로
+   한다. 기본 프로필에 이미 받아진 모델 파일을 임시 프로필로 복사해 재사용하고,
+   필요한 기능 플래그는 그 실행에만 켠다.
+6. `requirements.md`의 `AI 기반 카테고리 모델` 제외 항목과 기존 ADR은 바꾸지 않는다.
+   채택 여부는 결과를 본 뒤 별도 ADR로 결정한다.
+
+## 완료 조건
+
+1. 프롬프트·응답 해석·지표 계산 순수 함수와 가짜 세션을 쓰는 평가 루프 테스트가
+   통과한다.
+2. 실험 파일 lint, 전체 typecheck, build가 통과하고 build 산출물에 실험 페이지가 없다.
+3. 실제 Chrome에서 `LanguageModel.availability()` 결과(`ko`·`en`)와 fixture 전체
+   평가 결과를 얻어 엔지니어링 로그에 기록한다. 실행하지 못하면 원인을 기록한다.
+4. 결과 해석과 다음 결정 제안을 엔지니어링 로그에 한국어로 남긴다.
+
+## 검증 결과
+
+| 검증 항목 | 결과 | 비고 |
+| --- | --- | --- |
+| 순수 함수·평가 루프 테스트 | PASS | `src/experiments` 12개 테스트 |
+| lint·typecheck·build | PASS | 실험 파일 lint, 전체 typecheck, build 통과; `dist`에 실험 페이지·`LanguageModel` 참조 없음 |
+| 실제 Chrome 평가 | PASS | Chrome 154 임시 프로필로 79건을 2회 평가. `ko`는 `unavailable`, `en`은 사용 가능. 키워드만 28/79, 키워드 우선 + AI 보완 70/79 정답 |
+
+플래그 없는 Chrome 154에서도 localhost와 공개 https 주소 모두 `LanguageModel`이
+노출되어, 두 번째 실행부터는 기능 플래그 없이 확인했다. 세부 결과와 해석은
+엔지니어링 로그 2026-09-30 항목에 남겼다.
+
+## 완료 상태
+
+`DONE`
