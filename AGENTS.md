@@ -18,6 +18,12 @@
 5. 완료를 주장하기 전에 현재 Phase에서 가능한 lint, typecheck, test, build와 사용자 흐름 검증 결과를 남긴다.
 6. 중요한 요구 변경, 설계 결정, 검증 결과를 관련 문서와 엔지니어링 로그에 반영한다.
 
+## 웹 테스트 브라우저
+
+- 실제 브라우저로 화면·사용자 흐름을 검증하거나 스크린샷·CDP 자동화를 할 때는 Google Chrome이 아니라 Aside 브라우저(`C:\Program Files\Aside\Application\Aside.exe`, Chromium 기반)를 사용한다.
+- 사용자가 쓰는 Aside 프로필은 건드리지 않는다. 일회용 `--user-data-dir`와 사용 중이 아닌 `--remote-debugging-port`, `--no-first-run --no-default-browser-check`로 띄워 CDP로 조작하고, 끝나면 프로세스를 종료하고 임시 프로필을 지운다.
+- Chrome에서만 나타나는 동작을 확인해야 해서 Chrome을 쓰면 그 이유를 검증 기록에 남긴다.
+
 ## 문서와 작업 기록 언어
 
 - `docs/product/`, `docs/architecture/`, `docs/adr/`, `docs/plans/`, `docs/logs/`의 설명 문장, 제목, 표 머리글, 상태와 검증 메모는 한국어로 작성한다.
