@@ -43,6 +43,28 @@ describe('findLatestLegacyXlsFile', () => {
 
     expect(file).toBe(newer);
   });
+
+  it('skips the Excel owner file created while the XLS is open', async () => {
+    const statement = fakeFile('fake-card.xls', 100);
+    const ownerFile = fakeFile('~$ke-card.xls', 200);
+
+    const file = await findLatestLegacyXlsFile(
+      createDirectory([
+        { kind: 'file', name: statement.name, file: statement },
+        { kind: 'file', name: ownerFile.name, file: ownerFile },
+      ]),
+    );
+
+    expect(file).toBe(statement);
+  });
+
+  it('returns nothing when only an Excel owner file remains', async () => {
+    const file = await findLatestLegacyXlsFile(
+      createDirectory([{ kind: 'file', name: '~$fake.xls', file: fakeFile('~$fake.xls', 1) }]),
+    );
+
+    expect(file).toBeUndefined();
+  });
 });
 
 describe('pickLatestLocalFinanceXls', () => {

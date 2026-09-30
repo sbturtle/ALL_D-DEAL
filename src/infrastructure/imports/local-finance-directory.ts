@@ -33,8 +33,10 @@ type DirectoryPickerWindow = Window &
 
 export type LocalFinanceDirectoryPicker = () => Promise<LocalDirectoryHandle>;
 
+// Excel은 파일을 여는 동안 같은 폴더에 `~$`로 시작하는 작은 소유자·잠금 파일을 만든다.
+// 이 파일은 확장자가 같고 항상 가장 최근 파일이라 후보에서 뺀다.
 function isLegacyXlsFileName(fileName: string): boolean {
-  return /\.xls$/i.test(fileName);
+  return /\.xls$/i.test(fileName) && !fileName.startsWith('~$');
 }
 
 function isAbortError(error: unknown): boolean {
