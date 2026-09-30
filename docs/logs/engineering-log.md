@@ -1,5 +1,54 @@
 # 엔지니어링 로그
 
+## 2026-09-30 — 로컬 금융 폴더에서 최신 XLS 불러오기
+
+### 배경
+
+사용자가 외부에서 받은 `apply-all-d-deal-local-finance-v2.mjs`(웹 폴더 불러오기 + Playwright `collector/` + ADR-0017)를 적용하려 했다. 실행 전 검토에서 다음을 확인했다.
+
+- 현재 작업 트리에서는 `legacy-xls-import-preview.tsx`의 `setUnclassifiedOnlyIndexes(null)` anchor가 없어 9번째 교체에서 멈춘다. 재점검 후속 작업이 해당 토글을 대체했기 때문이다.
+- HEAD에서는 `.gitignore` anchor가 `\\n` 문자열로 적혀 있어 일치하지 않고, 같은 버그로 ADR 목록 표에 `\n` 글자가 그대로 들어간다.
+- 스크립트는 파일을 하나씩 즉시 쓰므로 중간에 멈추면 없는 모듈을 import하는 일부 변경이 남아 typecheck가 깨진다.
+- `collector/src/config.test.ts`는 `node:test`를 써서 루트 vitest가 `no tests`로 실패 처리한다(격리 폴더에서 재현).
+- ADR-0017을 스스로 `채택`으로 넣어 ADR-0001과 요구사항 제외 항목을 바꾸고, FR-046 번호가 미커밋 반복 지출 요구사항과 겹친다.
+
+사용자 결정: 웹 폴더 불러오기만 적용하고, 먼저 재점검 후속 작업을 커밋한 뒤 `feat/local-finance-folder-import` 브랜치에서 진행한다.
+
+### 구현
+
+- `src/application/imports/local-finance-directory-import.ts`에 결과 타입과 `LatestLocalFinanceXlsPicker` port를 두었다.
+- `src/infrastructure/imports/local-finance-directory.ts`는 `showDirectoryPicker`(`mode: 'read'`, `startIn: 'downloads'`, 고정 `id`)로 폴더를 받고 최상위 `.xls` 중 `lastModified`가 가장 늦은 파일을 고른다. 취소는 `CANCELLED`, XLS 없음은 `EMPTY`이고 그 밖의 오류는 호출자에게 넘긴다. 스크립트의 non-null 단언은 `bind`한 지역 함수로 바꿨다.
+- `LegacyXlsImportPreview`에 폴더 버튼, 하위 폴더 안내(`aria-describedby`), 일반화된 상태 메시지를 추가했다. 새 파일 읽기와 Preview 지우기에서 메시지를 비운다. `ImportPage`와 `App`은 지원 브라우저에서만 picker를 넘긴다.
+- 첫 실제 화면 확인에서 `.legacy-import-preview button`의 `margin-top: 0`이 버튼 간격을, `app.css`의 `.legacy-import-preview > p:not(...)`이 안내 색을 덮는 것을 발견했다. 버튼·안내·메시지를 컨테이너로 감싸고 기존 토큰(`--primary-soft`, `--surface-pressed`, `--border-subtle`)으로 스타일을 바꿨다.
+- Chromium 소스에서 `DIR_DEFAULT_DOWNLOADS`가 `kDontBlockChildren`으로 막혀 있음을 확인해, 다운로드 폴더 자체 대신 하위 폴더를 고르라는 안내를 넣었다.
+
+### 검증
+
+| 검증 | 결과 | 비고 |
+| --- | --- | --- |
+| `local-finance-directory.test.ts` | PASS | 5개 |
+| `local-finance-directory-import.test.tsx` | PASS | 5개 |
+| worktree(HEAD + 이번 변경) `tsc -b`, `eslint . --max-warnings 0` | PASS | 다른 미커밋 작업 제외 |
+| worktree(HEAD + 이번 변경) `vitest run --no-file-parallelism` | PASS | 51개 파일·524개 테스트 |
+| worktree(HEAD + 이번 변경) `vite build` | PASS | 기존 번들 크기 경고만 존재 |
+| `git diff --cached --check` | PASS | |
+| 실제 Chrome(390px, 임시 프로필) | PASS | 버튼·안내 표시, 빈 폴더 안내, 최신 XLS 선택(오래된 XLS·`.xlsx` 무시), 파일명 비노출, `2건 저장하기` 후 IndexedDB 2건, 가로 넘침 없음 |
+| 네이티브 폴더 선택 창 | 미검증 | 자동화로 조작할 수 없어 같은 타입의 OPFS 폴더 핸들을 선택 결과로 사용했다 |
+
+### 남은 일
+
+- 폴더 핸들을 기억하지 않아 매번 폴더를 골라야 한다. 기억하려면 IndexedDB에 핸들을 저장하고 권한 재확인 흐름을 설계해야 한다.
+- 수집기는 실제 금융기관 한 곳에서 세션 유지·자동화 차단·약관을 확인한 뒤 ADR로 결정한다.
+- `master`에는 병합하지 않았다. 사용자가 브랜치를 확인한 뒤 병합한다.
+
+### 기능 단위 커밋
+
+- `a6c3c25` `[Feat] : 로컬 금융 폴더에서 최신 XLS 불러오기 추가`
+
+### 상태
+
+`DONE`
+
 ## 2026-09-30 — Chrome 내장 AI 카테고리 분류 실험
 
 ### 구현

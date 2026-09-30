@@ -422,3 +422,53 @@ PC Chrome의 내장 Gemini Nano(Prompt API)가 한국어 카드 거래 설명의
 ## 완료 상태
 
 `DONE`
+
+---
+
+# 현재 작업 — 로컬 금융 폴더에서 최신 XLS 불러오기
+
+- 상태: `DONE`
+- 계획 갱신일: 2026-09-30
+- 작업 유형: Import 입력 경로 수직 슬라이스(11A)
+- 브랜치: `feat/local-finance-folder-import`
+
+## 목표
+
+PC Chrome처럼 폴더 선택을 지원하는 브라우저에서 사용자가 고른 로컬 금융 폴더의
+최신 XLS를 기존 Preview 흐름으로 불러온다. 사용자가 받은 외부 적용 스크립트
+(`apply-all-d-deal-local-finance-v2.mjs`) 중 웹 부분만 현재 코드와 저장소 규약에
+맞게 옮긴다.
+
+## 범위와 결정
+
+1. 사용자가 직접 고른 폴더의 최상위 `.xls` 중 수정 시각이 가장 늦은 파일 하나만 읽는다.
+2. 새 저장 경로 없이 기존 `Preview → 중복 검토 → 사용자 확인 → IndexedDB` 흐름을 쓴다.
+3. 폴더 핸들·경로·원본 파일명은 저장·표시하지 않는다.
+4. 결과 타입과 picker port는 Application에 두고 infrastructure가 `showDirectoryPicker`로
+   구현한다. UI는 infrastructure를 직접 import하지 않는다.
+5. 미지원 브라우저에서는 버튼을 숨기고 기존 파일 선택·끌어놓기만 남긴다.
+6. 스크립트의 `collector/`(Playwright 수집기), ADR-0017, `.gitignore` 변경과 수집기
+   요구사항은 이번 범위에서 뺀다. 금융기관 세션 만료·자동화 차단·약관을 실제 기관
+   한 곳에서 먼저 확인한 뒤 별도 ADR로 결정한다.
+7. 스크립트는 그대로 실행하지 않는다. 현재 트리에서는 anchor 불일치로, HEAD에서는
+   `.gitignore` anchor의 `\\n` 문자열 버그로 중간에 멈춰 일부 파일만 바뀐 상태가 남는다.
+
+## 완료 조건
+
+1. 폴더 선택 결과가 SELECTED면 기존 Preview가 열리고 파일명이 화면에 나타나지 않는다.
+2. 취소는 상태를 바꾸지 않고, 빈 폴더·권한 오류는 경로·파일명 없는 일반화된 안내를 보여 준다.
+3. 미지원 브라우저에서 버튼이 보이지 않고 기존 파일 선택이 유지된다.
+4. 관련 테스트, lint, typecheck, test, build와 실제 Chrome 흐름 검증이 통과한다.
+
+## 검증 결과
+
+| 검증 항목 | 결과 | 비고 |
+| --- | --- | --- |
+| 단위·컴포넌트 테스트 | PASS | 폴더 탐색 5개, UI 5개 |
+| 전체 게이트 | PASS | HEAD + 이번 변경만 얹은 worktree에서 typecheck, `eslint .`, 51개 파일·524개 테스트, build |
+| 실제 Chrome 흐름 | PASS | 390px 임시 프로필에서 빈 폴더 안내, 최신 XLS 선택, 파일명 비노출, 저장 후 IndexedDB 2건 |
+| 네이티브 폴더 선택 창 | 미검증 | 자동화로 조작할 수 없어 같은 타입의 OPFS 폴더 핸들을 선택 결과로 사용 |
+
+## 완료 상태
+
+`DONE`
