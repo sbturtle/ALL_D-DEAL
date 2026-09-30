@@ -145,6 +145,23 @@ describe('App', () => {
     expect(window.location.pathname).toBe('/settings');
   });
 
+  it('없는 주소는 홈 대신 페이지 없음 화면과 복귀 링크를 보여 준다', async () => {
+    const user = userEvent.setup();
+    renderAt('/nonexistent');
+
+    expect(
+      screen.getByRole('heading', { name: '페이지를 찾을 수 없어요' }),
+    ).toBeVisible();
+    expect(screen.getByText('/nonexistent')).toBeVisible();
+    expect(document.title).toBe('페이지 없음 · ALL D·DEAL · 알뜰');
+
+    await user.click(screen.getByRole('link', { name: '홈으로 가기' }));
+    expect(window.location.pathname).toBe('/home');
+    expect(
+      screen.queryByRole('heading', { name: '페이지를 찾을 수 없어요' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('브라우저 뒤로·앞으로에 해당하는 popstate로 화면을 바꾼다', () => {
     renderAt('/transactions');
 

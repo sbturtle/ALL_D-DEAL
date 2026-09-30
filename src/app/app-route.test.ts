@@ -15,7 +15,9 @@ describe('app routes', () => {
     ['/imports', 'IMPORTS'],
     ['/payroll', 'PAYROLL'],
     ['/settings', 'SETTINGS'],
-    ['/unknown', 'HOME'],
+    ['/unknown', 'NOT_FOUND'],
+    ['/home/extra', 'NOT_FOUND'],
+    ['/404', 'NOT_FOUND'],
   ] as const)('maps %s to %s', (pathname, expectedRoute) => {
     expect(getAppRoute(pathname)).toBe(expectedRoute);
   });

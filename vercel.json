@@ -1,4 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/(home|transactions|review|imports|payroll|settings|ledger)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/(home|transactions|review|imports|payroll|settings|ledger)/",
+      "destination": "/index.html"
+    }
+  ]
 }

@@ -19,6 +19,7 @@ import { BrowserLedgerRepository } from '../infrastructure/storage/browser-ledge
 import { getKakaoMapPlaceSearch } from '../infrastructure/kakao/kakao-map-config';
 import { DashboardSection } from '../ui/dashboard/dashboard-section';
 import { ImportPage } from '../ui/imports/import-page';
+import { NotFoundPage } from '../ui/not-found/not-found-page';
 import { PayrollPage } from '../ui/payroll-estimate/payroll-page';
 import { ReviewPage } from '../ui/review/review-page';
 import { SettingsPage } from '../ui/settings/settings-page';
@@ -170,6 +171,12 @@ export function App() {
         ) : null}
         {route === 'SETTINGS' ? (
           <SettingsPage settingsRepository={ledgerRepository} />
+        ) : null}
+        {route === 'NOT_FOUND' ? (
+          <NotFoundPage
+            pathname={window.location.pathname}
+            onNavigate={handleNavigation}
+          />
         ) : null}
       </div>
     </MobileAppShell>

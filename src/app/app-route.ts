@@ -5,6 +5,7 @@ export const APP_ROUTE_PATHS = {
   IMPORTS: '/imports',
   PAYROLL: '/payroll',
   SETTINGS: '/settings',
+  NOT_FOUND: '/404',
 } as const;
 
 export type AppRoute = keyof typeof APP_ROUTE_PATHS;
@@ -16,6 +17,7 @@ export const APP_ROUTE_TITLES: Readonly<Record<AppRoute, string>> = {
   IMPORTS: '소비 불러오기',
   PAYROLL: '급여 계산',
   SETTINGS: '설정',
+  NOT_FOUND: '페이지 없음',
 };
 
 export function getAppRoute(pathname: string): AppRoute {
@@ -51,7 +53,7 @@ export function getAppRoute(pathname: string): AppRoute {
     return 'SETTINGS';
   }
 
-  return 'HOME';
+  return 'NOT_FOUND';
 }
 
 export function getAppRoutePath(route: AppRoute): string {

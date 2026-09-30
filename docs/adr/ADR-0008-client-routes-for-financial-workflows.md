@@ -24,5 +24,5 @@ Phase 6A는 `/ledger`, `/imports`, `/payroll`을 고유 경로로 제공했고, 
 - 4개 핵심 화면은 엄지손가락으로 닿기 쉬운 하단 탐색에서 전환하고, 파일 Import는 기존 기능만 담은 빠른 작업 시트로 연다.
 - 기존 `/ledger` 북마크는 계속 동작한다. 정적 배포 fallback에는 새 canonical 경로도 포함해야 한다.
 - 현 단계에는 `react-router` 같은 추가 의존성이 필요하지 않다.
-- 정적 배포 시 이 경로들을 앱 진입점으로 fallback하는 호스트 설정이 필요하다. 2026-09-29 Vercel 배포에서 `/home` 등 직접 접속이 404로 확인되어, 저장소 루트 `vercel.json`에 모든 경로를 `/index.html`로 보내는 rewrite를 추가했다. Vercel은 실제 정적 파일을 rewrite보다 먼저 제공하므로 번들·아이콘 요청은 영향을 받지 않는다.
+- 정적 배포 시 이 경로들을 앱 진입점으로 fallback하는 호스트 설정이 필요하다. 2026-09-29 Vercel 배포에서 `/home` 등 직접 접속이 404로 확인되어, 저장소 루트 `vercel.json`에 모든 경로를 `/index.html`로 보내는 rewrite를 추가했다. Vercel은 실제 정적 파일을 rewrite보다 먼저 제공하므로 번들·아이콘 요청은 영향을 받지 않는다. 같은 날 없는 주소가 Home으로 보이는 문제를 고치면서 rewrite를 알려진 경로(`/home`, `/transactions`, `/review`, `/imports`, `/payroll`, `/settings`, `/ledger`)로 좁혔다. 빌드는 `index.html` 사본인 `404.html`을 만들어 Vercel이 그 밖의 주소에 HTTP 404 상태로 앱 셸을 돌려주고, 클라이언트 라우터는 알 수 없는 경로를 `NOT_FOUND` 화면(`페이지를 찾을 수 없어요`)으로 보여 준다.
 - 중첩 경로, 로더, 인증, 서버 렌더링 요구가 생기면 전용 라우터를 다시 검토한다.
