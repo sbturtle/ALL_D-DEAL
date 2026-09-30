@@ -1393,21 +1393,62 @@
   margin: 0;
 }
 
-.import-page .import-unclassified-filter {
-  min-height: 44px;
+.import-page .import-candidate-all-classified {
   margin: var(--space-3, 12px) 0 0;
-  padding: 9px 14px;
-  color: var(--primary-strong, #5265d8);
-  font-size: 0.75rem;
-  font-weight: 700;
-  background: var(--primary-soft, #eef0ff);
-  border: 1px solid transparent;
-  border-radius: 999px;
+  padding: var(--space-3, 12px);
+  color: var(--positive, #2f8a61);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  background: var(--positive-soft, #eaf7f1);
+  border-radius: 14px;
 }
 
-.import-page .import-unclassified-filter[aria-pressed='true'] {
-  color: var(--on-primary, #fff);
-  background: var(--primary, #6c7ff2);
+.import-page .import-classified-candidates {
+  margin-top: var(--space-4, 16px);
+  background: var(--surface-muted, #f1f2f6);
+  border-radius: 16px;
+}
+
+.import-page .import-classified-candidates > summary,
+.import-page .import-candidate-more > summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+  min-height: 44px;
+  padding: 12px 14px;
+  color: var(--text-primary, #1e2028);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.import-page .import-classified-candidates > summary small,
+.import-page .import-candidate-more > summary small {
+  color: var(--text-secondary, #6c707c);
+  font-size: 0.6875rem;
+  font-weight: 550;
+}
+
+.import-page .import-classified-candidates > .import-candidate-list {
+  padding: 0 var(--space-2, 8px) var(--space-2, 8px);
+}
+
+.import-page .import-candidate-more {
+  margin-top: var(--space-3, 12px);
+  border-top: 1px solid var(--border-subtle, #e6e2d8);
+}
+
+.import-page .import-candidate-more > summary {
+  padding: 10px 2px 4px;
+}
+
+.import-page .import-classified-candidates > summary:focus-visible,
+.import-page .import-candidate-more > summary:focus-visible {
+  outline: 3px solid var(--primary-soft, #eef0ff);
+  outline-offset: 2px;
+  border-radius: 12px;
 }
 
 @media (max-width: 380px) {

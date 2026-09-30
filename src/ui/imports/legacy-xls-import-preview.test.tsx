@@ -316,6 +316,41 @@ describe('LegacyXlsImportPreview', () => {
     expect(screen.queryByText('1건을 이 기기에 저장했습니다.')).not.toBeInTheDocument();
   });
 
+  it('shows candidates that need a category first and folds auto-classified ones', async () => {
+    const user = userEvent.setup();
+    const mixedPreview: ImportPreview = {
+      ...multipleExpensePreview,
+      candidates: [
+        multipleExpensePreview.candidates[0]!,
+        {
+          ...multipleExpensePreview.candidates[1]!,
+          draft: { ...multipleExpensePreview.candidates[1]!.draft, categoryId: 'TRANSPORT' },
+          categorySource: 'DEFAULT_KEYWORD',
+        },
+      ],
+    };
+    render(<LegacyXlsImportPreview previewFile={async () => mixedPreview} />);
+
+    await user.upload(
+      screen.getByLabelText('XLS 파일 선택'),
+      new File(['fake'], 'fake.xls', { type: 'application/vnd.ms-excel' }),
+    );
+
+    const reviewFirst = screen.getByRole('list', { name: '분류가 필요한 가져오기 후보' });
+    expect(within(reviewFirst).getByText('가짜 식료품점')).toBeVisible();
+    expect(screen.getByText('가짜 대중교통')).not.toBeVisible();
+    expect(screen.getByLabelText('후보 1 메모')).not.toBeVisible();
+
+    await user.click(within(reviewFirst).getByText('목적·메모·규칙'));
+    expect(screen.getByLabelText('후보 1 메모')).toBeVisible();
+
+    await user.click(screen.getByText('자동 분류된 거래 1건'));
+    expect(screen.getByText('가짜 대중교통')).toBeVisible();
+    expect(
+      screen.getByText('자주 쓰는 상호라 기본 추천으로 채웠어요. 다르면 바꿔 주세요.'),
+    ).toBeVisible();
+  });
+
   it('classifies every candidate with the same description at once', async () => {
     const user = userEvent.setup();
     const confirmPreview = vi.fn().mockResolvedValue({
@@ -356,10 +391,9 @@ describe('LegacyXlsImportPreview', () => {
     await user.click(within(groups).getByLabelText('가짜 식료품점 묶음 카테고리 규칙 저장'));
     expect(screen.getByText(/분류 필요 1건을 찾았습니다/)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '분류 필요한 거래만 보기' }));
-    const candidates = screen.getByRole('list', { name: '가져오기 후보' });
-    expect(within(candidates).getAllByRole('listitem')).toHaveLength(1);
-    expect(within(candidates).getByText('가짜 대중교통')).toBeVisible();
+    const reviewFirst = screen.getByRole('list', { name: '분류가 필요한 가져오기 후보' });
+    expect(within(reviewFirst).getAllByRole('listitem')).toHaveLength(3);
+    expect(screen.queryByText(/자동 분류된 거래/)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '3건 저장하기' }));
     const [savedPreview, options] = confirmPreview.mock.calls[0]!;
@@ -903,8 +937,9 @@ describe('LegacyXlsImportPreview', () => {
     );
 
     expect(searchPlaces).not.toHaveBeenCalled();
+    await user.click(await screen.findByText('자동 분류된 거래 1건'));
     expect(
-      await screen.findByText('사용자 규칙 → 편의점 · USER_RULE · HIGH'),
+      screen.getByText('사용자 규칙 → 편의점 · USER_RULE · HIGH'),
     ).toBeVisible();
     expect(
       screen.queryByText('상세 분석 과정 (개발자용)'),

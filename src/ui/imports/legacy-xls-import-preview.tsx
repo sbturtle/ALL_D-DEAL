@@ -423,8 +423,10 @@ export function LegacyXlsImportPreview({
     ReadonlyMap<number, PlaceSearchState>
   >(new Map());
   const [isDropActive, setIsDropActive] = useState(false);
-  const [unclassifiedOnlyIndexes, setUnclassifiedOnlyIndexes] =
-    useState<ReadonlySet<number> | null>(null);
+  // Preview를 읽은 시점에 분류가 필요했던 후보는 분류 뒤에도 같은 자리에 남긴다.
+  const [reviewFirstCandidateIndexes, setReviewFirstCandidateIndexes] = useState<
+    ReadonlySet<number>
+  >(new Set());
   const [customCategories, setCustomCategories] = useState<
     readonly CustomCategory[]
   >(providedCustomCategories);
@@ -526,7 +528,7 @@ export function LegacyXlsImportPreview({
     setSaveMessage(null);
     setPlaceSearchByCandidateIndex(new Map());
     setIsDropActive(false);
-    setUnclassifiedOnlyIndexes(null);
+    setReviewFirstCandidateIndexes(new Set());
   };
 
   const processFile = async (file: File) => {
@@ -551,7 +553,7 @@ export function LegacyXlsImportPreview({
     setOpenCategoryPickerIndex(null);
     setSaveMessage(null);
     setPlaceSearchByCandidateIndex(new Map());
-    setUnclassifiedOnlyIndexes(null);
+    setReviewFirstCandidateIndexes(new Set());
 
     try {
       const parsedPreview = await previewFile(file);
@@ -576,6 +578,15 @@ export function LegacyXlsImportPreview({
           nextDuplicateMatches.map((match) => match.candidateIndex),
         );
         setPreview(nextPreview);
+        setReviewFirstCandidateIndexes(
+          new Set(
+            nextPreview.candidates.flatMap((candidate, candidateIndex) =>
+              needsClassification(candidate, candidate.draft.categoryId)
+                ? [candidateIndex]
+                : [],
+            ),
+          ),
+        );
         setDuplicateMatches(nextDuplicateMatches);
         setSelectedCandidateIndexes(
           new Set(
@@ -892,23 +903,6 @@ export function LegacyXlsImportPreview({
     });
   };
 
-  const toggleUnclassifiedOnly = () => {
-    if (preview === null || unclassifiedOnlyIndexes !== null) {
-      setUnclassifiedOnlyIndexes(null);
-      return;
-    }
-
-    setUnclassifiedOnlyIndexes(
-      new Set(
-        preview.candidates.flatMap((candidate, candidateIndex) =>
-          needsClassification(candidate, categoryIdByCandidateIndex.get(candidateIndex))
-            ? [candidateIndex]
-            : [],
-        ),
-      ),
-    );
-  };
-
   const toggleCategoryPicker = (candidateIndex: number) => {
     if (openCategoryPickerIndex === candidateIndex) {
       setOpenCategoryPickerIndex(null);
@@ -1073,377 +1067,14 @@ export function LegacyXlsImportPreview({
   const candidateDescriptionGroups =
     preview === null ? [] : groupExpenseCandidatesByDescription(preview.candidates);
   const isSaved = status === 'SAVED';
+  const reviewFirstCandidateCount = reviewFirstCandidateIndexes.size;
   const kakaoAnalysisPendingCount = Array.from(
     placeSearchByCandidateIndex.values(),
   ).filter((placeSearchState) => placeSearchState.status === 'SEARCHING').length;
   const isBusy =
     status === 'READING' || status === 'SAVING' || kakaoAnalysisPendingCount > 0;
 
-  return (
-    <div
-      className={`legacy-import-preview legacy-import-preview--${status.toLowerCase()}`}
-      id="import"
-      aria-busy={isBusy}
-    >
-      {kakaoAnalysisPendingCount > 0 ? (
-        <div className="import-kakao-loading" role="status" aria-live="polite">
-          <span className="import-kakao-loading-spinner" aria-hidden="true" />
-          <span>
-            <strong>Kakao 장소를 분석하고 있어요</strong>
-            <small>
-              {kakaoAnalysisPendingCount}건을 처리 중입니다. 결과가 도착하면 자동으로 표시됩니다.
-            </small>
-          </span>
-        </div>
-      ) : null}
-
-      {status === 'IDLE' ? (
-        <div className="import-start-state">
-          <ImportFileIllustration />
-          <h2 id="import-title">소비 내역 파일을 선택해 주세요</h2>
-          <p>
-            계좌 거래와 카드 이용내역 XLS를 이 기기에서 읽고, 확인할 거래를
-            차근차근 정리해요.
-          </p>
-        </div>
-      ) : null}
-
-      {status === 'READING' ? (
-        <div className="import-reading-state" role="status" aria-live="polite">
-          <span className="import-reading-spinner" aria-hidden="true" />
-          <h2>파일을 읽고 있어요</h2>
-          <p>거래와 중복 가능성을 이 기기에서 확인하고 있습니다.</p>
-        </div>
-      ) : null}
-
-      <label
-        className={
-          isDropActive
-            ? 'import-file-action import-file-dropzone is-dragging'
-            : 'import-file-action import-file-dropzone'
-        }
-        data-testid="import-file-dropzone"
-        onDragEnter={(event) => {
-          event.preventDefault();
-          if (status !== 'SAVING') {
-            setIsDropActive(true);
-          }
-        }}
-        onDragOver={(event) => {
-          event.preventDefault();
-        }}
-        onDragLeave={() => setIsDropActive(false)}
-        onDrop={handleFileDrop}
-      >
-        <input
-          type="file"
-          accept=".xls,application/vnd.ms-excel"
-          aria-label="XLS 파일 선택"
-          disabled={status === 'SAVING'}
-          onChange={handleFileChange}
-        />
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path
-            d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"
-            fill="none"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-          />
-        </svg>
-        <span>
-          {status === 'IDLE' ? '파일 선택하기' : '다른 파일 선택하기'}
-          <small>또는 XLS 파일을 여기로 끌어놓기</small>
-        </span>
-      </label>
-
-      {preview !== null ? (
-        <section className="import-preview-result" aria-labelledby="import-result-title">
-          <div className="import-preview-heading">
-            <span className="import-result-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" focusable="false">
-                <path
-                  d="m6.5 12.5 3.2 3.2 7.8-8"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2.5"
-                />
-              </svg>
-            </span>
-            <div className="import-preview-heading__copy">
-              <span className="step-label">파일 확인 완료</span>
-              <h4 id="import-result-title">{preview.candidates.length}건을 찾았어요</h4>
-              <p>
-                {preview.source === undefined
-                  ? '지원 여부를 확인할 파일'
-                  : SOURCE_LABELS[preview.source]}
-              </p>
-            </div>
-            <button
-              type="button"
-              className="import-clear-action"
-              disabled={status === 'SAVING'}
-              onClick={resetPreview}
-            >
-              지우기
-            </button>
-          </div>
-
-          <p className="import-preview-announcement" role="status" aria-live="polite">
-            {duplicateCheckFailed
-              ? `거래 후보 ${preview.candidates.length}건을 읽었지만 신규·중복 여부는 확인하지 못했습니다. 분류 필요 ${classificationNeededCount}건입니다.${excludedIssueNotice}`
-              : `새 거래 ${newCandidateCount}건, 중복 가능 ${duplicateCandidateCount}건, 분류 필요 ${classificationNeededCount}건을 찾았습니다.${excludedIssueNotice}`}
-          </p>
-
-          {isSaved && saveMessage !== null ? (
-            <div
-              className="import-saved-notice"
-              ref={savedNoticeRef}
-              role="status"
-              tabIndex={-1}
-            >
-              <strong>{saveMessage}</strong>
-              <p>거래 화면에서 기간별로 확인하고 분류를 이어서 바꿀 수 있어요.</p>
-              <div className="import-saved-notice__actions">
-                {onViewSavedTransactions === undefined ? null : (
-                  <button type="button" onClick={onViewSavedTransactions}>
-                    거래 화면에서 보기
-                  </button>
-                )}
-                <button type="button" onClick={resetPreview}>
-                  다른 파일 불러오기
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          <dl className="import-preview-stats" aria-label="가져오기 결과 요약">
-            <div className="import-preview-stat import-preview-stat--new">
-              <dt>새 거래</dt>
-              <dd>{newCandidateCount === null ? '확인 보류' : `${newCandidateCount}건`}</dd>
-            </div>
-            <div className="import-preview-stat import-preview-stat--duplicate">
-              <dt>중복 가능</dt>
-              <dd>{duplicateCheckFailed ? '확인 실패' : `${duplicateCandidateCount}건`}</dd>
-            </div>
-            <div className="import-preview-stat import-preview-stat--review">
-              <dt>분류 필요</dt>
-              <dd>{classificationNeededCount}건</dd>
-            </div>
-          </dl>
-
-          {duplicateCheckFailed ? (
-            <p className="duplicate-check-error" role="alert">
-              저장된 거래와 중복 가능성을 비교하지 못했습니다. 파일을 다시 선택한 뒤 확인해 주세요.
-            </p>
-          ) : null}
-
-          {!isSaved && duplicateCandidateMatches.length > 0 ? (
-            <section className="duplicate-candidate-review" aria-labelledby="duplicate-review-title">
-              <div>
-                <strong id="duplicate-review-title">중복 가능 후보 {duplicateCandidateMatches.length}건</strong>
-                <p>
-                  저장 거래 또는 이 파일의 앞선 후보와 정확한 비교 키가 같습니다. 실제 별도 거래일 수 있어 기본 저장에서만 제외했습니다.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="duplicate-include-all-action"
-                onClick={includeAllPotentialDuplicates}
-                disabled={
-                  status === 'SAVING' ||
-                  duplicateCandidateMatches.every((match) =>
-                    selectedCandidateIndexes.has(match.candidateIndex),
-                  )
-                }
-              >
-                중복 가능 후보 모두 저장에 포함
-              </button>
-              <ul aria-label="중복 가능 Import 후보">
-                {duplicateCandidateMatches.map((match) => {
-                  const candidate = preview.candidates[match.candidateIndex];
-
-                  if (candidate === undefined) {
-                    return null;
-                  }
-
-                  return (
-                    <li key={`${candidate.source}-${candidate.rowNumber}`}>
-                      <label>
-                        <input
-                          type="checkbox"
-                          aria-label={`중복 가능 후보 ${match.candidateIndex + 1} 저장`}
-                          checked={selectedCandidateIndexes.has(match.candidateIndex)}
-                          disabled={status === 'SAVING'}
-                          onChange={() => toggleCandidateSelection(match.candidateIndex)}
-                        />
-                        <span>
-                          <strong>{candidate.draft.descriptionOriginal}</strong>
-                          <small>
-                            {candidate.draft.occurredOn} · {formatWon(candidate.draft.amountMinor)} · 저장 전 사용자 확인 필요
-                          </small>
-                        </span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ) : null}
-
-          {!isSaved && preview.issues.length > 0 ? (
-            <div className="import-issue-list" role="alert">
-              <strong>자동 반영하지 않은 항목 {preview.issues.length}건</strong>
-              <ul>
-                {preview.issues.slice(0, MAX_VISIBLE_IMPORT_ISSUES).map((issue, index) => (
-                  <li key={`${issue.code}-${issue.rowNumber ?? 'file'}-${index}`}>
-                    {getIssueLabel(issue)}
-                  </li>
-                ))}
-              </ul>
-              {preview.issues.length > MAX_VISIBLE_IMPORT_ISSUES ? (
-                <small>외 {preview.issues.length - MAX_VISIBLE_IMPORT_ISSUES}건</small>
-              ) : null}
-            </div>
-          ) : null}
-
-          {!isSaved && candidateDescriptionGroups.length > 0 ? (
-            <section
-              className="import-description-groups"
-              aria-labelledby="import-description-groups-title"
-            >
-              <div className="import-review-section-heading">
-                <div>
-                  <span>한 번에 분류</span>
-                  <h5 id="import-description-groups-title">같은 거래 설명 묶음</h5>
-                </div>
-                <strong>{candidateDescriptionGroups.length}묶음</strong>
-              </div>
-              <ul aria-label="같은 거래 설명 묶음">
-                {candidateDescriptionGroups.map((group) => {
-                  const groupCategoryIds = new Set(
-                    group.candidateIndexes.map((candidateIndex) =>
-                      categoryIdByCandidateIndex.get(candidateIndex),
-                    ),
-                  );
-                  const [firstGroupCategoryId] = groupCategoryIds;
-                  const groupCategoryValue =
-                    groupCategoryIds.size > 1
-                      ? MIXED_CATEGORY_VALUE
-                      : (firstGroupCategoryId ?? '');
-                  const ruleEligibleIndexes = group.candidateIndexes.filter(
-                    (candidateIndex) =>
-                      selectedCandidateIndexes.has(candidateIndex) &&
-                      categoryIdByCandidateIndex.get(candidateIndex) !== undefined,
-                  );
-                  const isGroupRuleChecked =
-                    ruleEligibleIndexes.length > 0 &&
-                    ruleEligibleIndexes.every((candidateIndex) =>
-                      categoryRuleCandidateIndexes.has(candidateIndex),
-                    );
-
-                  return (
-                    <li key={group.key}>
-                      <span className="import-description-group__copy">
-                        <strong>{group.label}</strong>
-                        <small>
-                          {group.candidateIndexes.length}건 · 합계{' '}
-                          {formatWon(group.totalAmountMinor)}
-                        </small>
-                      </span>
-                      <span className="dashboard-select-control">
-                        <select
-                          aria-label={`${group.label} ${group.candidateIndexes.length}건 카테고리 한 번에 선택`}
-                          value={groupCategoryValue}
-                          disabled={status === 'SAVING'}
-                          onChange={(event) =>
-                            updateGroupCategory(
-                              group.candidateIndexes,
-                              event.target.value === ''
-                                ? undefined
-                                : (event.target.value as CategoryId),
-                            )
-                          }
-                        >
-                          {groupCategoryValue === MIXED_CATEGORY_VALUE ? (
-                            <option value={MIXED_CATEGORY_VALUE} disabled>
-                              여러 카테고리
-                            </option>
-                          ) : null}
-                          <option value="">미분류</option>
-                          {CATEGORY_IDS.map((categoryId) => (
-                            <option key={categoryId} value={categoryId}>
-                              {getCategorySymbol(categoryId, customCategories)}{' '}
-                              {getCategoryLabel(categoryId, customCategories)}
-                            </option>
-                          ))}
-                          {customCategories.map((category) => (
-                            <option key={category.id} value={category.id}>
-                              {category.emoji} {category.name}
-                            </option>
-                          ))}
-                        </select>
-                        <span className="dashboard-select-chevron" aria-hidden="true">
-                          ⌄
-                        </span>
-                      </span>
-                      <label className="import-category-rule">
-                        <input
-                          type="checkbox"
-                          aria-label={`${group.label} 묶음 카테고리 규칙 저장`}
-                          checked={isGroupRuleChecked}
-                          disabled={status === 'SAVING' || ruleEligibleIndexes.length === 0}
-                          onChange={(event) =>
-                            updateGroupCategoryRule(
-                              group.candidateIndexes,
-                              event.target.checked,
-                            )
-                          }
-                        />
-                        <span>
-                          <strong>앞으로 같은 설명에도 적용</strong>
-                        </span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ) : null}
-
-          {!isSaved && preview.candidates.length > 0 ? (
-            <>
-              <div className="import-review-section-heading">
-                <div>
-                  <span>거래별 확인</span>
-                  <h5>분류와 금액을 확인해 주세요</h5>
-                </div>
-                <strong>
-                  {unclassifiedOnlyIndexes === null
-                    ? `${preview.candidates.length}건`
-                    : `${unclassifiedOnlyIndexes.size}/${preview.candidates.length}건`}
-                </strong>
-              </div>
-              <button
-                type="button"
-                className="import-unclassified-filter"
-                aria-pressed={unclassifiedOnlyIndexes !== null}
-                onClick={toggleUnclassifiedOnly}
-              >
-                {unclassifiedOnlyIndexes === null ? '분류 필요한 거래만 보기' : '모든 거래 보기'}
-              </button>
-              <ul className="import-candidate-list" aria-label="가져오기 후보">
-              {preview.candidates.map((candidate, candidateIndex) => {
-                if (
-                  unclassifiedOnlyIndexes !== null &&
-                  !unclassifiedOnlyIndexes.has(candidateIndex)
-                ) {
-                  return null;
-                }
-
+  const renderCandidate = (candidate: ImportCandidate, candidateIndex: number) => {
                 const selectedCategoryId = categoryIdByCandidateIndex.get(candidateIndex);
                 const isCategoryPickerOpen = openCategoryPickerIndex === candidateIndex;
                 const isCandidateSelected = selectedCandidateIndexes.has(candidateIndex);
@@ -1801,6 +1432,17 @@ export function LegacyXlsImportPreview({
                       </div>
                     ) : null}
                   </div>
+                  <details className="import-candidate-more">
+                    <summary>
+                      목적·메모·규칙
+                      <small>
+                        {budgetBucket?.name ?? candidate.draft.budgetBucketId}
+                        {(memoByCandidateIndex.get(candidateIndex) ?? '').trim().length > 0
+                          ? ' · 메모 있음'
+                          : ''}
+                        {categoryRuleCandidateIndexes.has(candidateIndex) ? ' · 규칙 저장' : ''}
+                      </small>
+                    </summary>
                   <div className="import-candidate-detail-fields">
                     <label>
                       돈의 목적
@@ -1872,6 +1514,7 @@ export function LegacyXlsImportPreview({
                       <small>선택하면 이 카테고리를 규칙으로 기억해요.</small>
                     </span>
                   </label>
+                  </details>
                     </>
                   ) : (
                     <small className="import-category-rule-help">
@@ -1885,8 +1528,380 @@ export function LegacyXlsImportPreview({
                   ) : null}
                 </li>
                 );
-              })}
+  };
+
+  return (
+    <div
+      className={`legacy-import-preview legacy-import-preview--${status.toLowerCase()}`}
+      id="import"
+      aria-busy={isBusy}
+    >
+      {kakaoAnalysisPendingCount > 0 ? (
+        <div className="import-kakao-loading" role="status" aria-live="polite">
+          <span className="import-kakao-loading-spinner" aria-hidden="true" />
+          <span>
+            <strong>Kakao 장소를 분석하고 있어요</strong>
+            <small>
+              {kakaoAnalysisPendingCount}건을 처리 중입니다. 결과가 도착하면 자동으로 표시됩니다.
+            </small>
+          </span>
+        </div>
+      ) : null}
+
+      {status === 'IDLE' ? (
+        <div className="import-start-state">
+          <ImportFileIllustration />
+          <h2 id="import-title">소비 내역 파일을 선택해 주세요</h2>
+          <p>
+            계좌 거래와 카드 이용내역 XLS를 이 기기에서 읽고, 확인할 거래를
+            차근차근 정리해요.
+          </p>
+        </div>
+      ) : null}
+
+      {status === 'READING' ? (
+        <div className="import-reading-state" role="status" aria-live="polite">
+          <span className="import-reading-spinner" aria-hidden="true" />
+          <h2>파일을 읽고 있어요</h2>
+          <p>거래와 중복 가능성을 이 기기에서 확인하고 있습니다.</p>
+        </div>
+      ) : null}
+
+      <label
+        className={
+          isDropActive
+            ? 'import-file-action import-file-dropzone is-dragging'
+            : 'import-file-action import-file-dropzone'
+        }
+        data-testid="import-file-dropzone"
+        onDragEnter={(event) => {
+          event.preventDefault();
+          if (status !== 'SAVING') {
+            setIsDropActive(true);
+          }
+        }}
+        onDragOver={(event) => {
+          event.preventDefault();
+        }}
+        onDragLeave={() => setIsDropActive(false)}
+        onDrop={handleFileDrop}
+      >
+        <input
+          type="file"
+          accept=".xls,application/vnd.ms-excel"
+          aria-label="XLS 파일 선택"
+          disabled={status === 'SAVING'}
+          onChange={handleFileChange}
+        />
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path
+            d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+        </svg>
+        <span>
+          {status === 'IDLE' ? '파일 선택하기' : '다른 파일 선택하기'}
+          <small>또는 XLS 파일을 여기로 끌어놓기</small>
+        </span>
+      </label>
+
+      {preview !== null ? (
+        <section className="import-preview-result" aria-labelledby="import-result-title">
+          <div className="import-preview-heading">
+            <span className="import-result-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path
+                  d="m6.5 12.5 3.2 3.2 7.8-8"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2.5"
+                />
+              </svg>
+            </span>
+            <div className="import-preview-heading__copy">
+              <span className="step-label">파일 확인 완료</span>
+              <h4 id="import-result-title">{preview.candidates.length}건을 찾았어요</h4>
+              <p>
+                {preview.source === undefined
+                  ? '지원 여부를 확인할 파일'
+                  : SOURCE_LABELS[preview.source]}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="import-clear-action"
+              disabled={status === 'SAVING'}
+              onClick={resetPreview}
+            >
+              지우기
+            </button>
+          </div>
+
+          <p className="import-preview-announcement" role="status" aria-live="polite">
+            {duplicateCheckFailed
+              ? `거래 후보 ${preview.candidates.length}건을 읽었지만 신규·중복 여부는 확인하지 못했습니다. 분류 필요 ${classificationNeededCount}건입니다.${excludedIssueNotice}`
+              : `새 거래 ${newCandidateCount}건, 중복 가능 ${duplicateCandidateCount}건, 분류 필요 ${classificationNeededCount}건을 찾았습니다.${excludedIssueNotice}`}
+          </p>
+
+          {isSaved && saveMessage !== null ? (
+            <div
+              className="import-saved-notice"
+              ref={savedNoticeRef}
+              role="status"
+              tabIndex={-1}
+            >
+              <strong>{saveMessage}</strong>
+              <p>거래 화면에서 기간별로 확인하고 분류를 이어서 바꿀 수 있어요.</p>
+              <div className="import-saved-notice__actions">
+                {onViewSavedTransactions === undefined ? null : (
+                  <button type="button" onClick={onViewSavedTransactions}>
+                    거래 화면에서 보기
+                  </button>
+                )}
+                <button type="button" onClick={resetPreview}>
+                  다른 파일 불러오기
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          <dl className="import-preview-stats" aria-label="가져오기 결과 요약">
+            <div className="import-preview-stat import-preview-stat--new">
+              <dt>새 거래</dt>
+              <dd>{newCandidateCount === null ? '확인 보류' : `${newCandidateCount}건`}</dd>
+            </div>
+            <div className="import-preview-stat import-preview-stat--duplicate">
+              <dt>중복 가능</dt>
+              <dd>{duplicateCheckFailed ? '확인 실패' : `${duplicateCandidateCount}건`}</dd>
+            </div>
+            <div className="import-preview-stat import-preview-stat--review">
+              <dt>분류 필요</dt>
+              <dd>{classificationNeededCount}건</dd>
+            </div>
+          </dl>
+
+          {duplicateCheckFailed ? (
+            <p className="duplicate-check-error" role="alert">
+              저장된 거래와 중복 가능성을 비교하지 못했습니다. 파일을 다시 선택한 뒤 확인해 주세요.
+            </p>
+          ) : null}
+
+          {!isSaved && duplicateCandidateMatches.length > 0 ? (
+            <section className="duplicate-candidate-review" aria-labelledby="duplicate-review-title">
+              <div>
+                <strong id="duplicate-review-title">중복 가능 후보 {duplicateCandidateMatches.length}건</strong>
+                <p>
+                  저장 거래 또는 이 파일의 앞선 후보와 정확한 비교 키가 같습니다. 실제 별도 거래일 수 있어 기본 저장에서만 제외했습니다.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="duplicate-include-all-action"
+                onClick={includeAllPotentialDuplicates}
+                disabled={
+                  status === 'SAVING' ||
+                  duplicateCandidateMatches.every((match) =>
+                    selectedCandidateIndexes.has(match.candidateIndex),
+                  )
+                }
+              >
+                중복 가능 후보 모두 저장에 포함
+              </button>
+              <ul aria-label="중복 가능 Import 후보">
+                {duplicateCandidateMatches.map((match) => {
+                  const candidate = preview.candidates[match.candidateIndex];
+
+                  if (candidate === undefined) {
+                    return null;
+                  }
+
+                  return (
+                    <li key={`${candidate.source}-${candidate.rowNumber}`}>
+                      <label>
+                        <input
+                          type="checkbox"
+                          aria-label={`중복 가능 후보 ${match.candidateIndex + 1} 저장`}
+                          checked={selectedCandidateIndexes.has(match.candidateIndex)}
+                          disabled={status === 'SAVING'}
+                          onChange={() => toggleCandidateSelection(match.candidateIndex)}
+                        />
+                        <span>
+                          <strong>{candidate.draft.descriptionOriginal}</strong>
+                          <small>
+                            {candidate.draft.occurredOn} · {formatWon(candidate.draft.amountMinor)} · 저장 전 사용자 확인 필요
+                          </small>
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
               </ul>
+            </section>
+          ) : null}
+
+          {!isSaved && preview.issues.length > 0 ? (
+            <div className="import-issue-list" role="alert">
+              <strong>자동 반영하지 않은 항목 {preview.issues.length}건</strong>
+              <ul>
+                {preview.issues.slice(0, MAX_VISIBLE_IMPORT_ISSUES).map((issue, index) => (
+                  <li key={`${issue.code}-${issue.rowNumber ?? 'file'}-${index}`}>
+                    {getIssueLabel(issue)}
+                  </li>
+                ))}
+              </ul>
+              {preview.issues.length > MAX_VISIBLE_IMPORT_ISSUES ? (
+                <small>외 {preview.issues.length - MAX_VISIBLE_IMPORT_ISSUES}건</small>
+              ) : null}
+            </div>
+          ) : null}
+
+          {!isSaved && candidateDescriptionGroups.length > 0 ? (
+            <section
+              className="import-description-groups"
+              aria-labelledby="import-description-groups-title"
+            >
+              <div className="import-review-section-heading">
+                <div>
+                  <span>한 번에 분류</span>
+                  <h5 id="import-description-groups-title">같은 거래 설명 묶음</h5>
+                </div>
+                <strong>{candidateDescriptionGroups.length}묶음</strong>
+              </div>
+              <ul aria-label="같은 거래 설명 묶음">
+                {candidateDescriptionGroups.map((group) => {
+                  const groupCategoryIds = new Set(
+                    group.candidateIndexes.map((candidateIndex) =>
+                      categoryIdByCandidateIndex.get(candidateIndex),
+                    ),
+                  );
+                  const [firstGroupCategoryId] = groupCategoryIds;
+                  const groupCategoryValue =
+                    groupCategoryIds.size > 1
+                      ? MIXED_CATEGORY_VALUE
+                      : (firstGroupCategoryId ?? '');
+                  const ruleEligibleIndexes = group.candidateIndexes.filter(
+                    (candidateIndex) =>
+                      selectedCandidateIndexes.has(candidateIndex) &&
+                      categoryIdByCandidateIndex.get(candidateIndex) !== undefined,
+                  );
+                  const isGroupRuleChecked =
+                    ruleEligibleIndexes.length > 0 &&
+                    ruleEligibleIndexes.every((candidateIndex) =>
+                      categoryRuleCandidateIndexes.has(candidateIndex),
+                    );
+
+                  return (
+                    <li key={group.key}>
+                      <span className="import-description-group__copy">
+                        <strong>{group.label}</strong>
+                        <small>
+                          {group.candidateIndexes.length}건 · 합계{' '}
+                          {formatWon(group.totalAmountMinor)}
+                        </small>
+                      </span>
+                      <span className="dashboard-select-control">
+                        <select
+                          aria-label={`${group.label} ${group.candidateIndexes.length}건 카테고리 한 번에 선택`}
+                          value={groupCategoryValue}
+                          disabled={status === 'SAVING'}
+                          onChange={(event) =>
+                            updateGroupCategory(
+                              group.candidateIndexes,
+                              event.target.value === ''
+                                ? undefined
+                                : (event.target.value as CategoryId),
+                            )
+                          }
+                        >
+                          {groupCategoryValue === MIXED_CATEGORY_VALUE ? (
+                            <option value={MIXED_CATEGORY_VALUE} disabled>
+                              여러 카테고리
+                            </option>
+                          ) : null}
+                          <option value="">미분류</option>
+                          {CATEGORY_IDS.map((categoryId) => (
+                            <option key={categoryId} value={categoryId}>
+                              {getCategorySymbol(categoryId, customCategories)}{' '}
+                              {getCategoryLabel(categoryId, customCategories)}
+                            </option>
+                          ))}
+                          {customCategories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.emoji} {category.name}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="dashboard-select-chevron" aria-hidden="true">
+                          ⌄
+                        </span>
+                      </span>
+                      <label className="import-category-rule">
+                        <input
+                          type="checkbox"
+                          aria-label={`${group.label} 묶음 카테고리 규칙 저장`}
+                          checked={isGroupRuleChecked}
+                          disabled={status === 'SAVING' || ruleEligibleIndexes.length === 0}
+                          onChange={(event) =>
+                            updateGroupCategoryRule(
+                              group.candidateIndexes,
+                              event.target.checked,
+                            )
+                          }
+                        />
+                        <span>
+                          <strong>앞으로 같은 설명에도 적용</strong>
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
+
+          {!isSaved && preview.candidates.length > 0 ? (
+            <>
+              <div className="import-review-section-heading">
+                <div>
+                  <span>거래별 확인</span>
+                  <h5>분류가 필요한 거래부터 확인해 주세요</h5>
+                </div>
+                <strong>{preview.candidates.length}건</strong>
+              </div>
+              {reviewFirstCandidateCount > 0 ? (
+                <ul className="import-candidate-list" aria-label="분류가 필요한 가져오기 후보">
+                  {preview.candidates.map((candidate, candidateIndex) =>
+                    reviewFirstCandidateIndexes.has(candidateIndex)
+                      ? renderCandidate(candidate, candidateIndex)
+                      : null,
+                  )}
+                </ul>
+              ) : (
+                <p className="import-candidate-all-classified">
+                  모든 거래가 자동으로 분류됐어요. 아래에서 추천 결과를 확인할 수 있어요.
+                </p>
+              )}
+              {preview.candidates.length > reviewFirstCandidateCount ? (
+                <details className="import-classified-candidates">
+                  <summary>
+                    자동 분류된 거래 {preview.candidates.length - reviewFirstCandidateCount}건
+                    <small>펼쳐서 추천 결과 확인</small>
+                  </summary>
+                  <ul className="import-candidate-list" aria-label="자동 분류된 가져오기 후보">
+                    {preview.candidates.map((candidate, candidateIndex) =>
+                      reviewFirstCandidateIndexes.has(candidateIndex)
+                        ? null
+                        : renderCandidate(candidate, candidateIndex),
+                    )}
+                  </ul>
+                </details>
+              ) : null}
             </>
           ) : null}
 
