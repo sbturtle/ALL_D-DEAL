@@ -165,6 +165,28 @@ describe('local ledger backup', () => {
     expect(validateLocalLedgerBackup(invalidBackup).isValid).toBe(false);
   });
 
+  it('rejects a transaction linked by multiple settlements', () => {
+    const backup = createLocalLedgerBackup(
+      snapshot,
+      '2026-08-31T01:00:00.000Z',
+    );
+    const invalidBackup = {
+      ...backup,
+      data: {
+        ...backup.data,
+        budgetSettlements: [
+          ...backup.data.budgetSettlements,
+          {
+            ...backup.data.budgetSettlements[0],
+            id: '550e8400-e29b-41d4-a716-446655440004',
+          },
+        ],
+      },
+    };
+
+    expect(validateLocalLedgerBackup(invalidBackup).isValid).toBe(false);
+  });
+
   it('rejects a backup when a custom category reference has no definition', () => {
     const backup = createLocalLedgerBackup(
       snapshot,

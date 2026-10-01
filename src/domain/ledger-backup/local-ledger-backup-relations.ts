@@ -25,6 +25,7 @@ export function hasValidLocalLedgerReferences(
   const customCategoryIds = new Set(
     snapshot.customCategories.map((category) => category.id),
   );
+  const linkedTransactionIds = new Set<string>();
 
   for (const transaction of snapshot.transactions) {
     if (
@@ -40,6 +41,17 @@ export function hasValidLocalLedgerReferences(
   for (const settlement of snapshot.budgetSettlements) {
     if (!budgetBucketIds.has(settlement.budgetBucketId)) {
       return false;
+    }
+
+    const participantIds = [
+      ...settlement.outflowTransactionIds,
+      ...settlement.inflowTransactionIds,
+    ];
+    if (participantIds.some((transactionId) => linkedTransactionIds.has(transactionId))) {
+      return false;
+    }
+    for (const transactionId of participantIds) {
+      linkedTransactionIds.add(transactionId);
     }
 
     for (const transactionId of settlement.outflowTransactionIds) {
