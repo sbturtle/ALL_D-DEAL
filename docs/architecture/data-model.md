@@ -54,9 +54,9 @@ UNKNOWN
 | `icon` | 1–16자 텍스트 | 예 | 로컬 화면에서 쓰는 대표 아이콘 |
 | `order` | 0 이상 safe integer | 예 | 목록 표시 순서 |
 | `isDefault` | boolean | 예 | 초기 제공 자금통 여부 |
-| `isArchived` | boolean | 예 | 향후 보관 상태 표현을 위한 값 |
+| `isArchived` | boolean | 예 | 사용자 목적이 새 선택지에서 제외되어야 하는지 나타냄 |
 
-IndexedDB v6은 `LIVING`(생활비), `IRREGULAR`(비정기비), `EMERGENCY`(비상금), `SAVING`(저축), `HOUSING_MARRIAGE`(주거·결혼), `INVESTMENT`(투자), `OTHER`(기타) 7개를 초기 저장한다. 이번 단계에서는 사용자 정의 자금통 생성·이름 변경·보관 화면과 자금통별 월 목표를 제공하지 않는다.
+IndexedDB v6은 `LIVING`(생활비), `IRREGULAR`(비정기비), `EMERGENCY`(비상금), `SAVING`(저축), `HOUSING_MARRIAGE`(주거·결혼), `INVESTMENT`(투자), `OTHER`(기타) 7개를 초기 저장한다. v7은 기존 목적에 `isArchived: false`를 안전하게 추가한다. Settings에서는 사용자 목적 추가·이름/아이콘 수정·보관을 지원한다. 기본 목적은 보관할 수 없고, 보관된 목적은 기존 거래에 남아 있지만 새 거래 선택지에서는 제외한다. 자금통별 월 목표는 제공하지 않는다.
 
 ### 불변식
 
@@ -146,6 +146,12 @@ Phase 8C는 Transaction 또는 IndexedDB 스키마를 변경하지 않는다. �
 
 카테고리 규칙과 Kakao 분류는 카테고리만 제안하며 자금통을 자동으로 바꾸지 않는다. Import Preview는 `LIVING` 기본값을 보여 주고, 확정 뒤 거래 편집 화면에서 자금통을 바꾼다. `calculateBudgetBucketExpenseSummary`는 자금통별 `EXPENSE + OUTFLOW`와 해당 자금통에 명시적으로 귀속한 공동결제 순지출을 계산한다. 기존 `calculateLivingExpenseSummary`는 `LIVING` 요약을 반환해 월 목표와 주간 그래프의 기준을 유지한다.
 
+### 로컬 장부 백업 JSON
+
+`LocalLedgerBackup`은 `ALL_D_DEAL_LOCAL_LEDGER` 식별자, 정수 버전, UTC `exportedAt`, 모든 로컬 저장소를 담은 `data`로 구성된다. 현재 버전은 거래, Import 이력, 공동결제 정산, 정확·키워드 카테고리 규칙, 월 생활비 설정, 돈의 목적, 사용자 카테고리와 거래 이미지 첨부를 포함한다. 원본 Import 파일·원본 행·Preview 후보/분석 trace·급여 입력/결과·외부 서비스 응답은 포함하지 않는다.
+
+백업 파일은 신뢰할 수 없는 입력으로 취급한다. 복원 전에 루트와 레코드 모양, 포맷 버전, 중복 키, Import Batch·카테고리·돈의 목적·정산 참여 거래·첨부 참조를 모두 검증한다. 한 거래는 하나의 공동결제 정산에만 참여할 수 있다. UI에서 사용자가 별도로 확인한 뒤 모든 저장소를 하나의 IndexedDB 읽기·쓰기 트랜잭션으로 교체한다. 트랜잭션 실패는 전체를 되돌려 기존 장부를 보존한다. 구체 형식과 범위는 [ADR-0017](../adr/ADR-0017-versioned-local-ledger-backup.md)을 따른다.
+
 ## ImportBatch 후보
 
 확정된 Import 작업을 추적하기 위한 최소 후보는 다음과 같다.
@@ -188,7 +194,7 @@ Phase 2에서는 저장 포트, DB 스키마와 라이브러리를 구현하지 
 
 - 주간 목표, 기간 비례 예산, 저축액과 월 저축 가능액: 별도 요구 확인 후
 - 주거·결혼자금, 비상금, 청약, 투자, 대출: 자금통별 목표·자산 모델 요구가 확인된 뒤
-- 사용자 정의 자금통 관리, 자금통별 월 목표, 수입 배분과 `TransactionAllocation[]`: 별도 요구 확인 후
+- 사용자 정의 자금통의 재활성화·순서 변경, 자금통별 월 목표, 수입 배분과 `TransactionAllocation[]`: 별도 요구 확인 후
 - 환불 원거래 연결, 분할 거래, 다중 통화: 실제 요구 확인 후
 
 ## 미결정 사항
