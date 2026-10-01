@@ -301,7 +301,7 @@ button:disabled,
   white-space: nowrap;
 }
 
-.brand-lockup__subline {
+.brand-mark {
   color: var(--brand-forest);
   font-size: 10px;
   font-weight: 800;

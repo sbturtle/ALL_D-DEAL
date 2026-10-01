@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DEFAULT_BUDGET_BUCKETS,
+  archiveCustomBudgetBucket,
+  createCustomBudgetBucket,
   getDefaultBudgetBucket,
+  updateBudgetBucketPresentation,
   validateBudgetBucket,
 } from './budget-bucket';
 
@@ -36,6 +39,46 @@ describe('BudgetBucket', () => {
     expect(validateBudgetBucket(bucket)).toEqual({
       isValid: true,
       value: bucket,
+    });
+  });
+
+  it('creates, presentation-edits, and archives a custom bucket', () => {
+    const bucket = createCustomBudgetBucket({
+      id: 'travel-2026',
+      name: '  여행  ',
+      icon: ' ✈️ ',
+      order: 80,
+    });
+
+    expect(bucket).toEqual({
+      id: 'travel-2026',
+      name: '여행',
+      icon: '✈️',
+      order: 80,
+      isDefault: false,
+      isArchived: false,
+    });
+    expect(
+      updateBudgetBucketPresentation(bucket!, { name: '휴가', icon: '🌴' }),
+    ).toMatchObject({ name: '휴가', icon: '🌴', isArchived: false });
+    expect(archiveCustomBudgetBucket(bucket!)).toMatchObject({
+      id: 'travel-2026',
+      isArchived: true,
+    });
+  });
+
+  it('keeps default buckets non-archivable while allowing presentation edits', () => {
+    const living = DEFAULT_BUDGET_BUCKETS[0];
+
+    expect(archiveCustomBudgetBucket(living)).toBeUndefined();
+    expect(
+      updateBudgetBucketPresentation(living, { name: '매달 쓰는 돈', icon: '🧺' }),
+    ).toMatchObject({
+      id: 'LIVING',
+      name: '매달 쓰는 돈',
+      icon: '🧺',
+      isDefault: true,
+      isArchived: false,
     });
   });
 

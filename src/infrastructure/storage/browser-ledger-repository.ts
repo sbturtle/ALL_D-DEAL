@@ -27,6 +27,10 @@ import {
 import type { TransactionDateRange } from '../../domain/transactions/transaction-period';
 import type { Transaction } from '../../domain/transactions/transaction';
 import { validateTransaction } from '../../domain/transactions/transaction-validation';
+import {
+  validateLocalLedgerSnapshot,
+  type LocalLedgerSnapshot,
+} from '../../domain/ledger-backup/local-ledger-backup';
 
 export const LOCAL_LEDGER_DATABASE_NAME = 'household-ledger';
 const LOCAL_LEDGER_DATABASE_VERSION = 7;
@@ -40,6 +44,17 @@ const USER_SETTINGS_STORE = 'userSettings';
 const BUDGET_BUCKETS_STORE = 'budgetBuckets';
 const CUSTOM_CATEGORIES_STORE = 'customCategories';
 const TRANSACTION_ATTACHMENTS_STORE = 'transactionAttachments';
+const LOCAL_LEDGER_STORE_NAMES = [
+  TRANSACTIONS_STORE,
+  IMPORT_BATCHES_STORE,
+  BUDGET_SETTLEMENTS_STORE,
+  CATEGORY_RULES_STORE,
+  KEYWORD_CATEGORY_RULES_STORE,
+  USER_SETTINGS_STORE,
+  BUDGET_BUCKETS_STORE,
+  CUSTOM_CATEGORIES_STORE,
+  TRANSACTION_ATTACHMENTS_STORE,
+] as const;
 
 type KeyRangeFactory = Readonly<{
   bound: (lower: string, upper: string) => IDBKeyRange;
@@ -60,6 +75,10 @@ function requestAsPromise<T>(request: IDBRequest<T>): Promise<T> {
       once: true,
     });
   });
+}
+
+function getAllValues(store: IDBObjectStore): Promise<readonly unknown[]> {
+  return requestAsPromise(store.getAll() as IDBRequest<unknown[]>);
 }
 
 function transactionAsPromise(transaction: IDBTransaction): Promise<void> {
@@ -442,6 +461,131 @@ export class BrowserLedgerRepository {
     await transactionAsPromise(transaction);
   }
 
+  async getLocalLedgerSnapshot(): Promise<LocalLedgerSnapshot> {
+    const database = await this.getDatabase();
+    const transaction = database.transaction(
+      [...LOCAL_LEDGER_STORE_NAMES],
+      'readonly',
+    );
+    const requests = LOCAL_LEDGER_STORE_NAMES.map((storeName) =>
+      getAllValues(transaction.objectStore(storeName)),
+    );
+
+    const valuesPromise = Promise.all(requests);
+    const transactionPromise = transactionAsPromise(transaction);
+    const [values] = await Promise.all([valuesPromise, transactionPromise]);
+    const [
+      transactions,
+      importBatches,
+      budgetSettlements,
+      categoryRules,
+      keywordCategoryRules,
+      userSettings,
+      budgetBuckets,
+      customCategories,
+      transactionAttachments,
+    ] = values;
+
+    const userSettingsCandidate =
+      userSettings.length === 0
+        ? null
+        : userSettings.length === 1
+          ? userSettings[0]
+          : userSettings;
+    const validation = validateLocalLedgerSnapshot({
+      transactions,
+      importBatches,
+      budgetSettlements,
+      categoryRules,
+      keywordCategoryRules,
+      userSettings: userSettingsCandidate,
+      budgetBuckets,
+      customCategories,
+      transactionAttachments,
+    });
+    if (!validation.isValid) {
+      throw new Error('Stored local ledger snapshot is invalid.');
+    }
+
+    return {
+      ...validation.value,
+      budgetBuckets: [...validation.value.budgetBuckets].sort(
+        (left, right) =>
+          left.order - right.order || left.name.localeCompare(right.name),
+      ),
+    };
+  }
+
+  async replaceLocalLedger(snapshot: unknown): Promise<void> {
+    const validation = validateLocalLedgerSnapshot(snapshot);
+    if (!validation.isValid) {
+      throw new Error('Local ledger snapshot is invalid.');
+    }
+
+    const database = await this.getDatabase();
+    const transaction = database.transaction(
+      [...LOCAL_LEDGER_STORE_NAMES],
+      'readwrite',
+    );
+    const transactions = transaction.objectStore(TRANSACTIONS_STORE);
+    const importBatches = transaction.objectStore(IMPORT_BATCHES_STORE);
+    const budgetSettlements = transaction.objectStore(BUDGET_SETTLEMENTS_STORE);
+    const categoryRules = transaction.objectStore(CATEGORY_RULES_STORE);
+    const keywordCategoryRules = transaction.objectStore(
+      KEYWORD_CATEGORY_RULES_STORE,
+    );
+    const userSettings = transaction.objectStore(USER_SETTINGS_STORE);
+    const budgetBuckets = transaction.objectStore(BUDGET_BUCKETS_STORE);
+    const customCategories = transaction.objectStore(CUSTOM_CATEGORIES_STORE);
+    const transactionAttachments = transaction.objectStore(
+      TRANSACTION_ATTACHMENTS_STORE,
+    );
+    for (const store of [
+      transactions,
+      importBatches,
+      budgetSettlements,
+      categoryRules,
+      keywordCategoryRules,
+      userSettings,
+      budgetBuckets,
+      customCategories,
+      transactionAttachments,
+    ]) {
+      store.clear();
+    }
+
+    const value = validation.value;
+    for (const item of value.transactions) {
+      transactions.put(item);
+    }
+    for (const item of value.importBatches) {
+      importBatches.put(item);
+    }
+    for (const item of value.budgetSettlements) {
+      budgetSettlements.put(item);
+    }
+    for (const item of value.categoryRules) {
+      categoryRules.put(item);
+    }
+    for (const item of value.keywordCategoryRules) {
+      keywordCategoryRules.put(item);
+    }
+    if (value.userSettings !== null) {
+      userSettings.put(value.userSettings);
+    }
+    for (const item of value.budgetBuckets) {
+      budgetBuckets.put(item);
+    }
+    for (const item of value.customCategories) {
+      customCategories.put(item);
+    }
+    for (const item of value.transactionAttachments) {
+      transactionAttachments.put(item);
+    }
+
+    await transactionAsPromise(transaction);
+  }
+
   async listBudgetBuckets(): Promise<readonly BudgetBucket[]> {
     const database = await this.getDatabase();
     const transaction = database.transaction(BUDGET_BUCKETS_STORE, 'readonly');
@@ -672,6 +816,28 @@ export class BrowserLedgerRepository {
             for (const bucket of DEFAULT_BUDGET_BUCKETS) {
               budgetBuckets.put(bucket);
             }
+          }
+
+          if (
+            (event as IDBVersionChangeEvent).oldVersion < 7 &&
+            request.transaction !== null
+          ) {
+            const budgetBuckets = request.transaction.objectStore(
+              BUDGET_BUCKETS_STORE,
+            );
+            const cursorRequest = budgetBuckets.openCursor();
+            cursorRequest.addEventListener('success', () => {
+              const cursor = cursorRequest.result;
+              if (cursor === null) {
+                return;
+              }
+
+              const value = cursor.value as Record<string, unknown>;
+              if (value.isArchived === undefined) {
+                cursor.update({ ...value, isArchived: false });
+              }
+              cursor.continue();
+            });
           }
         },
         { once: true },
