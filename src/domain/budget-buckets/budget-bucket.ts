@@ -124,6 +124,48 @@ export function getDefaultBudgetBucket(
   return DEFAULT_BUDGET_BUCKETS.find((bucket) => bucket.id === id);
 }
 
+export function createCustomBudgetBucket(
+  input: Readonly<{
+    id: BudgetBucketId;
+    name: string;
+    icon: string;
+    order: number;
+  }>,
+): BudgetBucket | undefined {
+  const validation = validateBudgetBucket({
+    ...input,
+    name: input.name.trim(),
+    icon: input.icon.trim(),
+    isDefault: false,
+    isArchived: false,
+  });
+
+  return validation.isValid ? validation.value : undefined;
+}
+
+export function updateBudgetBucketPresentation(
+  bucket: BudgetBucket,
+  presentation: Readonly<{ name: string; icon: string }>,
+): BudgetBucket | undefined {
+  const validation = validateBudgetBucket({
+    ...bucket,
+    name: presentation.name.trim(),
+    icon: presentation.icon.trim(),
+  });
+
+  return validation.isValid ? validation.value : undefined;
+}
+
+export function archiveCustomBudgetBucket(
+  bucket: BudgetBucket,
+): BudgetBucket | undefined {
+  if (bucket.isDefault) {
+    return undefined;
+  }
+
+  return { ...bucket, isArchived: true };
+}
+
 export function validateBudgetBucket(
   candidate: unknown,
 ): BudgetBucketValidationResult {

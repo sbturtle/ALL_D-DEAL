@@ -287,6 +287,55 @@ describe('BrowserLedgerRepository', () => {
     });
   });
 
+  it('marks existing custom purposes as active during the v7 upgrade', async () => {
+    const databaseName = `v6-ledger-${crypto.randomUUID()}`;
+    const databaseFactory = new IDBFactory();
+    const request = databaseFactory.open(databaseName, 6);
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.addEventListener(
+        'upgradeneeded',
+        () => {
+          const budgetBuckets = request.result.createObjectStore(
+            'budgetBuckets',
+            { keyPath: 'id' },
+          );
+          budgetBuckets.put({
+            id: 'custom-travel',
+            name: '여행',
+            icon: '✈️',
+            order: 80,
+            isDefault: false,
+          });
+        },
+        { once: true },
+      );
+      request.addEventListener('success', () => resolve(request.result), {
+        once: true,
+      });
+      request.addEventListener('error', () => reject(request.error), {
+        once: true,
+      });
+    });
+    database.close();
+
+    const repository = new BrowserLedgerRepository(
+      databaseName,
+      databaseFactory,
+      IDBKeyRange,
+    );
+
+    await expect(repository.listBudgetBuckets()).resolves.toEqual([
+      {
+        id: 'custom-travel',
+        name: '여행',
+        icon: '✈️',
+        order: 80,
+        isDefault: false,
+        isArchived: false,
+      },
+    ]);
+  });
+
   it('protects default identities from archival or custom reassignment', async () => {
     const repository = createRepository();
 

@@ -13,6 +13,7 @@ import {
   type AppRoute,
 } from '../../app/app-route';
 import { AppIcon, type AppIconName } from './app-icon';
+import { BrandMark } from './brand-mark';
 
 const BOTTOM_NAVIGATION_ITEMS: readonly Readonly<{
   route: AppRoute;
@@ -174,7 +175,7 @@ export function MobileAppShell({
             onClick={(event) => onNavigate(event, 'HOME')}
           >
             <span className="brand-lockup__wordmark">ALL D·DEAL</span>
-            <span className="brand-lockup__subline">알뜰</span>
+            <BrandMark className="brand-lockup__subline" />
           </a>
           <span className="mobile-app-bar__title">
             {APP_ROUTE_TITLES[currentRoute]}

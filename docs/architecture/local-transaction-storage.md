@@ -1,12 +1,12 @@
 # 로컬 거래 저장 계약
 
-> 상태: 10B단계 구현 중
+> 상태: 10B단계 및 Settings 로컬 데이터 관리 구현 기준
 >
-> 갱신일: 2026-08-10
+> 갱신일: 2026-10-01
 
 ## 브라우저 데이터베이스
 
-브라우저는 네이티브 IndexedDB 데이터베이스 `household-ledger`를 사용하며, 현재 스키마 버전은 `6`이다.
+브라우저는 네이티브 IndexedDB 데이터베이스 `household-ledger`를 사용하며, 현재 스키마 버전은 `7`이다.
 
 | 저장소 | 키 | 인덱스 | 저장 목적 |
 | --- | --- | --- | --- |
@@ -16,7 +16,9 @@
 | `categoryRules` | `matchDescriptionNormalized` | — | 이후 Import Preview에 재사용할 사용자 확인 카테고리 |
 | `keywordCategoryRules` | `keywordNormalized` | — | Review 묶기와 이후 Import Preview에 재사용할 사용자 확인 포함 키워드 |
 | `userSettings` | `id` (`current`) | — | 로컬 월 생활비 목표와 갱신 시각 하나 |
-| `budgetBuckets` | `id` | `order` | 기본·향후 사용자 정의 자금통의 이름, 아이콘, 표시 순서, 상태 |
+| `budgetBuckets` | `id` | `order` | 기본·사용자 정의 목적의 이름, 아이콘, 순서, 보관 상태 |
+| `customCategories` | `id` | — | 사용자가 직접 만든 거래 카테고리 |
+| `transactionAttachments` | `transactionId` | — | 거래에 연결된 브라우저 로컬 이미지 첨부 |
 
 원본 XLS blob, 원본 파일명, Parser 행 배열, Preview 상태, 전체 계좌·카드 번호와 금융기관 식별자는 저장하지 않는다.
 
@@ -45,11 +47,17 @@
 
 선택 기간에는 일반 `EXPENSE + OUTFLOW`를 자금통별로 더하고, 정산에 연결된 지출 중 해당 기간의 금액 합계에서 연결 입금 전체를 차감한 `max(지출 합계 - 입금 합계, 0)`을 정산의 `budgetBucketId` 하나에만 반영한다. 입금이 이후 날짜여도 선택한 지출 기간에 귀속한다. 여러 자금통에 정산금을 자동 분할하지 않으며, 원본 거래와 일반 입출금 합계는 변경하지 않는다. 자세한 결정은 [ADR-0014](../adr/ADR-0014-many-to-many-shared-payment-settlements.md), [ADR-0015](../adr/ADR-0015-separate-expense-category-and-budget-bucket.md)를 따른다.
 
-## 자금통과 v6 마이그레이션
+## 자금통과 v6·v7 마이그레이션
 
 `budgetBuckets`는 `id`를 키로 하고 `order` 인덱스를 가진다. 레코드는 `id`, `name`, `icon`, `order`, `isDefault`, `isArchived`를 모두 검증한다. v6 업그레이드는 자금통이 없는 기존 모든 Transaction과 공동결제 정산에 `LIVING`을 넣고, 기본 자금통 `LIVING`, `IRREGULAR`, `EMERGENCY`, `SAVING`, `HOUSING_MARRIAGE`, `INVESTMENT`, `OTHER` 7개를 seed한다. 이 마이그레이션은 과거 거래의 실제 목적을 추정하지 않고 레코드 손실을 막는 legacy 기본값만 제공한다.
 
-새 Transaction과 정산은 하나의 `budgetBucketId`를 반드시 저장한다. ID 검증은 공백 없는 문자열을 허용하고 기본 7개로 닫지 않으므로 이후 사용자 정의 자금통을 저장할 수 있다. 현재는 생성·이름 변경·보관 UI와 자금통별 목표를 제공하지 않는다.
+새 Transaction과 정산은 하나의 `budgetBucketId`를 반드시 저장한다. ID 검증은 공백 없는 문자열을 허용하고 기본 7개로 닫지 않는다. v7 업그레이드는 기존 `budgetBuckets` 레코드에 보관 상태가 없으면 `isArchived: false`를 추가한다. Settings에서 사용자 목적을 추가·이름/아이콘 수정·보관할 수 있다. 기본 목적은 보관할 수 없고, 보관 목적은 과거 거래 표시를 위해 저장소에 보존하지만 새 거래 선택지에서는 제외한다. 자금통별 목표와 보관 목적의 재활성화는 제공하지 않는다.
+
+## 로컬 장부 JSON 백업·복원
+
+`LocalLedgerBackup` 버전 1은 위 표의 로컬 저장소 9개 전체를 JSON으로 내보낸다. 원본 XLS, 원본 행, 미확정 Preview 후보와 분석 trace, 급여 계산 입력/결과, Kakao 응답과 같은 외부 서비스 정보는 포함하지 않는다. 거래 이미지 첨부는 장부 복구를 위해 포함되며 파일은 사용자가 직접 보관한다.
+
+복원 전에 각 Domain 레코드, 예상하지 않은 필드, 저장소별 중복 키, Import Batch·카테고리·자금 목적·정산·첨부 참조를 검증한다. 공동결제 정산은 한 거래를 여러 정산에서 공유할 수 없다. 복원은 사용자의 최종 확인 뒤 모든 저장소에 대해 하나의 IndexedDB 읽기·쓰기 트랜잭션으로 수행한다. 검증 실패는 쓰기를 시작하지 않고, 저장 요청 실패는 트랜잭션 전체를 중단해 기존 장부를 유지한다. 형식과 의도는 [ADR-0017](../adr/ADR-0017-versioned-local-ledger-backup.md)을 따른다.
 
 ## 로컬 월 생활비 목표
 
@@ -59,6 +67,6 @@
 
 ## 확인형 로컬 장부 초기화
 
-`resetLocalLedger`는 일곱 저장소를 대상으로 하나의 읽기·쓰기 트랜잭션을 연다. 거래, Import 이력, 정산, 정확·키워드 카테고리 규칙, 로컬 설정, 기존 사용자 자금통을 비운 뒤, 같은 트랜잭션 안에서 기본 자금통 7개를 `budgetBuckets`에 다시 저장한다. 스키마, 데이터베이스 이름, 브라우저 origin, 원본 파일과 애플리케이션 설정은 유지한다. 중단이나 요청 오류가 나면 작업을 거부하므로 UI는 확인 dialog를 열어 둔 채 성공을 알리지 않는다.
+`resetLocalLedger`는 9개 저장소를 대상으로 하나의 읽기·쓰기 트랜잭션을 연다. 거래, Import 이력, 정산, 정확·키워드 카테고리 규칙, 로컬 설정, 사용자 목적, 사용자 카테고리, 거래 이미지 첨부를 비운 뒤, 같은 트랜잭션 안에서 기본 자금통 7개를 `budgetBuckets`에 다시 저장한다. 스키마, 데이터베이스 이름, 브라우저 origin, 원본 파일과 애플리케이션 설정은 유지한다. 중단이나 요청 오류가 나면 작업을 거부하므로 UI는 확인 dialog를 열어 둔 채 성공을 알리지 않는다.
 
-Settings 컨트롤은 이 작업을 호출하기 전에 접근 가능한 확인 dialog를 연다. dialog에는 영향을 받는 일곱 데이터 그룹과 사용자 정의 자금통은 삭제되지만 기본 자금통 7개는 즉시 다시 만들어진다는 안내, 원본 Excel·샘플·앱 코드·환경 설정은 대상이 아니라는 안내를 표시한다. 배경 닫기·Escape·취소는 저장소 작업을 호출하지 않는다. 자세한 결정은 [ADR-0013](../adr/ADR-0013-confirmed-local-ledger-reset.md)을 따른다.
+Settings 컨트롤은 이 작업을 호출하기 전에 접근 가능한 확인 dialog를 연다. dialog는 거래와 Import 이력, 정산, 정확·키워드 규칙, 목표, 사용자 카테고리·거래 이미지와 사용자 정의 목적이 초기화 대상임을 알리고 기본 목적 7개는 다시 만들어진다고 설명한다. 원본 Excel·샘플·앱 코드·환경 설정은 대상이 아니다. 배경 닫기·Escape·취소는 저장소 작업을 호출하지 않는다. 자세한 결정은 [ADR-0013](../adr/ADR-0013-confirmed-local-ledger-reset.md)을 따른다.

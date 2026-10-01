@@ -80,6 +80,14 @@ IndexedDB v2 업그레이드가 차단되면 열기 요청을 즉시 실패시�
 
 IndexedDB 스키마 v4에는 `keywordNormalized`를 키로 하는 별도 `keywordCategoryRules` 저장소를 추가했다. v1–v3의 모든 저장소와 정확 규칙은 보존한다. `KeywordCategoryRule`은 `keywordNormalized`, `categoryId`, `createdAt`, `updatedAt`을 저장한다. 묶기 사용 사례는 모든 교체 Transaction을 먼저 검증한 뒤 키워드 규칙과 거래 교체를 하나의 읽기·쓰기 트랜잭션으로 저장한다.
 
+## Dashboard 반복 지출 요약
+
+`calculateSpendingInsights`는 저장된 Transaction을 변경하지 않고 현재 조회 기간의
+`EXPENSE + OUTFLOW` 거래를 읽기 전용으로 집계한다. 카테고리가 없거나 공동결제
+정산에 연결된 출금은 제외한다. `merchantNormalized`를 우선 키로 사용하고 값이
+없으면 `merchantOriginal`, `descriptionOriginal` 순서로 대체한다. 정규화된 기록이
+같은 카테고리에서 2건 이상일 때만 Home에 반복 횟수와 총액을 표시한다.
+
 ## 후속 보류 작업
 
-사용자 정의 카테고리, 규칙 관리 화면, 규칙 삭제, 자동 키워드 학습, 이미 분류한 거래의 일괄 변경, 영속 가맹점 필드 규칙, 사용자 관리 Merchant Alias·Cache, AI 분류와 Dashboard 카테고리 분석은 별도의 결정이 필요하다. 8C단계의 Alias·Fuzzy는 Preview 검색어 해석일 뿐 새 `CategoryRule` 또는 `KeywordCategoryRule`을 자동 생성하지 않는다.
+사용자 정의 카테고리, 규칙 관리 화면, 규칙 삭제, 자동 키워드 학습, 이미 분류한 거래의 일괄 변경, 영속 가맹점 필드 규칙, 사용자 관리 Merchant Alias·Cache, AI 기반 의미 확장은 별도의 결정이 필요하다. 8C단계의 Alias·Fuzzy는 Preview 검색어 해석일 뿐 새 `CategoryRule` 또는 `KeywordCategoryRule`을 자동 생성하지 않는다.

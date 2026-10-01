@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { DEFAULT_BUDGET_BUCKETS } from '../../domain/budget-buckets/budget-bucket';
 import type { LocalSettingsRepository } from './settings-page';
 import { SettingsPage } from './settings-page';
 
@@ -18,6 +19,20 @@ function createRepository(
     getLocalUserSettings: vi.fn().mockResolvedValue(undefined),
     saveLocalUserSettings: vi.fn().mockResolvedValue(undefined),
     removeLocalUserSettings: vi.fn().mockResolvedValue(undefined),
+    listBudgetBuckets: vi.fn().mockResolvedValue(DEFAULT_BUDGET_BUCKETS),
+    saveBudgetBucket: vi.fn().mockResolvedValue(undefined),
+    getLocalLedgerSnapshot: vi.fn().mockResolvedValue({
+      transactions: [],
+      importBatches: [],
+      budgetSettlements: [],
+      categoryRules: [],
+      keywordCategoryRules: [],
+      userSettings: null,
+      budgetBuckets: DEFAULT_BUDGET_BUCKETS,
+      customCategories: [],
+      transactionAttachments: [],
+    }),
+    replaceLocalLedger: vi.fn().mockResolvedValue(undefined),
     resetLocalLedger: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
@@ -134,6 +149,92 @@ describe('SettingsPage', () => {
     expect(input).toHaveValue('320,000');
   });
 
+  it('adds and presentation-edits a custom money purpose', async () => {
+    const user = userEvent.setup();
+    let storedBuckets = [...DEFAULT_BUDGET_BUCKETS];
+    const saveBudgetBucket = vi.fn().mockImplementation(async (bucket) => {
+      storedBuckets = [
+        ...storedBuckets.filter((candidate) => candidate.id !== bucket.id),
+        bucket,
+      ];
+    });
+    render(
+      <SettingsPage
+        settingsRepository={createRepository({
+          listBudgetBuckets: vi.fn().mockImplementation(async () => storedBuckets),
+          saveBudgetBucket,
+        })}
+      />,
+    );
+
+    const nameInput = await screen.findByRole('textbox', {
+      name: '새 돈의 목적 이름',
+    });
+    await user.type(screen.getByRole('textbox', { name: '새 돈의 목적 아이콘' }), '✈️');
+    await user.type(nameInput, '여행');
+    await user.click(screen.getByRole('button', { name: '목적 추가' }));
+
+    expect(saveBudgetBucket).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: '여행',
+        icon: '✈️',
+        isDefault: false,
+        isArchived: false,
+      }),
+    );
+    expect(await screen.findByText('새 돈의 목적을 추가했어요.')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: '여행 이름과 아이콘 편집' }));
+    const editNameInput = screen.getByRole('textbox', {
+      name: '편집할 돈의 목적 이름',
+    });
+    await user.clear(editNameInput);
+    await user.type(editNameInput, '긴 여행');
+    await user.click(screen.getByRole('button', { name: '변경 저장' }));
+
+    expect(saveBudgetBucket).toHaveBeenLastCalledWith(
+      expect.objectContaining({ name: '긴 여행', icon: '✈️' }),
+    );
+    expect(await screen.findByText('돈의 목적을 바꿨어요.')).toBeVisible();
+  });
+
+  it('archives only a custom purpose and keeps it visible in the archived list', async () => {
+    const user = userEvent.setup();
+    const customBucket = {
+      id: 'custom-travel',
+      name: '여행',
+      icon: '✈️',
+      order: 80,
+      isDefault: false,
+      isArchived: false,
+    } as const;
+    const saveBudgetBucket = vi.fn().mockResolvedValue(undefined);
+    render(
+      <SettingsPage
+        settingsRepository={createRepository({
+          listBudgetBuckets: vi.fn().mockResolvedValue([
+            ...DEFAULT_BUDGET_BUCKETS,
+            customBucket,
+          ]),
+          saveBudgetBucket,
+        })}
+      />,
+    );
+
+    await user.click(
+      await screen.findByRole('button', { name: '여행 보관' }),
+    );
+
+    expect(saveBudgetBucket).toHaveBeenCalledWith({
+      ...customBucket,
+      isArchived: true,
+    });
+    expect(screen.queryByRole('button', { name: '여행 보관' })).not.toBeInTheDocument();
+    await user.click(screen.getByText('보관한 목적'));
+    expect(screen.getByText('✈️ 여행')).toBeVisible();
+    expect(screen.queryByRole('button', { name: '생활비 보관' })).not.toBeInTheDocument();
+  });
+
   it('opens a scoped reset confirmation and lets the user cancel without clearing data', async () => {
     const user = userEvent.setup();
     const resetLocalLedger = vi.fn().mockResolvedValue(undefined);
@@ -160,6 +261,15 @@ describe('SettingsPage', () => {
       screen.getByText('원본 엑셀 파일, 샘플 파일, 앱 코드와 환경 설정은 지우지 않습니다.'),
     ).toBeVisible();
 
+    await user.click(
+      screen.getByRole('button', { name: '로컬 장부 초기화 닫기' }),
+    );
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(resetLocalLedger).not.toHaveBeenCalled();
+    expect(resetTrigger).toHaveFocus();
+
+    await user.click(resetTrigger);
     await user.keyboard('{Escape}');
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

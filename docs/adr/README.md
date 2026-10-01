@@ -20,6 +20,7 @@ ADR은 기술 선택뿐 아니라 중요한 제품 요구가 왜 바뀌었는지
 | [ADR-0014](ADR-0014-many-to-many-shared-payment-settlements.md)           | 채택 | 여러 지출과 여러 입금을 하나의 공동결제 정산으로 연결한다.                |
 | [ADR-0015](ADR-0015-separate-expense-category-and-budget-bucket.md)      | 채택 | 카테고리와 자금통을 분리하고 거래·정산에 단일 자금통을 저장한다.          |
 | [ADR-0016](ADR-0016-built-in-merchant-keyword-suggestions.md)            | 채택 | 널리 알려진 상호의 내장 기본 카테고리 추천을 Preview에만 적용한다.        |
+| [ADR-0017](ADR-0017-versioned-local-ledger-backup.md)                    | 채택 | 로컬 장부 백업을 버전 있는 JSON으로 내보내고 검증 후 원자적으로 복원한다. |
 
 ## 새 ADR 기본 구조
 
